@@ -255,6 +255,7 @@ const columnDefs = ref([
     filter: 'agNumberColumnFilter',
     checkboxSelection: true,
   },
+  { field: 'model', headerName: 'Sayaç Modeli', filter: true, enableRowGroup: true },
   { field: 'type', headerName: 'Cihaz Tipi', enableRowGroup: true },
   { field: 'consumption', headerName: 'Tüketim', filter: true },
   { field: 'commandIndex', headerName: 'Versiyon', filter: 'agNumberColumnFilter' },
@@ -357,6 +358,7 @@ const defaultColDef = {
 const tools = ref([
   {
     name: '10001',
+    model: 'BT-13',
     status: 'Aktif',
     commandIndex: 44,
     consumption: '15 m³',
@@ -366,6 +368,7 @@ const tools = ref([
   },
   {
     name: '10002',
+    model: 'BM-13',
     status: 'Pasif',
     commandIndex: 45,
     consumption: '20 m³',
@@ -375,6 +378,7 @@ const tools = ref([
   },
   {
     name: '10003',
+    model: 'BTK-13',
     status: 'Aktif',
     commandIndex: 34,
     consumption: '25 m³',
@@ -384,6 +388,7 @@ const tools = ref([
   },
   {
     name: '10004',
+    model: 'BT-13',
     status: 'Pasif',
     commandIndex: 29,
     consumption: '30 m³',
@@ -393,6 +398,7 @@ const tools = ref([
   },
   {
     name: '10005',
+    model: 'BM-13',
     status: 'Aktif',
     commandIndex: 44,
     consumption: '15 m³',
@@ -402,6 +408,7 @@ const tools = ref([
   },
   {
     name: '10006',
+    model: 'BTK-13',
     status: 'Pasif',
     commandIndex: 39,
     consumption: '18 m³',
@@ -411,6 +418,7 @@ const tools = ref([
   },
   {
     name: '10007',
+    model: 'BT-13',
     status: 'Aktif',
     commandIndex: 44,
     consumption: '22 m³',
@@ -420,6 +428,7 @@ const tools = ref([
   },
   {
     name: '10008',
+    model: 'BM-13',
     status: 'Pasif',
     commandIndex: 39,
     consumption: '28 m³',
@@ -429,6 +438,7 @@ const tools = ref([
   },
   {
     name: '10009',
+    model: 'BTK-13',
     status: 'Aktif',
     commandIndex: 29,
     consumption: '35 m³',
@@ -438,6 +448,7 @@ const tools = ref([
   },
   {
     name: '10010',
+    model: 'BT-13',
     status: 'Pasif',
     commandIndex: 34,
     consumption: '40 m³',
@@ -791,9 +802,6 @@ const localeText = {
 <style scoped>
 .ag-theme-alpine {
   --ag-font-size: 14px;
-  --ag-header-background-color: #f4f6f8;
-  --ag-header-foreground-color: #333;
-  --ag-row-hover-color: #eaf3ff;
   border-radius: 10px;
 }
 /* Animasyon */
@@ -806,19 +814,19 @@ const localeText = {
 .slide-fade-enter-from,
 .slide-fade-leave-to {
   opacity: 0;
-  transform: translateY(-30px);
+  transform: translateY(30px);
 }
 
 /* Bildirim kutusu */
 .fancy-toast {
   position: fixed;
-  top: 20px;
-  right: 20px;
-  background: linear-gradient(135deg, #00c853, #1de9b6);
-  color: white;
+  bottom: 24px;
+  right: 24px;
+  background: var(--toast-positive-bg);
+  color: var(--toast-positive-text);
   padding: 16px 22px;
   border-radius: 14px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--toast-positive-shadow);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -826,21 +834,18 @@ const localeText = {
   font-size: 15px;
   font-weight: 500;
   letter-spacing: 0.3px;
-  animation: glowPulse 2.5s ease-in-out infinite;
+  animation: toastPulse 4s ease-in-out infinite;
 }
 
-/* Parlama efekti */
-@keyframes glowPulse {
+@keyframes toastPulse {
   0%,
   100% {
-    box-shadow:
-      0 0 8px rgba(29, 233, 182, 0.7),
-      0 0 20px rgba(0, 200, 83, 0.6);
+    box-shadow: var(--toast-positive-shadow);
+    transform: translateY(0);
   }
   50% {
-    box-shadow:
-      0 0 15px rgba(29, 233, 182, 0.9),
-      0 0 35px rgba(0, 200, 83, 0.8);
+    box-shadow: var(--toast-positive-shadow);
+    transform: translateY(-2px);
   }
 }
 
@@ -859,13 +864,13 @@ const localeText = {
 }
 .alarm-toast {
   position: fixed;
-  top: 90px;
-  right: 20px;
-  background: linear-gradient(135deg, #d32f2f, #ff5252);
-  color: white;
+  bottom: 110px;
+  right: 24px;
+  background: var(--toast-alarm-bg);
+  color: var(--toast-alarm-text);
   padding: 16px 22px;
   border-radius: 14px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--toast-alarm-shadow);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -873,20 +878,50 @@ const localeText = {
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.3px;
-  animation: redPulse 2s ease-in-out infinite;
+  animation: alarmPulse 4s ease-in-out infinite;
 }
 
-@keyframes redPulse {
+@keyframes alarmPulse {
   0%,
   100% {
-    box-shadow:
-      0 0 8px rgba(255, 82, 82, 0.6),
-      0 0 20px rgba(211, 47, 47, 0.6);
+    box-shadow: var(--toast-alarm-shadow);
+    transform: translateY(0);
   }
   50% {
-    box-shadow:
-      0 0 15px rgba(255, 82, 82, 0.9),
-      0 0 35px rgba(211, 47, 47, 0.8);
+    box-shadow: var(--toast-alarm-shadow);
+    transform: translateY(-2px);
+  }
+}
+
+:global(.theme-light) .ag-theme-alpine {
+  --ag-background-color: #ffffff;
+  --ag-foreground-color: #1f2937;
+  --ag-header-background-color: #f4f6f8;
+  --ag-header-foreground-color: #1f2937;
+  --ag-row-hover-color: rgba(14, 165, 233, 0.12);
+  --ag-border-color: #e2e8f0;
+  --ag-odd-row-background-color: #f8fafc;
+}
+
+:global(.theme-dark) .ag-theme-alpine {
+  --ag-background-color: #101a2c;
+  --ag-foreground-color: #e2e8f0;
+  --ag-header-background-color: #1e293b;
+  --ag-header-foreground-color: #e2e8f0;
+  --ag-row-hover-color: rgba(45, 212, 191, 0.18);
+  --ag-border-color: #1f2937;
+  --ag-odd-row-background-color: rgba(148, 163, 184, 0.08);
+}
+
+@media (max-width: 600px) {
+  .fancy-toast,
+  .alarm-toast {
+    right: 16px;
+    left: 16px;
+  }
+
+  .alarm-toast {
+    bottom: 180px;
   }
 }
 </style>

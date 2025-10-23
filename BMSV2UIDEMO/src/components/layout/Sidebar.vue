@@ -70,10 +70,10 @@ const menuItems = [
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400;600&display=swap');
 
 .sidebar-shell {
-  background: linear-gradient(180deg, #0f172a 0%, #15243b 100%);
-  color: rgba(226, 232, 240, 0.92);
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
   padding: 20px 12px;
-  border-right: 1px solid rgba(148, 163, 184, 0.08);
+  border-right: 1px solid var(--sidebar-border);
   transition: width 0.3s ease;
 }
 
@@ -87,9 +87,9 @@ const menuItems = [
 }
 
 .sidebar-logo {
-  background: linear-gradient(135deg, #00c853, #1de9b6);
+  background: linear-gradient(135deg, var(--accent-color), var(--accent-highlight));
   color: white;
-  box-shadow: 0 8px 20px rgba(0, 200, 83, 0.35);
+  box-shadow: var(--accent-shadow);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -109,24 +109,24 @@ const menuItems = [
 .brand-title {
   font-size: 18px;
   font-weight: 700;
-  color: #e2e8f0;
+  color: var(--sidebar-text);
 }
 
 .brand-subtitle {
   font-size: 11px;
   letter-spacing: 0.6px;
   text-transform: uppercase;
-  color: rgba(226, 232, 240, 0.55);
+  color: var(--sidebar-muted);
 }
 
 .sidebar-divider {
   margin: 14px 0 10px;
-  border-color: rgba(148, 163, 184, 0.14) !important;
+  border-color: var(--sidebar-border) !important;
 }
 
 .section-label {
   font-size: 11px;
-  color: rgba(148, 163, 184, 0.7);
+  color: var(--sidebar-muted);
   letter-spacing: 0.6px;
   font-weight: 600;
   margin-bottom: 10px;
@@ -134,7 +134,7 @@ const menuItems = [
 
 .sidebar-item {
   margin-bottom: 6px;
-  color: rgba(226, 232, 240, 0.78);
+  color: var(--sidebar-link);
   font-weight: 600;
   letter-spacing: 0.2px;
   transition: all 0.3s ease;
@@ -142,35 +142,36 @@ const menuItems = [
 }
 
 .sidebar-item:hover {
-  background: rgba(20, 184, 166, 0.18);
-  color: #e2e8f0;
+  background: var(--sidebar-hover-bg);
+  color: var(--sidebar-link-hover);
   transform: translateX(4px);
 }
 
 .active-item {
-  background: linear-gradient(135deg, rgba(0, 200, 83, 0.85), rgba(29, 233, 182, 0.85));
-  color: white;
-  box-shadow: 0 12px 22px rgba(0, 200, 83, 0.32);
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-text);
+  box-shadow: var(--sidebar-active-shadow);
 }
 
 .sidebar-icon {
   font-family: 'Material Symbols Outlined';
   font-size: 24px;
-  color: rgba(226, 232, 240, 0.7);
-  transition: color 0.3s ease;
+  color: var(--sidebar-icon);
+  transition: color 0.3s ease, transform 0.3s ease;
 }
 
 .sidebar-item:hover .sidebar-icon {
-  color: #a7f3d0;
+  color: var(--sidebar-icon-hover);
+  transform: translateX(2px);
 }
 
 .active-icon {
-  color: white !important;
+  color: var(--sidebar-active-text) !important;
 }
 
 .sidebar-chip {
-  background: rgba(15, 23, 42, 0.2);
-  color: white;
+  background: var(--sidebar-chip-bg);
+  color: var(--sidebar-active-text);
   font-weight: 700;
   letter-spacing: 0.4px;
 }

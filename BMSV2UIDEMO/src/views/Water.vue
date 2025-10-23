@@ -256,6 +256,7 @@ const columnDefs = ref([
     checkboxSelection: true,
     headerCheckboxSelection: true,
   },
+  { field: 'model', headerName: 'Sayaç Modeli', filter: true, enableRowGroup: true },
   { field: 'Consumption', headerName: 'Tüketim (m³)', filter: 'agNumberColumnFilter' },
   { field: 'commandIndex', headerName: 'Komut İndeksi', filter: 'agNumberColumnFilter' },
   {
@@ -298,6 +299,7 @@ const autoGroupColumnDef = ref({
 const waterMeters = ref([
   {
     name: '20001',
+    model: 'AK-411',
     Consumption: 0.5,
     commandIndex: 30,
     status: 'Aktif',
@@ -307,6 +309,7 @@ const waterMeters = ref([
   },
   {
     name: '20002',
+    model: 'AK-311',
     Consumption: 0.2,
     commandIndex: 20,
     status: 'Pasif',
@@ -316,6 +319,7 @@ const waterMeters = ref([
   },
   {
     name: '20003',
+    model: 'AK-211',
     Consumption: 1.5,
     commandIndex: 25,
     status: 'Aktif',
@@ -325,6 +329,7 @@ const waterMeters = ref([
   },
   {
     name: '20004',
+    model: 'AK-411',
     Consumption: 0.7,
     commandIndex: 50,
     status: 'Pasif',
@@ -334,6 +339,7 @@ const waterMeters = ref([
   },
   {
     name: '20005',
+    model: 'AK-311',
     Consumption: 0.3,
     commandIndex: 10,
     status: 'Aktif',
@@ -343,6 +349,7 @@ const waterMeters = ref([
   },
   {
     name: '20006',
+    model: 'AK-211',
     Consumption: 0.4,
     commandIndex: 60,
     status: 'Pasif',
@@ -352,6 +359,7 @@ const waterMeters = ref([
   },
   {
     name: '20007',
+    model: 'AK-411',
     Consumption: 0.6,
     commandIndex: 25,
     status: 'Aktif',
@@ -361,6 +369,7 @@ const waterMeters = ref([
   },
   {
     name: '20008',
+    model: 'AK-311',
     Consumption: 0.3,
     commandIndex: 15,
     status: 'Pasif',
@@ -370,6 +379,7 @@ const waterMeters = ref([
   },
   {
     name: '20009',
+    model: 'AK-211',
     Consumption: 2.0,
     commandIndex: 30,
     status: 'Aktif',
@@ -379,6 +389,7 @@ const waterMeters = ref([
   },
   {
     name: '20010',
+    model: 'AK-411',
     Consumption: 0.5,
     commandIndex: 15,
     status: 'Pasif',
@@ -771,10 +782,27 @@ const localeText = {
 <style scoped>
 .ag-theme-alpine {
   --ag-font-size: 14px;
-  --ag-header-background-color: #f4f8fb;
-  --ag-header-foreground-color: #2d3e50;
-  --ag-row-hover-color: #e1f5fe;
   border-radius: 10px;
+}
+
+:global(.theme-light) .ag-theme-alpine {
+  --ag-background-color: #ffffff;
+  --ag-foreground-color: #1f2937;
+  --ag-header-background-color: #f4f6f8;
+  --ag-header-foreground-color: #1f2937;
+  --ag-row-hover-color: rgba(14, 165, 233, 0.12);
+  --ag-border-color: #e2e8f0;
+  --ag-odd-row-background-color: #f8fafc;
+}
+
+:global(.theme-dark) .ag-theme-alpine {
+  --ag-background-color: #101a2c;
+  --ag-foreground-color: #e2e8f0;
+  --ag-header-background-color: #1e293b;
+  --ag-header-foreground-color: #e2e8f0;
+  --ag-row-hover-color: rgba(45, 212, 191, 0.18);
+  --ag-border-color: #1f2937;
+  --ag-odd-row-background-color: rgba(148, 163, 184, 0.08);
 }
 
 .slide-fade-enter-active {
@@ -786,18 +814,18 @@ const localeText = {
 .slide-fade-enter-from,
 .slide-fade-leave-to {
   opacity: 0;
-  transform: translateY(-30px);
+  transform: translateY(30px);
 }
 
 .fancy-toast {
   position: fixed;
-  top: 20px;
-  right: 20px;
-  background: linear-gradient(135deg, #0288d1, #26c6da);
-  color: white;
+  bottom: 24px;
+  right: 24px;
+  background: var(--toast-positive-bg);
+  color: var(--toast-positive-text);
   padding: 16px 22px;
   border-radius: 14px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--toast-positive-shadow);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -805,20 +833,18 @@ const localeText = {
   font-size: 15px;
   font-weight: 500;
   letter-spacing: 0.3px;
-  animation: glowPulse 2.5s ease-in-out infinite;
+  animation: toastPulse 4s ease-in-out infinite;
 }
 
-@keyframes glowPulse {
+@keyframes toastPulse {
   0%,
   100% {
-    box-shadow:
-      0 0 8px rgba(38, 198, 218, 0.7),
-      0 0 20px rgba(2, 136, 209, 0.6);
+    box-shadow: var(--toast-positive-shadow);
+    transform: translateY(0);
   }
   50% {
-    box-shadow:
-      0 0 15px rgba(38, 198, 218, 0.9),
-      0 0 35px rgba(2, 136, 209, 0.8);
+    box-shadow: var(--toast-positive-shadow);
+    transform: translateY(-2px);
   }
 }
 
@@ -838,13 +864,13 @@ const localeText = {
 
 .alarm-toast {
   position: fixed;
-  top: 90px;
-  right: 20px;
-  background: linear-gradient(135deg, #c62828, #ef5350);
-  color: white;
+  bottom: 110px;
+  right: 24px;
+  background: var(--toast-alarm-bg);
+  color: var(--toast-alarm-text);
   padding: 16px 22px;
   border-radius: 14px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--toast-alarm-shadow);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -852,20 +878,30 @@ const localeText = {
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.3px;
-  animation: redPulse 2s ease-in-out infinite;
+  animation: alarmPulse 4s ease-in-out infinite;
 }
 
-@keyframes redPulse {
+@keyframes alarmPulse {
   0%,
   100% {
-    box-shadow:
-      0 0 8px rgba(239, 83, 80, 0.6),
-      0 0 20px rgba(198, 40, 40, 0.6);
+    box-shadow: var(--toast-alarm-shadow);
+    transform: translateY(0);
   }
   50% {
-    box-shadow:
-      0 0 15px rgba(239, 83, 80, 0.9),
-      0 0 35px rgba(198, 40, 40, 0.8);
+    box-shadow: var(--toast-alarm-shadow);
+    transform: translateY(-2px);
+  }
+}
+
+@media (max-width: 600px) {
+  .fancy-toast,
+  .alarm-toast {
+    right: 16px;
+    left: 16px;
+  }
+
+  .alarm-toast {
+    bottom: 180px;
   }
 }
 </style>

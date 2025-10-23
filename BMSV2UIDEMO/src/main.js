@@ -13,6 +13,36 @@ import * as directives from 'vuetify/directives'
 const vuetify = createVuetify({
   components,
   directives,
+  theme: {
+    defaultTheme: 'light',
+    themes: {
+      light: {
+        colors: {
+          primary: '#0f766e',
+          secondary: '#14b8a6',
+          surface: '#ffffff',
+          background: '#f4f6fb',
+          info: '#0284c7',
+          success: '#22c55e',
+          warning: '#f97316',
+          error: '#ef4444',
+        },
+      },
+      dark: {
+        dark: true,
+        colors: {
+          primary: '#2dd4bf',
+          secondary: '#38bdf8',
+          surface: '#101a2c',
+          background: '#020817',
+          info: '#0ea5e9',
+          success: '#34d399',
+          warning: '#fb923c',
+          error: '#f87171',
+        },
+      },
+    },
+  },
 })
 // EN ÜSTE (main.js ya da bu Vue dosyası)
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community'

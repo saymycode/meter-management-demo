@@ -22,6 +22,14 @@
     />
 
     <div class="topbar-actions">
+      <v-btn
+        class="icon-btn theme-toggle"
+        :icon="themeIcon"
+        variant="text"
+        :aria-label="isDark ? 'Açık temaya geç' : 'Koyu temaya geç'"
+        @click="toggleTheme"
+      />
+
       <v-btn class="ghost-btn" prepend-icon="mdi-calendar-clock" variant="text"> </v-btn>
 
       <v-divider vertical class="mx-4" />
@@ -58,31 +66,36 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useTheme } from 'vuetify'
 
 const search = ref('')
-const workOrders = ref(4)
-const alerts = ref(6)
-
-function openWorkOrders() {
-  alert('İş emri paneli yakında burada açılacak!')
-}
+const theme = useTheme()
+const isDark = computed(() => theme.global.current.value.dark)
+const themeIcon = computed(() => (isDark.value ? 'mdi-weather-sunny' : 'mdi-weather-night'))
 
 function logout() {
   alert('Çıkış yapıldı (mock).')
+}
+
+function toggleTheme() {
+  theme.global.name.value = isDark.value ? 'light' : 'dark'
 }
 </script>
 
 <style scoped>
 .topbar-shell {
-  background: #ffffff;
+  background: var(--topbar-bg);
   border-bottom-left-radius: 18px;
   border-bottom-right-radius: 18px;
   padding: 0 28px;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--topbar-shadow);
   display: flex;
   align-items: center;
   gap: 24px;
+  color: var(--topbar-text);
+  transition: background var(--transition-speed) ease, color var(--transition-speed) ease,
+    box-shadow var(--transition-speed) ease;
 }
 
 .topbar-context {
@@ -96,14 +109,14 @@ function logout() {
   font-size: 12px;
   letter-spacing: 0.6px;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--muted-text);
   font-weight: 600;
 }
 
 .topbar-title {
   font-size: 20px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--heading-color);
   margin: 0;
 }
 
@@ -118,18 +131,20 @@ function logout() {
 .topbar-search {
   max-width: 360px;
   flex: 0 0 360px;
-  background: white;
+  background: transparent;
 }
 
 .topbar-search :deep(.v-field) {
   border-radius: 16px;
-  border: 1px solid rgba(15, 118, 110, 0.1);
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: inset 0 2px 6px rgba(148, 163, 184, 0.15);
+  border: 1px solid var(--input-border);
+  background: var(--surface-elevated);
+  box-shadow: inset 0 2px 6px rgba(15, 23, 42, 0.08);
+  transition: border-color var(--transition-speed) ease, background var(--transition-speed) ease;
 }
 
 .topbar-search :deep(.v-field__input) {
   font-size: 14px;
+  color: var(--text-color);
 }
 
 .topbar-actions {
@@ -140,7 +155,7 @@ function logout() {
 }
 
 .ghost-btn {
-  color: #0f766e;
+  color: var(--accent-color);
   font-weight: 600;
   text-transform: none;
   letter-spacing: 0.2px;
@@ -150,9 +165,11 @@ function logout() {
   width: 44px;
   height: 44px;
   border-radius: 14px;
-  background: rgba(15, 118, 110, 0.08);
-  color: #0f766e;
-  box-shadow: 0 6px 16px rgba(15, 118, 110, 0.15);
+  background: var(--accent-surface);
+  color: var(--accent-color);
+  box-shadow: var(--accent-shadow);
+  transition: background var(--transition-speed) ease, color var(--transition-speed) ease,
+    box-shadow var(--transition-speed) ease;
 }
 
 .cta-btn {
@@ -183,14 +200,15 @@ function logout() {
   padding: 0 12px;
   border-radius: 20px;
   text-transform: none;
-  color: #0f172a;
+  color: var(--topbar-text);
   font-weight: 600;
+  transition: color var(--transition-speed) ease;
 }
 
 .profile-avatar {
-  background: linear-gradient(135deg, #0f766e, #14b8a6);
+  background: linear-gradient(135deg, var(--accent-color), var(--accent-highlight));
   color: white;
-  box-shadow: 0 10px 20px rgba(20, 184, 166, 0.25);
+  box-shadow: var(--accent-shadow);
 }
 
 .profile-meta {
@@ -207,7 +225,15 @@ function logout() {
 
 .profile-role {
   font-size: 12px;
-  color: #64748b;
+  color: var(--muted-text);
+}
+
+.theme-toggle :deep(.v-icon) {
+  transition: transform 0.3s ease;
+}
+
+.theme-toggle:hover :deep(.v-icon) {
+  transform: rotate(-20deg);
 }
 
 @media (max-width: 1260px) {
