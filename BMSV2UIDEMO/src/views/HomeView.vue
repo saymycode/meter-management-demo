@@ -4,10 +4,10 @@
       <v-col cols="12">
         <v-card class="dashboard-hero" elevation="0">
           <div class="hero-left">
-            <div class="hero-badge">Baylan Enerji Yönetimi</div>
-            <h1 class="hero-title">Saha genelinde anlık enerji görünümü</h1>
+            <div class="hero-badge">Baylan Su Yönetimi</div>
+            <h1 class="hero-title">Şehir şebekesinde su dağıtım görünümü</h1>
             <p class="hero-subtitle">
-              Şebekedeki sayaçlarınızın durumu, tüketim trendleri ve kritik alarm özetleri tek bakışta burada. Daha fazla detaya ihtiyacınız olduğunda ilgili ekranlara geçebilirsiniz.
+              ASKİ, İSKİ ve benzeri operatörler için son 24 saatte online olan sayaçlar, aktiflik oranı, vana ve gateway durumlarıyla su tüketiminizi tek ekranda özetliyoruz. Detaylar için ilgili modüllere geçebilirsiniz.
             </p>
             <div class="hero-meta">
               <div class="meta-block">
@@ -16,16 +16,26 @@
               </div>
               <v-divider vertical class="mx-4" />
               <div class="meta-block">
-                <span class="meta-label">Toplam izlenen sayaç</span>
+                <span class="meta-label">Toplam sayaç</span>
                 <span class="meta-value">{{ totalMeters }}</span>
+              </div>
+              <v-divider vertical class="mx-4" />
+              <div class="meta-block">
+                <span class="meta-label">Son 24 saatte online</span>
+                <span class="meta-value">{{ last24hOnline }}</span>
+              </div>
+              <v-divider vertical class="mx-4" />
+              <div class="meta-block">
+                <span class="meta-label">Aktiflik oranı</span>
+                <span class="meta-value">{{ connectionRate }}</span>
               </div>
             </div>
           </div>
           <div class="hero-right">
             <div class="hero-highlight">
-              <span class="highlight-label">Anlık Talep</span>
-              <span class="highlight-value">8.1 MW</span>
-              <span class="highlight-change positive">+1.4% • son 15 dk</span>
+              <span class="highlight-label">Anlık debi</span>
+              <span class="highlight-value">4.2 m³/sn</span>
+              <span class="highlight-change positive">+3.1% • son 15 dk</span>
             </div>
             <div class="hero-spark">
               <v-sparkline
@@ -36,7 +46,7 @@
                 auto-line-width
                 class="hero-sparkline"
               />
-              <div class="hero-caption">Tepki süresi stabil • Limitin %62'si kullanılıyor</div>
+              <div class="hero-caption">Hat basıncı stabil • Kapasitenin %68'i kullanılıyor</div>
             </div>
           </div>
         </v-card>
@@ -76,8 +86,8 @@
         <v-card class="panel-card" elevation="0">
           <div class="panel-header">
             <div>
-              <h2>Tüketim eğilimleri</h2>
-              <span class="panel-hint">Son 7 güne ait toplam tüketim (MWh)</span>
+              <h2>Su tüketim eğilimleri</h2>
+              <span class="panel-hint">Son 7 güne ait toplam tüketim (m³)</span>
             </div>
             <v-chip prepend-icon="mdi-calendar-range" class="panel-chip" variant="flat">7 gün</v-chip>
           </div>
@@ -101,22 +111,28 @@
               </div>
             </div>
             <v-row class="panel-summary" dense>
-              <v-col cols="12" sm="4">
+              <v-col cols="12" sm="6" md="3">
                 <div class="summary-item">
-                  <span class="summary-label">Haftalık toplam</span>
-                  <span class="summary-value">84.6 MWh</span>
+                  <span class="summary-label">24 saat toplam</span>
+                  <span class="summary-value">182.4 bin m³</span>
                 </div>
               </v-col>
-              <v-col cols="12" sm="4">
+              <v-col cols="12" sm="6" md="3">
                 <div class="summary-item">
-                  <span class="summary-label">Günlük ortalama</span>
-                  <span class="summary-value">12.1 MWh</span>
+                  <span class="summary-label">1 hafta toplam</span>
+                  <span class="summary-value">1.24 milyon m³</span>
                 </div>
               </v-col>
-              <v-col cols="12" sm="4">
+              <v-col cols="12" sm="6" md="3">
                 <div class="summary-item">
-                  <span class="summary-label">Tahmin edilen</span>
-                  <span class="summary-value positive">+4.8% ↑</span>
+                  <span class="summary-label">1 ay toplam</span>
+                  <span class="summary-value">5.3 milyon m³</span>
+                </div>
+              </v-col>
+              <v-col cols="12" sm="6" md="3">
+                <div class="summary-item">
+                  <span class="summary-label">1 yıl toplam</span>
+                  <span class="summary-value positive">61.2 milyon m³</span>
                 </div>
               </v-col>
             </v-row>
@@ -129,7 +145,7 @@
           <div class="panel-header">
             <div>
               <h2>Durum özetleri</h2>
-              <span class="panel-hint">Altyapı bileşenlerine ait anlık durum</span>
+              <span class="panel-hint">Basınç, kalite ve vana operasyonlarına ait anlık durum</span>
             </div>
           </div>
           <div class="status-grid">
@@ -161,9 +177,9 @@
           <div class="panel-header">
             <div>
               <h2>Alarm özeti</h2>
-              <span class="panel-hint">Şu anki kritik durumlar</span>
+              <span class="panel-hint">Şu anki kritik ve önemli uyarılar</span>
             </div>
-            <v-chip prepend-icon="mdi-bell-alert" class="panel-chip warning" variant="flat">{{ alerts.length }}</v-chip>
+            <v-chip prepend-icon="mdi-bell-alert" class="panel-chip warning" variant="flat">{{ criticalAlerts24h }} kritik</v-chip>
           </div>
           <v-list class="alert-list" density="compact">
             <v-list-item v-for="alert in alerts" :key="alert.title" class="alert-item">
@@ -186,10 +202,10 @@
         <v-card class="panel-card compact" elevation="0">
           <div class="panel-header">
             <div>
-              <h2>En yüksek tüketen bölgeler</h2>
+              <h2>En fazla su tüketen bölgeler</h2>
               <span class="panel-hint">İlk 5 bölge • Son 24 saat</span>
             </div>
-            <v-chip prepend-icon="mdi-map-marker" class="panel-chip" variant="flat">Saha görünümü</v-chip>
+            <v-chip prepend-icon="mdi-map-marker" class="panel-chip" variant="flat">DMA görünümü</v-chip>
           </div>
           <v-list class="region-list" density="compact">
             <v-list-item v-for="region in topRegions" :key="region.name" class="region-item">
@@ -217,161 +233,172 @@
 <script setup>
 import { computed, ref } from 'vue'
 
-const totalMeters = '1.284'
+const totalMeters = '16.842'
+const last24hOnline = '15.620'
+const connectionRate = '92.7%'
 
-const heroTrend = ref([62, 66, 68, 64, 70, 74, 72, 78, 82, 80, 86])
+const heroTrend = ref([3.6, 3.8, 3.9, 4.1, 4.3, 4.2, 4.4, 4.7, 4.5, 4.8, 4.6])
 
 const overviewMetrics = [
   {
-    title: 'Bugünkü tüketim',
-    value: '12.4 MWh',
-    trend: '+6.3%',
-    trendLabel: 'dünkü aynı saate göre',
+    title: 'Son 24 saat tüketim',
+    value: '182.400 m³',
+    trend: '+4.6%',
+    trendLabel: 'önceki güne göre',
     trendPositive: true,
-    icon: 'mdi-flash-outline',
+    icon: 'mdi-water',
     accent: 'linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(56, 189, 248, 0.35))',
-    gradient: ['rgba(14, 165, 233, 0)', 'rgba(14, 165, 233, 0.35)', 'rgba(59, 130, 246, 0.45)'],
-    sparkline: [9.4, 10.2, 11.1, 11.5, 12.4, 12.1, 12.4]
+    gradient: ['rgba(14, 165, 233, 0)', 'rgba(14, 165, 233, 0.35)', 'rgba(56, 189, 248, 0.45)'],
+    sparkline: [162.1, 168.3, 170.4, 175.8, 178.6, 181.2, 182.4]
   },
   {
-    title: 'Aktif sayaç',
-    value: '1.168',
-    trend: '+3.2%',
-    trendLabel: 'son 24 saat',
+    title: 'Aktif sayaç oranı',
+    value: '92.7 %',
+    trend: '+1.2%',
+    trendLabel: 'son 7 gün',
     trendPositive: true,
-    icon: 'mdi-countertop',
+    icon: 'mdi-counter',
     accent: 'linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(16, 185, 129, 0.35))',
     gradient: ['rgba(16, 185, 129, 0)', 'rgba(16, 185, 129, 0.3)', 'rgba(5, 150, 105, 0.45)'],
-    sparkline: [960, 1012, 1044, 1088, 1112, 1126, 1168]
+    sparkline: [88.2, 89.5, 90.1, 91.3, 92, 92.4, 92.7]
   },
   {
-    title: 'Tahmini pik saat',
-    value: '18:00',
-    trend: '−12 dk',
-    trendLabel: 'dünkü saate göre',
+    title: 'Aktif gateway',
+    value: '128 / 134',
+    trend: '+4',
+    trendLabel: 'son bakım turu',
     trendPositive: true,
-    icon: 'mdi-clock-outline',
+    icon: 'mdi-router-network',
     accent: 'linear-gradient(135deg, rgba(249, 115, 22, 0.18), rgba(234, 88, 12, 0.35))',
     gradient: ['rgba(234, 88, 12, 0)', 'rgba(249, 115, 22, 0.3)', 'rgba(251, 146, 60, 0.45)'],
-    sparkline: [20.5, 20.1, 19.6, 19.2, 18.8, 18.5, 18]
+    sparkline: [119, 121, 123, 124, 126, 127, 128]
   },
   {
-    title: 'Tasarruf potansiyeli',
-    value: '₺ 42.600',
-    trend: '+9.5%',
-    trendLabel: 'optimizasyon önerileri',
-    trendPositive: true,
-    icon: 'mdi-leaf-circle-outline',
+    title: 'Açık vana sayısı',
+    value: '1.284',
+    trend: '−18',
+    trendLabel: 'planlı operasyon',
+    trendPositive: false,
+    icon: 'mdi-valve',
     accent: 'linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(45, 212, 191, 0.35))',
     gradient: ['rgba(59, 130, 246, 0)', 'rgba(59, 130, 246, 0.22)', 'rgba(45, 212, 191, 0.4)'],
-    sparkline: [27, 28, 30, 33, 36, 38, 42.6]
+    sparkline: [1324, 1310, 1298, 1288, 1286, 1282, 1284]
   }
 ]
 
-const consumptionTrend = ref([11.6, 12.4, 11.8, 13.2, 12.9, 11.4, 11.9])
+const consumptionTrend = ref([26.4, 27.8, 28.1, 29.6, 30.8, 31.1, 28.9])
 
 const statusCards = [
   {
-    title: 'Şebeke dengesi',
-    value: 'Stabil',
-    description: 'Frekans 50.01 Hz seviyesinde seyrediyor.',
-    icon: 'mdi-pulse',
+    title: 'Şebeke basıncı',
+    value: '6.2 bar',
+    description: 'Ana hat basıncı güvenli aralıkta.',
+    icon: 'mdi-water-pump',
     badge: 'Stabil',
-    badgeColor: 'success',
-    accent: 'rgba(45, 212, 191, 0.18)'
-  },
-  {
-    title: 'Gerilim seviyesi',
-    value: '222 V',
-    description: 'Şehir şebekesi referans aralıkta.',
-    icon: 'mdi-transmission-tower',
-    badge: 'Normal',
     badgeColor: 'primary',
     accent: 'rgba(59, 130, 246, 0.18)'
   },
   {
-    title: 'Reaktif oranı',
-    value: '9.4 %',
-    description: 'Yasal limitlerin altında.',
-    icon: 'mdi-axis-arrow',
-    badge: 'İyi',
+    title: 'Rezervuar doluluk',
+    value: '78 %',
+    description: 'Merkez depoları kritik seviyenin üzerinde.',
+    icon: 'mdi-tank',
+    badge: 'Yeterli',
     badgeColor: 'teal',
-    accent: 'rgba(16, 185, 129, 0.18)'
+    accent: 'rgba(13, 148, 136, 0.18)'
   },
   {
-    title: 'Kayıp-kaçak',
-    value: '1.8 %',
-    description: 'Dünya ortalamasının altında.',
-    icon: 'mdi-shield-check-outline',
-    badge: 'Kontrol altında',
-    badgeColor: 'indigo',
-    accent: 'rgba(79, 70, 229, 0.18)'
+    title: 'Kalite ölçümleri',
+    value: '0.3 mg/L',
+    description: 'Klor seviyesi ulusal standartlarda.',
+    icon: 'mdi-flask-outline',
+    badge: 'Normal',
+    badgeColor: 'blue-darken-1',
+    accent: 'rgba(37, 99, 235, 0.18)'
+  },
+  {
+    title: 'Kaçak takibi',
+    value: '12 olay',
+    description: 'Saha ekiplerine yönlendirildi.',
+    icon: 'mdi-pipe-leak',
+    badge: 'Takipte',
+    badgeColor: 'amber-darken-2',
+    accent: 'rgba(245, 158, 11, 0.18)'
   }
 ]
 
+const criticalAlerts24h = 7
+
 const alerts = [
   {
-    title: 'Trafo 12A soğutma alarmı',
-    subtitle: 'Isı 74°C seviyesine çıktı',
-    count: '3 dk',
-    icon: 'mdi-thermometer-alert',
+    title: 'DMA-3 basınç düşüşü',
+    subtitle: 'Çankaya DMA-3 • 04:26',
+    count: 'Acil',
+    icon: 'mdi-alert-decagram-outline',
     color: 'red-darken-1'
   },
   {
-    title: 'Sayaç 34-982 bağlantı kesildi',
-    subtitle: 'Bağlantı 08:42 itibarıyla kapandı',
-    count: 'Yeni',
-    icon: 'mdi-flash-alert',
+    title: 'Kapalı vana uyarısı',
+    subtitle: 'Altındağ vana-12 • saha ziyareti gerekiyor',
+    count: '2',
+    icon: 'mdi-valve',
     color: 'orange-darken-2'
   },
   {
-    title: 'Talep limiti yaklaşımı',
-    subtitle: 'Organize Sanayi - Bölüm C',
-    count: '12%',
-    icon: 'mdi-chart-timeline-variant',
+    title: 'Gateway bağlantısı koptu',
+    subtitle: 'Keçiören 5G-02 • 18 dk offline',
+    count: '18 dk',
+    icon: 'mdi-access-point-network-off',
     color: 'amber-darken-2'
+  },
+  {
+    title: 'Klor seviyesi yükseldi',
+    subtitle: 'Mamak kalite noktası • 1.6 mg/L',
+    count: '1',
+    icon: 'mdi-flask-alert',
+    color: 'blue-darken-1'
   }
 ]
 
 const topRegions = [
   {
     rank: '1',
-    name: 'Organize Sanayi Bölgesi',
-    subtitle: '342 aktif sayaç',
-    value: '18.2 MWh',
-    trend: '+4.1%',
+    name: 'Çankaya - Merkez DMA',
+    subtitle: '1.842 aktif sayaç • 86 gateway',
+    value: '28.4 bin m³',
+    trend: '+5.2%',
     trendPositive: true
   },
   {
     rank: '2',
-    name: 'Merkez - Ticari Hat',
-    subtitle: '198 aktif sayaç',
-    value: '14.6 MWh',
-    trend: '+2.9%',
+    name: 'Keçiören - Kuzey hattı',
+    subtitle: '1.264 aktif sayaç • 54 gateway',
+    value: '24.1 bin m³',
+    trend: '+3.4%',
     trendPositive: true
   },
   {
     rank: '3',
-    name: 'Kuzey Konut Hattı',
-    subtitle: '412 aktif sayaç',
-    value: '10.7 MWh',
-    trend: '−1.6%',
+    name: 'Yenimahalle sanayi bölgesi',
+    subtitle: '932 aktif sayaç • 31 gateway',
+    value: '19.7 bin m³',
+    trend: '−1.1%',
     trendPositive: false
   },
   {
     rank: '4',
-    name: 'Liman Tesisi',
-    subtitle: '76 aktif sayaç',
-    value: '9.8 MWh',
-    trend: '+0.8%',
+    name: 'Mamak konut hattı',
+    subtitle: '1.506 aktif sayaç • 47 gateway',
+    value: '17.9 bin m³',
+    trend: '+0.9%',
     trendPositive: true
   },
   {
     rank: '5',
-    name: 'Güney Kırsal Hat',
-    subtitle: '158 aktif sayaç',
-    value: '7.4 MWh',
-    trend: '+0.2%',
+    name: 'Sincan endüstriyel bölge',
+    subtitle: '684 aktif sayaç • 22 gateway',
+    value: '15.8 bin m³',
+    trend: '+0.4%',
     trendPositive: true
   }
 ]
