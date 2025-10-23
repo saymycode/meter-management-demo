@@ -58,7 +58,7 @@ const isExpanded = ref(false)
 const toggleSidebar = () => (isExpanded.value = !isExpanded.value)
 
 const menuItems = [
-  { title: 'Dashboard', icon: 'space_dashboard', to: '/' },
+  { title: 'Dashboard', icon: 'space_dashboard', to: '/homeview' },
   { title: 'Elektrik', icon: 'bolt', to: '/electricity' },
   { title: 'Su', icon: 'water_drop', to: '/water' },
   { title: 'Sensör', icon: 'sensors', to: '/sensor' },
@@ -157,7 +157,9 @@ const menuItems = [
   font-family: 'Material Symbols Outlined';
   font-size: 24px;
   color: var(--sidebar-icon);
-  transition: color 0.3s ease, transform 0.3s ease;
+  transition:
+    color 0.3s ease,
+    transform 0.3s ease;
 }
 
 .sidebar-item:hover .sidebar-icon {
