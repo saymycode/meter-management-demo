@@ -66,10 +66,8 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useTheme } from 'vuetify'
-
-const search = ref('')
 const theme = useTheme()
 const isDark = computed(() => theme.global.current.value.dark)
 const themeIcon = computed(() => (isDark.value ? 'mdi-weather-sunny' : 'mdi-weather-night'))
