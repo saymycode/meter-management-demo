@@ -390,7 +390,7 @@ const waterMeters = ref([
 
 const workOrderColumnDefs = ref([
   { field: 'meterId', headerName: 'Sayaç No', enableRowGroup: true },
-  { field: 'workOrderId', headerName: 'İş Emri ID' },
+  { field: 'workOrderId', headerName: 'İş Emri Payload' },
   { field: 'type', headerName: 'İş Emri Tipi', enableRowGroup: true },
   { field: 'payload', headerName: 'Payload' },
   {
@@ -415,9 +415,9 @@ const workOrderColumnDefs = ref([
 const workOrderData = ref([
   {
     meterId: '20001',
-    workOrderId: 'WO-2025-001',
+    workOrderId: 'AABBCC01',
     type: 'Sayaç Okuma',
-    payload: 'READ-01AA23',
+    payload: '00112233AA',
     status: 'Tamamlandı',
     createdDate: '2025-10-21 09:05',
     sentDate: '2025-10-21 09:06',
@@ -425,9 +425,9 @@ const workOrderData = ref([
   },
   {
     meterId: '20002',
-    workOrderId: 'WO-2025-002',
+    workOrderId: 'AABBCC02',
     type: 'Vanayı Kapat',
-    payload: 'VALVE-CLOSE',
+    payload: '00112233AB',
     status: 'Gönderildi',
     createdDate: '2025-10-21 10:40',
     sentDate: '2025-10-21 10:41',
@@ -435,9 +435,9 @@ const workOrderData = ref([
   },
   {
     meterId: '20003',
-    workOrderId: 'WO-2025-003',
+    workOrderId: 'AABBCC03',
     type: 'Basınç Kontrolü',
-    payload: 'PRESS-2.5',
+    payload: '00112233AC',
     status: 'Bekliyor',
     createdDate: '2025-10-22 08:20',
     sentDate: '-',
@@ -445,9 +445,9 @@ const workOrderData = ref([
   },
   {
     meterId: '20004',
-    workOrderId: 'WO-2025-004',
+    workOrderId: 'AABBCC04',
     type: 'Sayaç Okuma',
-    payload: 'READ-09BB14',
+    payload: '00112233AD',
     status: 'Başarısız',
     createdDate: '2025-10-19 14:05',
     sentDate: '2025-10-19 14:06',
@@ -455,9 +455,9 @@ const workOrderData = ref([
   },
   {
     meterId: '20005',
-    workOrderId: 'WO-2025-005',
+    workOrderId: 'AABBCC05',
     type: 'Debi Ayarla',
-    payload: 'FLOW-4.0',
+    payload: '00112233AE',
     status: 'Tamamlandı',
     createdDate: '2025-10-23 11:55',
     sentDate: '2025-10-23 11:56',
@@ -465,9 +465,9 @@ const workOrderData = ref([
   },
   {
     meterId: '20006',
-    workOrderId: 'WO-2025-006',
+    workOrderId: 'AABBCC06',
     type: 'Vanayı Aç',
-    payload: 'VALVE-OPEN',
+    payload: '00112233AF',
     status: 'Gönderildi',
     createdDate: '2025-10-22 16:10',
     sentDate: '2025-10-22 16:11',
@@ -475,9 +475,9 @@ const workOrderData = ref([
   },
   {
     meterId: '20007',
-    workOrderId: 'WO-2025-007',
+    workOrderId: 'AABBCC07',
     type: 'Sayaç Okuma',
-    payload: 'READ-02CC11',
+    payload: '00112233BA',
     status: 'Tamamlandı',
     createdDate: '2025-10-20 07:45',
     sentDate: '2025-10-20 07:46',
@@ -485,9 +485,9 @@ const workOrderData = ref([
   },
   {
     meterId: '20008',
-    workOrderId: 'WO-2025-008',
+    workOrderId: 'AABBCC08',
     type: 'Basınç Kontrolü',
-    payload: 'PRESS-3.1',
+    payload: '00112233BB',
     status: 'Tamamlandı',
     createdDate: '2025-10-18 13:25',
     sentDate: '2025-10-18 13:26',
@@ -564,7 +564,13 @@ const alertData = ref([
   },
 ])
 
-const workOrderTypes = ['Sayaç Okuma', 'Debi Ayarla', 'Basınç Kontrolü', 'Vanayı Aç', 'Vanayı Kapat']
+const workOrderTypes = [
+  'Sayaç Okuma',
+  'Debi Ayarla',
+  'Basınç Kontrolü',
+  'Vanayı Aç',
+  'Vanayı Kapat',
+]
 const selectedWorkOrderType = ref(null)
 const workOrderPayload = ref({
   description: '',
@@ -596,7 +602,9 @@ function confirmSendWorkOrder() {
   console.log('Seçili sayaçlar:', selectedRows.value)
   console.log('Girilen veriler:', workOrderPayload.value)
 
-  alert(`${selectedRows.value.length} sayaç için '${selectedWorkOrderType.value}' iş emri hazırlandı (simülasyon).`)
+  alert(
+    `${selectedRows.value.length} sayaç için '${selectedWorkOrderType.value}' iş emri hazırlandı (simülasyon).`,
+  )
 
   workOrderPanel.value = false
   selectedWorkOrderType.value = null

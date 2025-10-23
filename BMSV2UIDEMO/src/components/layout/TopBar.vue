@@ -2,12 +2,12 @@
   <v-app-bar flat height="72" class="topbar-shell">
     <div class="topbar-context">
       <div>
-        <div class="topbar-label">Operasyon Merkezi</div>
-        <h2 class="topbar-title">Canlı Sayaç Yönetimi</h2>
+        <div class="topbar-label">BAYLAN</div>
+        <h2 class="topbar-title">BMS V2</h2>
       </div>
-      <v-chip color="primary" class="topbar-chip" prepend-icon="mdi-lightning-bolt">
+      <!-- <v-chip color="primary" class="topbar-chip" prepend-icon="mdi-lightning-bolt">
         Grid Optimizer 2.0
-      </v-chip>
+      </v-chip> -->
     </div>
 
     <v-text-field
@@ -22,22 +22,7 @@
     />
 
     <div class="topbar-actions">
-      <v-btn class="ghost-btn" prepend-icon="mdi-calendar-clock" variant="text">
-        Zamanlanmış İşler
-      </v-btn>
-
-      <v-badge color="error" :content="alerts" offset-x="6" offset-y="8" floating>
-        <v-btn class="icon-btn" icon>
-          <v-icon>mdi-bell-ring-outline</v-icon>
-        </v-btn>
-      </v-badge>
-
-      <v-btn class="cta-btn" prepend-icon="mdi-briefcase-check" @click="openWorkOrders">
-        İş Emri Gönder
-        <v-chip size="small" class="cta-chip" color="white" text-color="primary">
-          {{ workOrders }}
-        </v-chip>
-      </v-btn>
+      <v-btn class="ghost-btn" prepend-icon="mdi-calendar-clock" variant="text"> </v-btn>
 
       <v-divider vertical class="mx-4" />
 
@@ -48,8 +33,8 @@
               <v-icon size="22">mdi-account-cog-outline</v-icon>
             </v-avatar>
             <div class="profile-meta">
-              <span class="profile-name">Beste Yıldız</span>
-              <span class="profile-role">Sistem Yöneticisi</span>
+              <span class="profile-name">Berk.Ulusoy</span>
+              <span class="profile-role">Baylan.Admin</span>
             </div>
             <v-icon size="18">mdi-chevron-down</v-icon>
           </v-btn>
