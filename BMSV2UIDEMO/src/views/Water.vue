@@ -248,7 +248,6 @@ const selectedRows = ref([])
 const workOrderPanel = ref(false)
 
 const columnDefs = ref([
-  { field: 'type', headerName: 'Tip', rowGroup: true, hide: true },
   {
     field: 'name',
     headerName: 'Sayaç Kodu',
@@ -257,6 +256,9 @@ const columnDefs = ref([
     headerCheckboxSelection: true,
   },
   { field: 'model', headerName: 'Sayaç Modeli', filter: true, enableRowGroup: true },
+
+  { field: 'type', headerName: 'Tip' },
+
   { field: 'Consumption', headerName: 'Tüketim (m³)', filter: 'agNumberColumnFilter' },
   { field: 'commandIndex', headerName: 'Komut İndeksi', filter: 'agNumberColumnFilter' },
   {
@@ -508,7 +510,7 @@ const workOrderData = ref([
 
 const alertColumnDefs = ref([
   { field: 'meterId', headerName: 'Sayaç No', enableRowGroup: true },
-  { field: 'alertId', headerName: 'Uyarı ID' },
+  { field: 'alertId', headerName: 'Uyarı Payload' },
   { field: 'type', headerName: 'Uyarı Tipi', enableRowGroup: true },
   {
     field: 'severity',
@@ -542,7 +544,7 @@ const alertColumnDefs = ref([
 
 const alertData = ref([
   {
-    alertId: 'AL-20001-01',
+    alertId: 'AABBCC20001',
     meterId: '20001',
     type: 'Kaçak Tespiti',
     severity: 'Kritik',
@@ -550,7 +552,7 @@ const alertData = ref([
     status: 'Açık',
   },
   {
-    alertId: 'AL-20005-02',
+    alertId: 'AABBCC20005',
     meterId: '20005',
     type: 'Basınç Düşüklüğü',
     severity: 'Yüksek',
@@ -558,7 +560,7 @@ const alertData = ref([
     status: 'İzlemede',
   },
   {
-    alertId: 'AL-20008-04',
+    alertId: 'AABBCC20008',
     meterId: '20008',
     type: 'Ters Akış',
     severity: 'Orta',
@@ -566,7 +568,7 @@ const alertData = ref([
     status: 'Kapalı',
   },
   {
-    alertId: 'AL-20009-01',
+    alertId: 'AABBCC20009',
     meterId: '20009',
     type: 'Ani Debi Artışı',
     severity: 'Düşük',

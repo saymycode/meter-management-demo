@@ -169,7 +169,7 @@
         <template v-else-if="selectedWorkOrderType === 'Limit Güncelleme'">
           <v-text-field
             v-model="workOrderPayload.limit"
-            label="Yeni Limit (m³)"
+            label="Yeni Limit (kWh)"
             type="number"
             variant="outlined"
             density="comfortable"
@@ -284,7 +284,7 @@ const alertData = ref([
   {
     alertId: 'AABBCCDDEEFC',
     deviceName: '10001',
-    type: 'Basınç Düşüklüğü',
+    type: 'Üst Kapak Açıldı',
     severity: 'Kritik',
     createdDate: '2025-10-23 09:45',
     status: 'Açık',
@@ -292,7 +292,7 @@ const alertData = ref([
   {
     alertId: 'AABBCCDDEEFF',
     deviceName: '10005',
-    type: 'Batarya Seviyesi Düşük',
+    type: 'Düşük Voltaj',
     severity: 'Orta',
     createdDate: '2025-10-23 11:20',
     status: 'İzlemede',
@@ -361,7 +361,7 @@ const tools = ref([
     model: 'BT-13',
     status: 'Aktif',
     commandIndex: 44,
-    consumption: '15 m³',
+    consumption: '15 (kWh)',
     type: 'LoRa',
     lat: 38.4843,
     lng: 27.0891,
@@ -371,7 +371,7 @@ const tools = ref([
     model: 'BM-13',
     status: 'Pasif',
     commandIndex: 45,
-    consumption: '20 m³',
+    consumption: '20 (kWh)',
     type: 'GPRS',
     lat: 38.4872,
     lng: 27.0947,
@@ -381,7 +381,7 @@ const tools = ref([
     model: 'BTK-13',
     status: 'Aktif',
     commandIndex: 34,
-    consumption: '25 m³',
+    consumption: '25 (kWh)',
     type: 'NBIOT',
     lat: 38.4826,
     lng: 27.0839,
@@ -391,7 +391,7 @@ const tools = ref([
     model: 'BT-13',
     status: 'Pasif',
     commandIndex: 29,
-    consumption: '30 m³',
+    consumption: '30 (kWh)',
     type: 'LoRa',
     lat: 38.4888,
     lng: 27.0972,
@@ -401,7 +401,7 @@ const tools = ref([
     model: 'BM-13',
     status: 'Aktif',
     commandIndex: 44,
-    consumption: '15 m³',
+    consumption: '15 (kWh)',
     type: 'GPRS',
     lat: 38.4801,
     lng: 27.0914,
@@ -411,7 +411,7 @@ const tools = ref([
     model: 'BTK-13',
     status: 'Pasif',
     commandIndex: 39,
-    consumption: '18 m³',
+    consumption: '18 (kWh)',
     type: 'NBIOT',
     lat: 38.4864,
     lng: 27.0856,
@@ -421,7 +421,7 @@ const tools = ref([
     model: 'BT-13',
     status: 'Aktif',
     commandIndex: 44,
-    consumption: '22 m³',
+    consumption: '22 (kWh)',
     type: 'LoRa',
     lat: 38.4835,
     lng: 27.0959,
@@ -431,7 +431,7 @@ const tools = ref([
     model: 'BM-13',
     status: 'Pasif',
     commandIndex: 39,
-    consumption: '28 m³',
+    consumption: '28 (kWh)',
     type: 'GPRS',
     lat: 38.4895,
     lng: 27.0888,
@@ -441,7 +441,7 @@ const tools = ref([
     model: 'BTK-13',
     status: 'Aktif',
     commandIndex: 29,
-    consumption: '35 m³',
+    consumption: '35 (kWh)',
     type: 'NBIOT',
     lat: 38.4819,
     lng: 27.0984,
@@ -451,7 +451,7 @@ const tools = ref([
     model: 'BT-13',
     status: 'Pasif',
     commandIndex: 34,
-    consumption: '40 m³',
+    consumption: '40 (kWh)',
     type: 'LoRa',
     lat: 38.4849,
     lng: 27.0931,
@@ -463,7 +463,7 @@ const workOrderData = ref([
   {
     name: '10001',
     workOrderId: '01020304',
-    type: 'Vana Aç',
+    type: 'Röle Aç',
     data: '01020304AAABAC',
     status: 'Gönderildi',
     createdDate: '2025-10-21 09:10',
@@ -483,7 +483,7 @@ const workOrderData = ref([
   {
     name: '10002',
     workOrderId: '01020304',
-    type: 'Vana Kapat',
+    type: 'Röle Kapat',
     data: '01020304AAABAC',
     status: 'Bekliyor',
     createdDate: '2025-10-22 11:00',
@@ -493,7 +493,7 @@ const workOrderData = ref([
   {
     name: '10003',
     workOrderId: '01020304',
-    type: 'Vana Aç',
+    type: 'Röle Aç',
     data: '090807FFFEFD',
     status: 'Başarısız',
     createdDate: '2025-10-20 08:10',
@@ -513,7 +513,7 @@ const workOrderData = ref([
   {
     name: '10005',
     workOrderId: '01020304',
-    type: 'Vana Kapat',
+    type: 'Röle Kapat',
     data: '090807FFFEFD',
     status: 'Gönderildi',
     createdDate: '2025-10-21 15:00',
@@ -523,7 +523,7 @@ const workOrderData = ref([
   {
     name: '10006',
     workOrderId: '01020304',
-    type: 'Vana Aç',
+    type: 'Röle Aç',
     data: '01020304AAABAC',
     status: 'Tamamlandı',
     createdDate: '2025-10-20 09:25',
@@ -543,7 +543,7 @@ const workOrderData = ref([
   {
     name: '10008',
     workOrderId: '01020304',
-    type: 'Vana Kapat',
+    type: 'Röle Kapat',
     data: '01020304AAABAC',
     status: 'Gönderildi',
     createdDate: '2025-10-23 10:10',
@@ -553,7 +553,7 @@ const workOrderData = ref([
   {
     name: '10009',
     workOrderId: '01020304',
-    type: 'Vana Aç',
+    type: 'Röle Aç',
     data: '090807FFFEFD',
     status: 'Tamamlandı',
     createdDate: '2025-10-21 12:10',
@@ -713,9 +713,7 @@ function showRandomAlarm() {
   const randomTool = tools.value[Math.floor(Math.random() * tools.value.length)]
   if (!randomTool) return
 
-  const randomType = ['Basınç Düşüklüğü', 'Batarya Düşüklüğü', 'İletişim Hatası'][
-    Math.floor(Math.random() * 3)
-  ]
+  const randomType = ['Üst Kapak Uyarısı', 'Müdahele', 'Düşük Akım'][Math.floor(Math.random() * 3)]
 
   alarmNotification.value.message = `🚨 ${randomTool.name} sayacında ${randomType}!`
   alarmNotification.value.visible = true

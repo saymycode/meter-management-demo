@@ -10,7 +10,7 @@
       </v-chip> -->
     </div>
 
-    <v-text-field
+    <!-- <v-text-field
       v-model="search"
       prepend-inner-icon="mdi-magnify"
       append-inner-icon="mdi-tune"
@@ -19,7 +19,7 @@
       variant="outlined"
       density="comfortable"
       class="topbar-search"
-    />
+    /> -->
 
     <div class="topbar-actions">
       <v-btn
@@ -94,7 +94,9 @@ function toggleTheme() {
   align-items: center;
   gap: 24px;
   color: var(--topbar-text);
-  transition: background var(--transition-speed) ease, color var(--transition-speed) ease,
+  transition:
+    background var(--transition-speed) ease,
+    color var(--transition-speed) ease,
     box-shadow var(--transition-speed) ease;
 }
 
@@ -139,7 +141,9 @@ function toggleTheme() {
   border: 1px solid var(--input-border);
   background: var(--surface-elevated);
   box-shadow: inset 0 2px 6px rgba(15, 23, 42, 0.08);
-  transition: border-color var(--transition-speed) ease, background var(--transition-speed) ease;
+  transition:
+    border-color var(--transition-speed) ease,
+    background var(--transition-speed) ease;
 }
 
 .topbar-search :deep(.v-field__input) {
@@ -168,7 +172,9 @@ function toggleTheme() {
   background: var(--accent-surface);
   color: var(--accent-color);
   box-shadow: var(--accent-shadow);
-  transition: background var(--transition-speed) ease, color var(--transition-speed) ease,
+  transition:
+    background var(--transition-speed) ease,
+    color var(--transition-speed) ease,
     box-shadow var(--transition-speed) ease;
 }
 
