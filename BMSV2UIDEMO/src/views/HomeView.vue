@@ -77,29 +77,50 @@
               <h2>Tüketim özeti</h2>
               <span class="card-subtitle">Kurum kapsamındaki sayaçlardan toplanan son 24 saat</span>
             </div>
+            <v-btn-toggle
+              v-model="consumptionResource"
+              class="card-toggle"
+              color="primary"
+              density="comfortable"
+              rounded="pill"
+              mandatory
+            >
+              <v-btn
+                v-for="option in resourceOptions"
+                :key="option.value"
+                :value="option.value"
+                variant="text"
+              >
+                <v-icon :icon="option.icon" size="18" />
+                <span>{{ option.label }}</span>
+              </v-btn>
+            </v-btn-toggle>
           </div>
-          <div class="consumption-list">
-            <div v-for="item in consumptionSummary" :key="item.type" class="consumption-item">
-              <div class="consumption-icon" :style="{ background: item.accent }">
-                <v-icon :icon="item.icon" />
+          <div v-if="selectedConsumption" class="consumption-list">
+            <div class="consumption-item">
+              <div class="consumption-icon" :style="{ background: selectedConsumption.accent }">
+                <v-icon :icon="selectedConsumption.icon" />
               </div>
               <div class="consumption-body">
-                <span class="consumption-label">{{ item.label }}</span>
-                <span class="consumption-value">{{ item.value }}</span>
-                <div class="consumption-trend" :class="item.positive ? 'positive' : 'negative'">
+                <span class="consumption-label">{{ selectedConsumption.label }}</span>
+                <span class="consumption-value">{{ selectedConsumption.value }}</span>
+                <div
+                  class="consumption-trend"
+                  :class="selectedConsumption.positive ? 'positive' : 'negative'"
+                >
                   <v-icon
-                    :icon="item.positive ? 'mdi-arrow-trending-up' : 'mdi-arrow-trending-down'"
+                    :icon="selectedConsumption.positive ? 'mdi-arrow-trending-up' : 'mdi-arrow-trending-down'"
                     size="16"
                   />
-                  <span>{{ item.change }}</span>
-                  <span class="consumption-hint">{{ item.hint }}</span>
+                  <span>{{ selectedConsumption.change }}</span>
+                  <span class="consumption-hint">{{ selectedConsumption.hint }}</span>
                 </div>
               </div>
               <v-sparkline
-                :model-value="item.sparkline"
+                :model-value="selectedConsumption.sparkline"
                 :smooth="8"
                 :line-width="3"
-                :gradient="['rgba(56,189,248,0.15)', 'rgba(56,189,248,0.5)']"
+                :gradient="selectedConsumption.sparklineGradient"
                 class="consumption-sparkline"
                 auto-draw
               />
@@ -112,21 +133,42 @@
         <v-card class="dashboard-card" elevation="0">
           <div class="card-header">
             <div>
-              <h2>Su sayacı iletişim aktivitesi</h2>
+              <h2>{{ resourceLabels[activityResource] }} sayaç iletişim aktivitesi</h2>
               <span class="card-subtitle"
-                >Son 24 saat içerisinde su sayaçlarından alınan paket adedi</span
+                >Son 24 saat içerisinde {{ resourceLabels[activityResource].toLowerCase() }} sayaçlarından
+                alınan paket adedi</span
               >
             </div>
-            <v-chip prepend-icon="mdi-clock-time-four-outline" size="small" variant="flat">
-              Son paket: {{ lastPacketClock }}
-            </v-chip>
+            <div class="card-header-actions">
+              <v-btn-toggle
+                v-model="activityResource"
+                class="card-toggle"
+                color="primary"
+                density="comfortable"
+                rounded="pill"
+                mandatory
+              >
+                <v-btn
+                  v-for="option in resourceOptions"
+                  :key="option.value"
+                  :value="option.value"
+                  variant="text"
+                >
+                  <v-icon :icon="option.icon" size="18" />
+                  <span>{{ option.label }}</span>
+                </v-btn>
+              </v-btn-toggle>
+              <v-chip prepend-icon="mdi-clock-time-four-outline" size="small" variant="flat">
+                Son paket: {{ lastPacketClockByType[activityResource] }}
+              </v-chip>
+            </div>
           </div>
           <HourlyActivityChart
             title="Saatlik dağılım"
             subtitle="Her saat içinde gelen sayaç sayısı"
             :labels="activityLabels"
-            :values="activityValues"
-            color="rgba(56,189,248,0.65)"
+            :values="activityValuesByType[activityResource]"
+            :color="resourceMeta[activityResource].chartColor"
           />
           <div class="chart-hint">
             <v-icon icon="mdi-information-outline" size="18" />
@@ -139,21 +181,41 @@
         <v-card class="dashboard-card alerts" elevation="0">
           <div class="card-header">
             <div>
-              <h2>Geciken sayaç uyarıları</h2>
+              <h2>{{ resourceLabels[alertsResource] }} geciken sayaç uyarıları</h2>
               <span class="card-subtitle">48 saati aşan sayaçlar kırmızı ile vurgulanır</span>
             </div>
-            <v-chip
-              color="red-darken-2"
-              prepend-icon="mdi-alert-decagram"
-              size="small"
-              variant="flat"
-            >
-              {{ alerts.length }} kritik
-            </v-chip>
+            <div class="card-header-actions">
+              <v-btn-toggle
+                v-model="alertsResource"
+                class="card-toggle"
+                color="primary"
+                density="comfortable"
+                rounded="pill"
+                mandatory
+              >
+                <v-btn
+                  v-for="option in resourceOptions"
+                  :key="option.value"
+                  :value="option.value"
+                  variant="text"
+                >
+                  <v-icon :icon="option.icon" size="18" />
+                  <span>{{ option.label }}</span>
+                </v-btn>
+              </v-btn-toggle>
+              <v-chip
+                color="red-darken-2"
+                prepend-icon="mdi-alert-decagram"
+                size="small"
+                variant="flat"
+              >
+                {{ alertsByType[alertsResource].length }} kritik
+              </v-chip>
+            </div>
           </div>
           <v-list class="alert-list" density="compact">
             <v-list-item
-              v-for="alert in alerts"
+              v-for="alert in alertsByType[alertsResource]"
               :key="alert.id"
               class="alert-item"
               @click="goToSensors(alert.filter)"
@@ -171,7 +233,7 @@
                 }}</v-chip>
               </template>
             </v-list-item>
-            <v-list-item v-if="alerts.length === 0">
+            <v-list-item v-if="alertsByType[alertsResource].length === 0">
               <v-list-item-title>Tüm sayaçlar 48 saatlik pencere içinde.</v-list-item-title>
             </v-list-item>
           </v-list>
@@ -182,12 +244,34 @@
         <v-card class="dashboard-card" elevation="0">
           <div class="card-header">
             <div>
-              <h2>Öne çıkan tüketimler</h2>
+              <h2>{{ resourceLabels[topConsumersResource] }} öne çıkan tüketimler</h2>
               <span class="card-subtitle">Son 24 saat içinde en yüksek tüketim yapan sayaçlar</span>
             </div>
+            <v-btn-toggle
+              v-model="topConsumersResource"
+              class="card-toggle"
+              color="primary"
+              density="comfortable"
+              rounded="pill"
+              mandatory
+            >
+              <v-btn
+                v-for="option in resourceOptions"
+                :key="option.value"
+                :value="option.value"
+                variant="text"
+              >
+                <v-icon :icon="option.icon" size="18" />
+                <span>{{ option.label }}</span>
+              </v-btn>
+            </v-btn-toggle>
           </div>
           <div class="consumer-list">
-            <div v-for="meter in topConsumers" :key="meter.id" class="consumer-item">
+            <div
+              v-for="meter in topConsumersByType[topConsumersResource]"
+              :key="meter.id"
+              class="consumer-item"
+            >
               <div class="consumer-icon" :class="meter.type">
                 <v-icon :icon="meter.icon" />
               </div>
@@ -266,6 +350,32 @@ const meters = ref(meterSnapshots)
 
 const organization = organizationProfile
 
+const resourceOptions = [
+  { value: 'water', label: 'Su', icon: 'mdi-water' },
+  { value: 'electric', label: 'Elektrik', icon: 'mdi-flash-triangle-outline' },
+]
+
+const resourceLabels = {
+  water: 'Su',
+  electric: 'Elektrik',
+}
+
+const resourceMeta = {
+  water: {
+    chartColor: 'rgba(56,189,248,0.65)',
+    sparklineGradient: ['rgba(56,189,248,0.15)', 'rgba(56,189,248,0.5)'],
+  },
+  electric: {
+    chartColor: 'rgba(250,204,21,0.65)',
+    sparklineGradient: ['rgba(250,204,21,0.15)', 'rgba(250,204,21,0.4)'],
+  },
+}
+
+const consumptionResource = ref('water')
+const activityResource = ref('water')
+const alertsResource = ref('water')
+const topConsumersResource = ref('water')
+
 const classifyStatus = (meter) => {
   const diff = hoursBetween(meter.lastCommunication, now.value)
   if (diff <= 24) return 'active'
@@ -279,6 +389,18 @@ const meterWithStatus = computed(() =>
     status: classifyStatus(meter),
   })),
 )
+
+const meterCountsByType = computed(() => {
+  return meterWithStatus.value.reduce(
+    (acc, meter) => {
+      if (meter.type === 'water' || meter.type === 'electric') {
+        acc[meter.type] = (acc[meter.type] ?? 0) + 1
+      }
+      return acc
+    },
+    { water: 0, electric: 0 },
+  )
+})
 
 const statusOrder = ['active', 'pending', 'inactive']
 const statusLabels = ['Aktif', 'Beklemede', 'Pasif']
@@ -373,83 +495,133 @@ const aggregateConsumption = (type, key) =>
     .filter((meter) => meter.type === type)
     .reduce((acc, meter) => acc + (meter.consumption?.[key] ?? 0), 0)
 
-const consumptionSummary = computed(() => {
-  const waterTotal = aggregateConsumption('water', 'last24h')
-  const waterPrev = aggregateConsumption('water', 'previous24h')
-  const electricityTotal = aggregateConsumption('electric', 'last24h')
-  const electricityPrev = aggregateConsumption('electric', 'previous24h')
+const consumptionTotals = computed(() => ({
+  water: {
+    current: aggregateConsumption('water', 'last24h'),
+    previous: aggregateConsumption('water', 'previous24h'),
+  },
+  electric: {
+    current: aggregateConsumption('electric', 'last24h'),
+    previous: aggregateConsumption('electric', 'previous24h'),
+  },
+}))
 
-  const formatChange = (current, previous) => {
-    if (previous === 0) return { text: 'Yeni veri', positive: true }
-    const change = ((current - previous) / previous) * 100
-    return {
-      text: `${change >= 0 ? '+' : ''}${change.toFixed(1)}%`,
-      positive: change >= 0,
-    }
+const buildSparkline = (type) => {
+  const samples = meterWithStatus.value
+    .filter((meter) => meter.type === type)
+    .flatMap((meter) => meter.consumption?.history ?? [])
+  if (samples.length === 0) return []
+  const chunkSize = Math.ceil(samples.length / 5)
+  const buckets = []
+  for (let i = 0; i < samples.length; i += chunkSize) {
+    const slice = samples.slice(i, i + chunkSize)
+    const avg = slice.reduce((acc, value) => acc + value, 0) / slice.length
+    buckets.push(Number(avg.toFixed(1)))
   }
+  return buckets
+}
 
-  const buildSparkline = (type) => {
-    const samples = meterWithStatus.value
-      .filter((meter) => meter.type === type)
-      .flatMap((meter) => meter.consumption?.history ?? [])
-    if (samples.length === 0) return []
-    const chunkSize = Math.ceil(samples.length / 5)
-    const buckets = []
-    for (let i = 0; i < samples.length; i += chunkSize) {
-      const slice = samples.slice(i, i + chunkSize)
-      const avg = slice.reduce((acc, value) => acc + value, 0) / slice.length
-      buckets.push(Number(avg.toFixed(1)))
-    }
-    return buckets
+const formatChange = (current, previous) => {
+  if (previous === 0) return { text: 'Yeni veri', positive: true }
+  const change = ((current - previous) / previous) * 100
+  return {
+    text: `${change >= 0 ? '+' : ''}${change.toFixed(1)}%`,
+    positive: change >= 0,
   }
+}
 
-  const waterChange = formatChange(waterTotal, waterPrev)
-  const electricityChange = formatChange(electricityTotal, electricityPrev)
+const consumptionSummaryByType = computed(() => {
+  const waterChange = formatChange(
+    consumptionTotals.value.water.current,
+    consumptionTotals.value.water.previous,
+  )
+  const electricChange = formatChange(
+    consumptionTotals.value.electric.current,
+    consumptionTotals.value.electric.previous,
+  )
 
-  return [
-    {
+  return {
+    water: {
       type: 'water',
       label: 'Son 24 saat toplam su tüketimi',
-      value: `${waterTotal.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} m³`,
+      value: `${consumptionTotals.value.water.current.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} m³`,
       change: waterChange.text,
       positive: waterChange.positive,
       hint: 'Son 24 saat',
       icon: 'mdi-water',
       accent: 'linear-gradient(135deg, rgba(45,212,191,0.18), rgba(56,189,248,0.22))',
       sparkline: buildSparkline('water'),
+      sparklineGradient: resourceMeta.water.sparklineGradient,
     },
-    {
+    electric: {
       type: 'electric',
       label: 'Son 24 saat toplam elektrik tüketimi',
-      value: `${electricityTotal.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} kWh`,
-      change: electricityChange.text,
-      positive: electricityChange.positive,
+      value: `${consumptionTotals.value.electric.current.toLocaleString('tr-TR', {
+        maximumFractionDigits: 1,
+      })} kWh`,
+      change: electricChange.text,
+      positive: electricChange.positive,
       hint: 'Son 24 saat',
       icon: 'mdi-flash-triangle-outline',
       accent: 'linear-gradient(135deg, rgba(129,140,248,0.22), rgba(96,165,250,0.25))',
       sparkline: buildSparkline('electric'),
+      sparklineGradient: resourceMeta.electric.sparklineGradient,
     },
-  ]
+  }
 })
 
-const topConsumers = computed(() => {
-  return [...meterWithStatus.value]
-    .sort((a, b) => (b.consumption?.last24h ?? 0) - (a.consumption?.last24h ?? 0))
-    .slice(0, 5)
-    .map((meter) => ({
-      id: meter.id,
-      type: meter.type,
-      icon: meter.type === 'water' ? 'mdi-water' : 'mdi-flash',
-      location: meter.location,
-      value: `${(meter.consumption?.last24h ?? 0).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} ${
-        meter.type === 'water' ? 'm³' : 'kWh'
-      }`,
-      hint: `Son paket ${formatRelativeAgo(meter.lastCommunication, now.value)}`,
-    }))
+const selectedConsumption = computed(
+  () => consumptionSummaryByType.value[consumptionResource.value],
+)
+
+const topConsumersByType = computed(() => {
+  const groups = {
+    water: [],
+    electric: [],
+  }
+
+  const grouped = meterWithStatus.value.reduce((acc, meter) => {
+    if (meter.type === 'water' || meter.type === 'electric') {
+      acc[meter.type].push(meter)
+    }
+    return acc
+  }, groups)
+
+  return Object.keys(grouped).reduce((acc, key) => {
+    acc[key] = grouped[key]
+      .sort((a, b) => (b.consumption?.last24h ?? 0) - (a.consumption?.last24h ?? 0))
+      .slice(0, 5)
+      .map((meter) => ({
+        id: meter.id,
+        type: meter.type,
+        icon: meter.type === 'water' ? 'mdi-water' : 'mdi-flash',
+        location: meter.location,
+        value: `${(meter.consumption?.last24h ?? 0).toLocaleString('tr-TR', {
+          maximumFractionDigits: 1,
+        })} ${meter.type === 'water' ? 'm³' : 'kWh'}`,
+        hint: `Son paket ${formatRelativeAgo(meter.lastCommunication, now.value)}`,
+      }))
+    return acc
+  }, groups)
 })
 
 const activityLabels = hourlyActivity.map((item) => `${item.hour}:00`)
-const activityValues = hourlyActivity.map((item) => item.count)
+
+const activityValuesByType = computed(() => {
+  const baseValues = hourlyActivity.map((item) => item.count)
+  const totalMeters = meterCountsByType.value.water + meterCountsByType.value.electric
+  const waterShare = totalMeters > 0 ? meterCountsByType.value.water / totalMeters : 0.5
+
+  const waterValues = baseValues.map((count) => Math.max(0, Math.round(count * waterShare)))
+  const electricValues = baseValues.map((count, index) =>
+    Math.max(0, baseValues[index] - waterValues[index]),
+  )
+
+  return {
+    water: waterValues,
+    electric: electricValues,
+  }
+})
 
 const lastPacket = computed(() => {
   return meterWithStatus.value.reduce((latest, meter) => {
@@ -461,20 +633,49 @@ const lastPacket = computed(() => {
 const lastPacketLabel = computed(() => formatAbsolute(lastPacket.value))
 const lastPacketClock = computed(() => formatClock(lastPacket.value))
 
-const alerts = computed(() =>
+const lastPacketByType = computed(() => {
+  return meterWithStatus.value.reduce(
+    (acc, meter) => {
+      if (meter.type === 'water' || meter.type === 'electric') {
+        const time = toDate(meter.lastCommunication)
+        acc[meter.type] = time > acc[meter.type] ? time : acc[meter.type]
+      }
+      return acc
+    },
+    { water: new Date(0), electric: new Date(0) },
+  )
+})
+
+const lastPacketClockByType = computed(() => ({
+  water: formatClock(lastPacketByType.value.water),
+  electric: formatClock(lastPacketByType.value.electric),
+}))
+
+const alertsByType = computed(() => {
+  const groups = {
+    water: [],
+    electric: [],
+  }
+
   meterWithStatus.value
     .filter((meter) => meter.status === 'inactive')
     .sort((a, b) => toDate(a.lastCommunication) - toDate(b.lastCommunication))
-    .map((meter) => ({
-      id: meter.id,
-      title: `${meter.id} • ${meter.location}`,
-      subtitle: `Son iletişim ${formatRelativeAgo(meter.lastCommunication, now.value)}`,
-      delay: `${Math.floor(hoursBetween(meter.lastCommunication, now.value))} saat`,
-      icon: meter.type === 'water' ? 'mdi-water-alert' : 'mdi-flash-alert',
-      badgeColor: 'red-darken-4',
-      filter: { status: 'Pasif', sensorId: meter.id },
-    })),
-)
+    .forEach((meter) => {
+      if (meter.type === 'water' || meter.type === 'electric') {
+        groups[meter.type].push({
+          id: meter.id,
+          title: `${meter.id} • ${meter.location}`,
+          subtitle: `Son iletişim ${formatRelativeAgo(meter.lastCommunication, now.value)}`,
+          delay: `${Math.floor(hoursBetween(meter.lastCommunication, now.value))} saat`,
+          icon: meter.type === 'water' ? 'mdi-water-alert' : 'mdi-flash-alert',
+          badgeColor: 'red-darken-4',
+          filter: { status: 'Pasif', sensorId: meter.id },
+        })
+      }
+    })
+
+  return groups
+})
 
 const goToSensors = (filter) => {
   router.push({ name: 'sensor', query: filter })
@@ -623,8 +824,44 @@ const goToSensors = (filter) => {
 .card-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.card-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.card-toggle {
+  background: rgba(15, 23, 42, 0.72);
+  border-radius: 999px;
+  padding: 4px;
+}
+
+.card-toggle :deep(.v-btn) {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.2px;
+  color: rgba(148, 163, 184, 0.85);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.card-toggle :deep(.v-btn .v-icon) {
+  margin-right: 6px;
+}
+
+.card-toggle :deep(.v-btn--active) {
+  background: rgba(56, 189, 248, 0.14);
+  color: rgba(248, 250, 252, 0.95);
+}
+
+.card-toggle :deep(.v-btn--active .v-icon) {
+  color: inherit;
 }
 
 .card-header h2 {
@@ -654,7 +891,7 @@ const goToSensors = (filter) => {
 
 .consumption-item {
   display: grid;
-  grid-template-columns: auto 1fr 120px;
+  grid-template-columns: auto 1fr minmax(120px, 160px);
   gap: 16px;
   align-items: center;
   padding: 16px 18px;
