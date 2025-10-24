@@ -476,7 +476,8 @@ const alerts = [
     subtitle: 'Keçiören 5G-02 • 6 saattir offline',
     count: '6 sa',
     icon: 'mdi-access-point-network-off',
-    color: 'amber-darken-2'
+    color: 'amber-darken-2',
+    count: 3
   },
   {
     title: 'Klor seviyesi yükseldi',
@@ -757,31 +758,23 @@ const operationNotes = [
 }
 
 .metric-card {
-  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
   padding: 22px;
+  border-radius: 22px;
   background: var(--surface-card);
-  border-radius: 24px;
   border: 1px solid var(--border-soft);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.metric-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
 }
 
 .metric-header {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
 }
 
 .metric-icon {
-  color: var(--accent-color);
-  box-shadow: var(--accent-shadow);
+  color: #0f172a;
 }
 
 .metric-text {
@@ -791,16 +784,16 @@ const operationNotes = [
 }
 
 .metric-label {
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  color: var(--muted-text);
+  font-size: 14px;
   font-weight: 600;
+  color: var(--muted-text);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
 }
 
 .metric-value {
-  font-size: 24px;
-  font-weight: 800;
+  font-size: 26px;
+  font-weight: 700;
   color: var(--heading-color);
 }
 
@@ -819,17 +812,19 @@ const operationNotes = [
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-weight: 600;
   font-size: 13px;
-  color: var(--muted-text);
+  padding: 4px 10px;
+  border-radius: 999px;
 }
 
 .metric-trend.positive {
-  color: #059669;
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
 }
 
 .metric-trend.negative {
-  color: #dc2626;
+  background: rgba(248, 113, 113, 0.12);
+  color: #b91c1c;
 }
 
 .metric-trend .trend-label {
@@ -838,7 +833,6 @@ const operationNotes = [
 }
 
 .panel-card {
-  height: 100%;
   display: flex;
   flex-direction: column;
   gap: 22px;
@@ -891,7 +885,6 @@ const operationNotes = [
 
 .trend-chart {
   height: 160px;
-  color: #0ea5e9;
 }
 
 .panel-legend {
@@ -903,9 +896,9 @@ const operationNotes = [
 }
 
 .legend-item {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .legend-item .dot {
@@ -946,7 +939,7 @@ const operationNotes = [
 }
 
 .summary-value.positive {
-  color: #059669;
+  color: #047857;
 }
 
 .summary-hint {
@@ -962,7 +955,6 @@ const operationNotes = [
 
 .freshness-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 16px;
 }
@@ -1047,7 +1039,10 @@ const operationNotes = [
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.05);
   font-weight: 700;
+  color: var(--heading-color);
 }
 
 .region-meta {

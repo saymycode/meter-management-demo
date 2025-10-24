@@ -810,6 +810,33 @@ const workOrderTypes = ['Kalibrasyon', 'Firmware Güncelleme', 'Sensör Sıfırl
 const selectedWorkOrderType = ref(null)
 const workOrderPayload = ref({ description: '', calibrationCode: '', firmwareVersion: '', resetReason: '' })
 
+const defaultColDef = {
+  resizable: true,
+  sortable: true,
+  flex: 1,
+  minWidth: 120,
+  filter: true,
+  enableRowGroup: true,
+  floatingFilter: true
+}
+
+const gridOptions = {
+  rowClassRules: {
+    'sensor-row-delayed': (params) => params.data?.freshnessLevel === 'delayed',
+    'sensor-row-missed': (params) => params.data?.freshnessLevel === 'missed'
+  },
+  suppressRowClickSelection: false
+}
+
+const gridRef = ref(null)
+const selectedRows = ref([])
+const viewMode = ref('table')
+
+const workOrderPanel = ref(false)
+const workOrderTypes = ['Kalibrasyon', 'Firmware Güncelleme', 'Sensör Sıfırlama']
+const selectedWorkOrderType = ref(null)
+const workOrderPayload = ref({ description: '', calibrationCode: '', firmwareVersion: '', resetReason: '' })
+
 const workOrderData = ref([
   {
     sensorId: 'ASK-2401',
@@ -970,6 +997,7 @@ const confirmSendWorkOrder = () => {
 
   alert(`${selectedRows.value.length} sayaç için '${selectedWorkOrderType.value}' iş emri hazırlandı (örnek simülasyon).`)
 
+const confirmSendWorkOrder = () => {
   workOrderPanel.value = false
   selectedWorkOrderType.value = null
   workOrderPayload.value = { description: '', calibrationCode: '', firmwareVersion: '', resetReason: '' }
@@ -997,6 +1025,8 @@ const initMap = () => {
       attribution: '© OpenStreetMap contributors'
     }).addTo(mapInstance)
   }
+})
+</script>
 
   renderMarkers()
 }
