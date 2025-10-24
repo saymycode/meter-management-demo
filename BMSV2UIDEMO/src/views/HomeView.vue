@@ -35,8 +35,8 @@
       </div>
     </section>
 
-    <v-row class="dashboard-grid" no-gutters>
-      <v-col cols="12" lg="7">
+    <div class="dashboard-grid">
+      <div class="grid-cell span-7">
         <v-card class="dashboard-card" elevation="0">
           <div class="card-header">
             <div>
@@ -68,9 +68,9 @@
             />
           </div>
         </v-card>
-      </v-col>
+      </div>
 
-      <v-col cols="12" lg="5">
+      <div class="grid-cell span-5">
         <v-card class="dashboard-card" elevation="0">
           <div class="card-header">
             <div>
@@ -127,9 +127,9 @@
             </div>
           </div>
         </v-card>
-      </v-col>
+      </div>
 
-      <v-col cols="12" lg="7">
+      <div class="grid-cell span-7">
         <v-card class="dashboard-card" elevation="0">
           <div class="card-header">
             <div>
@@ -175,9 +175,9 @@
             <span>Grafik gerçek zamanlı değildir; rastgele paketler ilgili saate yazılır.</span>
           </div>
         </v-card>
-      </v-col>
+      </div>
 
-      <v-col cols="12" lg="5">
+      <div class="grid-cell span-5">
         <v-card class="dashboard-card alerts" elevation="0">
           <div class="card-header">
             <div>
@@ -238,9 +238,9 @@
             </v-list-item>
           </v-list>
         </v-card>
-      </v-col>
+      </div>
 
-      <v-col cols="12" lg="6">
+      <div class="grid-cell span-6">
         <v-card class="dashboard-card" elevation="0">
           <div class="card-header">
             <div>
@@ -286,9 +286,9 @@
             </div>
           </div>
         </v-card>
-      </v-col>
+      </div>
 
-      <v-col cols="12" lg="6">
+      <div class="grid-cell span-6">
         <v-card class="dashboard-card" elevation="0">
           <div class="card-header">
             <div>
@@ -324,8 +324,8 @@
             </div>
           </div>
         </v-card>
-      </v-col>
-    </v-row>
+      </div>
+    </div>
   </v-container>
 </template>
 
@@ -807,7 +807,40 @@ const goToSensors = (filter) => {
 }
 
 .dashboard-grid {
-  row-gap: 28px !important;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 28px;
+  align-items: stretch;
+}
+
+.grid-cell {
+  grid-column: span 12;
+  display: flex;
+  flex-direction: column;
+}
+
+.grid-cell .dashboard-card {
+  height: 100%;
+}
+
+@media (min-width: 960px) {
+  .grid-cell {
+    grid-column: span 6;
+  }
+}
+
+@media (min-width: 1280px) {
+  .grid-cell.span-7 {
+    grid-column: span 7;
+  }
+
+  .grid-cell.span-6 {
+    grid-column: span 6;
+  }
+
+  .grid-cell.span-5 {
+    grid-column: span 5;
+  }
 }
 
 .dashboard-card {
@@ -1098,6 +1131,10 @@ const goToSensors = (filter) => {
 @media (max-width: 960px) {
   .home-dashboard {
     padding: 18px;
+  }
+
+  .dashboard-grid {
+    gap: 20px;
   }
 
   .dashboard-card {
