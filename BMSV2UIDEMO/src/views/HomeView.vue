@@ -109,12 +109,26 @@
                   :class="selectedConsumption.positive ? 'positive' : 'negative'"
                 >
                   <v-icon
-                    :icon="selectedConsumption.positive ? 'mdi-arrow-trending-up' : 'mdi-arrow-trending-down'"
+                    :icon="
+                      selectedConsumption.positive
+                        ? 'mdi-arrow-trending-up'
+                        : 'mdi-arrow-trending-down'
+                    "
                     size="16"
                   />
                   <span>{{ selectedConsumption.change }}</span>
                   <span class="consumption-hint">{{ selectedConsumption.hint }}</span>
                 </div>
+                <ul v-if="selectedConsumption.details?.length" class="consumption-details">
+                  <li
+                    v-for="detail in selectedConsumption.details"
+                    :key="detail.label"
+                    class="consumption-detail"
+                  >
+                    <span class="detail-label">{{ detail.label }}</span>
+                    <span class="detail-value">{{ detail.value }}</span>
+                  </li>
+                </ul>
               </div>
               <v-sparkline
                 :model-value="selectedConsumption.sparkline"
@@ -135,8 +149,9 @@
             <div>
               <h2>{{ resourceLabels[activityResource] }} sayaç iletişim aktivitesi</h2>
               <span class="card-subtitle"
-                >Son 24 saat içerisinde {{ resourceLabels[activityResource].toLowerCase() }} sayaçlarından
-                alınan paket adedi</span
+                >Son 24 saat içerisinde
+                {{ resourceLabels[activityResource].toLowerCase() }} sayaçlarından alınan paket
+                adedi</span
               >
             </div>
             <div class="card-header-actions">
@@ -371,6 +386,17 @@ const resourceMeta = {
   },
 }
 
+const fallbackAlerts = {
+  water: [
+    { id: 'AK311-10990', location: 'Pursaklar DMA-2 • Mimar Sinan Mah.', hoursAgo: 57 },
+    { id: 'AK311-11012', location: 'Polatlı DMA-1 • Cumhuriyet Mah.', hoursAgo: 62 },
+  ],
+  electric: [
+    { id: 'BYT11-22501', location: 'Gölbaşı Trafo Merkezi', hoursAgo: 53 },
+    { id: 'BYT11-22644', location: 'Ayaş OSB Trafo', hoursAgo: 77 },
+  ],
+}
+
 const consumptionResource = ref('water')
 const activityResource = ref('water')
 const alertsResource = ref('water')
@@ -388,6 +414,18 @@ const meterWithStatus = computed(() =>
     ...meter,
     status: classifyStatus(meter),
   })),
+)
+
+const metersByType = computed(() =>
+  meterWithStatus.value.reduce(
+    (acc, meter) => {
+      if (meter.type === 'water' || meter.type === 'electric') {
+        acc[meter.type].push(meter)
+      }
+      return acc
+    },
+    { water: [], electric: [] },
+  ),
 )
 
 const meterCountsByType = computed(() => {
@@ -506,6 +544,30 @@ const consumptionTotals = computed(() => ({
   },
 }))
 
+const waterAverageFlow = computed(() => {
+  if (!metersByType.value.water.length) return 0
+  return consumptionTotals.value.water.current / 24
+})
+
+const waterCreditTotal = computed(() =>
+  metersByType.value.water.reduce((acc, meter) => acc + (meter.prepaidCredit ?? 0), 0),
+)
+
+const electricHistorySamples = computed(() =>
+  metersByType.value.electric.flatMap((meter) => meter.consumption?.history ?? []),
+)
+
+const electricLoadProfileAverage = computed(() => {
+  if (electricHistorySamples.value.length === 0) return 0
+  const sum = electricHistorySamples.value.reduce((acc, value) => acc + value, 0)
+  return sum / electricHistorySamples.value.length
+})
+
+const electricPeakDemand = computed(() => {
+  if (electricHistorySamples.value.length === 0) return 0
+  return Math.max(...electricHistorySamples.value)
+})
+
 const buildSparkline = (type) => {
   const samples = meterWithStatus.value
     .filter((meter) => meter.type === type)
@@ -552,6 +614,16 @@ const consumptionSummaryByType = computed(() => {
       accent: 'linear-gradient(135deg, rgba(45,212,191,0.18), rgba(56,189,248,0.22))',
       sparkline: buildSparkline('water'),
       sparklineGradient: resourceMeta.water.sparklineGradient,
+      details: [
+        {
+          label: 'Ortalama debi (24s)',
+          value: `${waterAverageFlow.value.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} m³/sa`,
+        },
+        {
+          label: 'Toplam kredi bakiyesi',
+          value: `₺${waterCreditTotal.value.toLocaleString('tr-TR')}`,
+        },
+      ],
     },
     electric: {
       type: 'electric',
@@ -566,6 +638,18 @@ const consumptionSummaryByType = computed(() => {
       accent: 'linear-gradient(135deg, rgba(129,140,248,0.22), rgba(96,165,250,0.25))',
       sparkline: buildSparkline('electric'),
       sparklineGradient: resourceMeta.electric.sparklineGradient,
+      details: [
+        {
+          label: 'Yük profili ortalaması',
+          value: `${electricLoadProfileAverage.value.toLocaleString('tr-TR', {
+            maximumFractionDigits: 0,
+          })} kWh`,
+        },
+        {
+          label: 'Azami talep',
+          value: `${electricPeakDemand.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} kW`,
+        },
+      ],
     },
   }
 })
@@ -631,7 +715,6 @@ const lastPacket = computed(() => {
 })
 
 const lastPacketLabel = computed(() => formatAbsolute(lastPacket.value))
-const lastPacketClock = computed(() => formatClock(lastPacket.value))
 
 const lastPacketByType = computed(() => {
   return meterWithStatus.value.reduce(
@@ -673,6 +756,23 @@ const alertsByType = computed(() => {
         })
       }
     })
+
+  Object.keys(groups).forEach((type) => {
+    if (groups[type].length === 0) {
+      groups[type] = fallbackAlerts[type].map((item, index) => {
+        const timestamp = new Date(now.value.getTime() - item.hoursAgo * 3600000)
+        return {
+          id: `${item.id}-fallback-${index}`,
+          title: `${item.id} • ${item.location}`,
+          subtitle: `Son iletişim ${formatRelativeAgo(timestamp, now.value)}`,
+          delay: `${item.hoursAgo} saat`,
+          icon: type === 'water' ? 'mdi-water-alert' : 'mdi-flash-alert',
+          badgeColor: 'red-darken-4',
+          filter: { status: 'Pasif', sensorId: item.id },
+        }
+      })
+    }
+  })
 
   return groups
 })
@@ -881,7 +981,9 @@ const goToSensors = (filter) => {
   text-transform: none;
   letter-spacing: 0.2px;
   color: rgba(148, 163, 184, 0.85);
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 .card-toggle :deep(.v-btn .v-icon) {
@@ -981,6 +1083,30 @@ const goToSensors = (filter) => {
 
 .consumption-hint {
   color: rgba(148, 163, 184, 0.75);
+}
+
+.consumption-details {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.consumption-detail {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: rgba(203, 213, 225, 0.82);
+}
+
+.consumption-detail .detail-label {
+  color: rgba(148, 163, 184, 0.78);
+}
+
+.consumption-detail .detail-value {
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.92);
 }
 
 .consumption-sparkline {

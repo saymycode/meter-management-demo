@@ -12,7 +12,7 @@ export const referenceNow = '2025-01-14T10:30:00+03:00'
 
 export const meterSnapshots = [
   {
-    id: 'ASKI-W-10021',
+    id: 'AK311-10021',
     type: 'water',
     communication: 'LoRa',
     location: 'Çankaya DMA-3 • Maltepe Mah.',
@@ -29,9 +29,10 @@ export const meterSnapshots = [
     window: 'Dinamik 24s',
     lat: 39.9106,
     lng: 32.8537,
+    prepaidCredit: 4820,
   },
   {
-    id: 'ASKI-W-10077',
+    id: 'AK311-10077',
     type: 'water',
     communication: 'LoRa',
     location: 'Yenimahalle • Demetevler',
@@ -48,9 +49,10 @@ export const meterSnapshots = [
     window: 'Dinamik 24s',
     lat: 39.9681,
     lng: 32.7579,
+    prepaidCredit: 3965,
   },
   {
-    id: 'ASKI-W-10103',
+    id: 'AK311-10103',
     type: 'water',
     communication: 'GPRS',
     location: 'Sincan • Temelli OSB',
@@ -67,9 +69,10 @@ export const meterSnapshots = [
     window: 'Dinamik 24s',
     lat: 39.9099,
     lng: 32.4898,
+    prepaidCredit: 2850,
   },
   {
-    id: 'ASKI-W-10244',
+    id: 'AK311-10244',
     type: 'water',
     communication: 'LoRa',
     location: 'Mamak • Natoyolu',
@@ -86,9 +89,10 @@ export const meterSnapshots = [
     window: 'Dinamik 24s',
     lat: 39.9334,
     lng: 32.9113,
+    prepaidCredit: 1785,
   },
   {
-    id: 'ASKI-E-22017',
+    id: 'BYT11-22017',
     type: 'electric',
     communication: 'GPRS',
     location: 'Etimesgut • Elvankent Trafo',
@@ -107,7 +111,7 @@ export const meterSnapshots = [
     lng: 32.6367,
   },
   {
-    id: 'ASKI-E-22064',
+    id: 'BYT11-22064',
     type: 'electric',
     communication: 'GPRS',
     location: 'Polatlı • Zafer Mah.',
@@ -126,7 +130,7 @@ export const meterSnapshots = [
     lng: 32.1413,
   },
   {
-    id: 'ASKI-E-22102',
+    id: 'BYT11-22102',
     type: 'electric',
     communication: 'LoRa',
     location: 'Altındağ • Siteler',
@@ -145,7 +149,7 @@ export const meterSnapshots = [
     lng: 32.8748,
   },
   {
-    id: 'ASKI-W-10312',
+    id: 'AK311-10312',
     type: 'water',
     communication: 'LoRa',
     location: 'Keçiören • Esertepe',
@@ -162,9 +166,10 @@ export const meterSnapshots = [
     window: 'Dinamik 24s',
     lat: 40.0017,
     lng: 32.8703,
+    prepaidCredit: 2140,
   },
   {
-    id: 'ASKI-W-10365',
+    id: 'AK311-10365',
     type: 'water',
     communication: 'GPRS',
     location: 'Beypazarı • Bağözü',
@@ -181,9 +186,10 @@ export const meterSnapshots = [
     window: 'Dinamik 24s',
     lat: 40.1652,
     lng: 31.9199,
+    prepaidCredit: 3250,
   },
   {
-    id: 'ASKI-E-22214',
+    id: 'BYT11-22214',
     type: 'electric',
     communication: 'LoRa',
     location: 'Yenimahalle • Ostim OSB',
@@ -202,7 +208,7 @@ export const meterSnapshots = [
     lng: 32.7685,
   },
   {
-    id: 'ASKI-E-22308',
+    id: 'BYT11-22308',
     type: 'electric',
     communication: 'GPRS',
     location: 'Kahramankazan • Saray',
@@ -221,7 +227,7 @@ export const meterSnapshots = [
     lng: 32.6839,
   },
   {
-    id: 'ASKI-W-10408',
+    id: 'AK311-10408',
     type: 'water',
     communication: 'LoRa',
     location: 'Gölbaşı • Taşpınar',
