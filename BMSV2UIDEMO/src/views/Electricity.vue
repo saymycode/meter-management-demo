@@ -114,24 +114,26 @@
               </div>
             </v-col>
 
-            <!-- Orta: Tablo -->
-            <v-col cols="12" md="8" class="grid-column">
-              <v-card class="grid-card" elevation="0">
-                <div class="grid-toolbar">
-                  <div class="grid-summary">
-                    <v-chip class="summary-chip" color="primary" variant="tonal">
-                      Toplam: {{ filteredStats.total }}
-                    </v-chip>
-                    <v-chip class="summary-chip" color="success" variant="tonal">
-                      Aktif: {{ filteredStats.active }}
-                    </v-chip>
-                    <v-chip class="summary-chip" color="error" variant="tonal">
-                      Pasif: {{ filteredStats.inactive }}
-                    </v-chip>
+            <!-- Orta: Kart tabanlı pano -->
+            <v-col cols="12" md="8" class="board-column">
+              <v-card class="board-card" elevation="0">
+                <div class="board-header">
+                  <div class="board-title">
+                    <h2>Filtrelenmiş sayaç panoraması</h2>
+                    <span class="card-subtitle"
+                      >Detaylara kart tabanlı panodan erişin, hızlı aksiyon alın.</span
+                    >
                   </div>
-
-                  <div class="toolbar-actions">
+                  <div class="board-actions">
                     <v-btn variant="text" @click="selectAllRows">Tümünü Seç</v-btn>
+                    <v-btn
+                      variant="text"
+                      color="secondary"
+                      :disabled="selectedRows.length === 0"
+                      @click="clearSelection"
+                    >
+                      Seçimi Temizle
+                    </v-btn>
                     <v-btn
                       color="primary"
                       variant="flat"
@@ -144,9 +146,32 @@
                   </div>
                 </div>
 
+                <div class="board-glance">
+                  <div class="glance-item">
+                    <span class="glance-label">Toplam</span>
+                    <strong>{{ filteredStats.total }}</strong>
+                  </div>
+                  <div class="glance-item">
+                    <span class="glance-label">Seçili</span>
+                    <strong>{{ selectedRows.length }}</strong>
+                  </div>
+                  <div class="glance-item">
+                    <span class="glance-label">Aktif</span>
+                    <strong>{{ filteredStats.active }}</strong>
+                  </div>
+                  <div class="glance-item">
+                    <span class="glance-label">Pasif</span>
+                    <strong>{{ filteredStats.inactive }}</strong>
+                  </div>
+                  <div class="glance-item">
+                    <span class="glance-label">Ortalama tüketim</span>
+                    <strong>{{ boardSummary.avgConsumption }}</strong>
+                  </div>
+                </div>
+
                 <v-text-field
                   v-model="quickFilterText"
-                  class="mb-4"
+                  class="mb-6"
                   density="comfortable"
                   hide-details
                   label="Sayaç, model veya tip ara"
@@ -155,37 +180,86 @@
                   clearable
                 />
 
-                <div class="grid-wrapper">
-                  <v-data-table
-                    v-model:selected="selectedRows"
-                    :headers="tableHeaders"
-                    :items="tableItems"
-                    :group-by="tableGroupBy"
-                    :sort-by="tableSortBy"
-                    :items-per-page="6"
-                    class="grid-table"
-                    density="comfortable"
-                    item-value="name"
-                    return-object
-                    show-select
-                    hover
-                    fixed-header
+                <div class="board-content">
+                  <div
+                    v-for="group in groupedMeters"
+                    :key="group.key"
+                    class="board-lane"
                   >
-                    <template #item.status="{ item }">
-                      <v-chip :color="statusChipColor(item.status)" size="small" variant="tonal">
-                        {{ item.status }}
+                    <div class="lane-header">
+                      <div>
+                        <span class="lane-title">{{ group.title }}</span>
+                        <span class="lane-subtitle">{{ group.subtitle }}</span>
+                      </div>
+                      <v-chip class="lane-chip" variant="tonal" color="primary">
+                        {{ group.items.length }} sayaç
                       </v-chip>
-                    </template>
-                    <template #item.consumption="{ item }">
-                      <span class="mono">{{ item.consumption }}</span>
-                    </template>
-                    <template #item.commandIndex="{ item }">
-                      <span class="mono">{{ item.commandIndex }}</span>
-                    </template>
-                    <template #no-data>
-                      <div class="no-data">Filtrelere uyan sayaç bulunamadı.</div>
-                    </template>
-                  </v-data-table>
+                    </div>
+                    <div class="lane-body">
+                      <v-card
+                        v-for="meter in group.items"
+                        :key="meter.name"
+                        class="meter-tile"
+                        rounded="lg"
+                        elevation="0"
+                      >
+                        <div class="tile-header">
+                          <div class="tile-title">
+                            <span class="tile-code">{{ meter.name }}</span>
+                            <span class="tile-model">{{ meter.model }}</span>
+                          </div>
+                          <v-chip
+                            :class="['status-chip', meter.status === 'Aktif' ? 'is-active' : 'is-passive']"
+                            size="small"
+                            variant="flat"
+                          >
+                            {{ meter.status }}
+                          </v-chip>
+                        </div>
+
+                        <div class="tile-meta">
+                          <div class="meta-item">
+                            <span class="meta-label">İletişim</span>
+                            <span class="meta-value">{{ meter.type }}</span>
+                          </div>
+                          <div class="meta-item">
+                            <span class="meta-label">Tüketim</span>
+                            <span class="meta-value mono">{{ meter.consumption }}</span>
+                          </div>
+                          <div class="meta-item">
+                            <span class="meta-label">Versiyon</span>
+                            <span class="meta-value mono">{{ meter.commandIndex }}</span>
+                          </div>
+                        </div>
+
+                        <div class="tile-actions">
+                          <v-btn
+                            :color="isMeterSelected(meter) ? 'primary' : 'secondary'"
+                            :variant="isMeterSelected(meter) ? 'flat' : 'tonal'"
+                            prepend-icon="
+                              isMeterSelected(meter)
+                                ? 'check_circle'
+                                : 'radio_button_unchecked'
+                            "
+                            size="small"
+                            @click.stop="toggleMeterSelection(meter)"
+                          >
+                            {{ isMeterSelected(meter) ? 'Seçili' : 'Seç' }}
+                          </v-btn>
+                          <v-btn
+                            variant="text"
+                            color="info"
+                            prepend-icon="travel_explore"
+                            size="small"
+                            @click.stop="focusOnMap(meter)"
+                          >
+                            Haritada Göster
+                          </v-btn>
+                        </div>
+                      </v-card>
+                    </div>
+                  </div>
+                  <div v-if="!groupedMeters.length" class="no-data">Filtrelere uyan sayaç bulunamadı.</div>
                 </div>
               </v-card>
             </v-col>
@@ -216,30 +290,43 @@
             style="max-width: 950px"
           />
 
-          <v-data-table
-            :headers="workOrderHeaders"
-            :items="filteredWorkOrders"
-            class="secondary-table"
-            density="comfortable"
-            :items-per-page="8"
-            hover
-            fixed-header
-          >
-            <template #item.status="{ item }">
-              <v-chip :color="workOrderStatusColor(item.status)" size="small" variant="tonal">
-                {{ item.status }}
-              </v-chip>
-            </template>
-            <template #item.data="{ item }">
-              <span class="mono">{{ item.data }}</span>
-            </template>
-            <template #item.workOrderId="{ item }">
-              <span class="mono">{{ item.workOrderId }}</span>
-            </template>
-            <template #no-data>
-              <div class="no-data">Kayıt bulunamadı.</div>
-            </template>
-          </v-data-table>
+          <div class="list-board">
+            <v-card
+              v-for="order in filteredWorkOrders"
+              :key="order.workOrderId"
+              class="info-card"
+              elevation="0"
+            >
+              <div class="info-header">
+                <div>
+                  <span class="info-title">{{ order.workOrderId }}</span>
+                  <span class="info-subtitle">{{ order.name }} • {{ order.type }}</span>
+                </div>
+                <v-chip :color="workOrderStatusColor(order.status)" size="small" variant="tonal">
+                  {{ order.status }}
+                </v-chip>
+              </div>
+              <div class="info-body">
+                <div class="info-meta">
+                  <span class="meta-label">Data</span>
+                  <span class="meta-value mono">{{ order.data }}</span>
+                </div>
+                <div class="info-meta">
+                  <span class="meta-label">Oluşturulma</span>
+                  <span class="meta-value">{{ order.createdDate }}</span>
+                </div>
+                <div class="info-meta">
+                  <span class="meta-label">Gönderim</span>
+                  <span class="meta-value">{{ order.sentDate }}</span>
+                </div>
+                <div class="info-meta">
+                  <span class="meta-label">Cevap</span>
+                  <span class="meta-value">{{ order.responseDate }}</span>
+                </div>
+              </div>
+            </v-card>
+            <div v-if="!filteredWorkOrders.length" class="no-data">Kayıt bulunamadı.</div>
+          </div>
         </div>
       </v-window-item>
       <v-window-item value="alerts">
@@ -256,24 +343,35 @@
             style="max-width: 950px"
           />
 
-          <v-data-table
-            :headers="alertHeaders"
-            :items="filteredAlerts"
-            class="secondary-table"
-            density="comfortable"
-            :items-per-page="8"
-            hover
-            fixed-header
-          >
-            <template #item.severity="{ item }">
-              <v-chip :color="alertSeverityColor(item.severity)" size="small" variant="tonal">
-                {{ item.severity }}
-              </v-chip>
-            </template>
-            <template #no-data>
-              <div class="no-data">Aktif alarm bulunamadı.</div>
-            </template>
-          </v-data-table>
+          <div class="list-board">
+            <v-card
+              v-for="alert in filteredAlerts"
+              :key="alert.alertId"
+              class="info-card"
+              elevation="0"
+            >
+              <div class="info-header">
+                <div>
+                  <span class="info-title">{{ alert.alertId }}</span>
+                  <span class="info-subtitle">{{ alert.deviceName }} • {{ alert.type }}</span>
+                </div>
+                <v-chip :color="alertSeverityColor(alert.severity)" size="small" variant="tonal">
+                  {{ alert.severity }}
+                </v-chip>
+              </div>
+              <div class="info-body">
+                <div class="info-meta">
+                  <span class="meta-label">Durum</span>
+                  <span class="meta-value">{{ alert.status }}</span>
+                </div>
+                <div class="info-meta">
+                  <span class="meta-label">Tarih</span>
+                  <span class="meta-value">{{ alert.createdDate }}</span>
+                </div>
+              </div>
+            </v-card>
+            <div v-if="!filteredAlerts.length" class="no-data">Aktif alarm bulunamadı.</div>
+          </div>
         </div>
       </v-window-item>
     </v-window>
@@ -386,7 +484,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -416,18 +514,6 @@ const groupOptions = [
 ]
 
 const collator = new Intl.Collator('tr-TR')
-
-const tableHeaders = [
-  { title: 'Sayaç No', key: 'name', sortable: true },
-  { title: 'Model', key: 'model', sortable: true },
-  { title: 'İletişim', key: 'type', sortable: true },
-  { title: 'Tüketim', key: 'consumption', sortable: true },
-  { title: 'Versiyon', key: 'commandIndex', sortable: true },
-  { title: 'Durum', key: 'status', sortable: true },
-]
-
-const tableSortBy = ref([{ key: 'name', order: 'asc' }])
-const tableGroupBy = computed(() => (groupBy.value === 'none' ? [] : [{ key: groupBy.value }]))
 
 const tools = ref([
   {
@@ -575,9 +661,86 @@ const filteredStats = computed(() => {
   return stats
 })
 
-const statusChipColor = (status) => (status === 'Aktif' ? 'success' : 'error')
+const groupedMeters = computed(() => {
+  const strategy = groupBy.value
+  const groups = new Map()
 
-const tableItems = filteredTools
+  const ensureGroup = (key, meta) => {
+    if (!groups.has(key)) {
+      groups.set(key, { key, title: meta.title, subtitle: meta.subtitle, items: [] })
+    }
+  }
+
+  const resolveMeta = (key) => {
+    if (strategy === 'status') {
+      const isActive = key === 'Aktif'
+      return {
+        title: isActive ? 'Aktif sayaçlar' : 'Pasif sayaçlar',
+        subtitle: isActive ? 'Canlı veri ileten noktalar' : 'Kontrol bekleyen cihazlar',
+      }
+    }
+    if (strategy === 'type') {
+      return {
+        title: `${key} iletişim`,
+        subtitle: 'Teknoloji bazlı kümelenmiş görünüm',
+      }
+    }
+    if (strategy === 'model') {
+      return {
+        title: `${key} modeli`,
+        subtitle: 'Sahada kullanılan ürün varyantı',
+      }
+    }
+    return {
+      title: 'Tüm sayaçlar',
+      subtitle: 'Filtrelenmiş sonuçların tamamı',
+    }
+  }
+
+  if (!filteredTools.value.length) {
+    return []
+  }
+
+  filteredTools.value.forEach((tool) => {
+    const key =
+      strategy === 'status'
+        ? tool.status
+        : strategy === 'type'
+          ? tool.type
+          : strategy === 'model'
+            ? tool.model
+            : 'all'
+    const meta = resolveMeta(key)
+    ensureGroup(key, meta)
+    groups.get(key).items.push(tool)
+  })
+
+  return Array.from(groups.values())
+    .sort((a, b) => collator.compare(a.title, b.title))
+    .map((group) => ({
+      ...group,
+      items: [...group.items].sort((a, b) => collator.compare(a.name, b.name)),
+    }))
+})
+
+const boardSummary = computed(() => {
+  const total = filteredTools.value.length
+  if (!total) {
+    return {
+      avgConsumption: '0 kWh',
+    }
+  }
+
+  const totalConsumption = filteredTools.value.reduce(
+    (sum, tool) => sum + parseConsumption(tool.consumption),
+    0,
+  )
+  const average = (totalConsumption / total).toFixed(1)
+
+  return {
+    avgConsumption: `${average} kWh`,
+  }
+})
 
 const resetFilters = () => {
   selectedStatuses.value = []
@@ -589,11 +752,45 @@ const resetFilters = () => {
 }
 
 const selectAllRows = () => {
-  selectedRows.value = [...tableItems.value]
+  selectedRows.value = [...filteredTools.value]
+}
+
+const clearSelection = () => {
+  selectedRows.value = []
+}
+
+const isMeterSelected = (meter) => selectedRows.value.some((item) => item.name === meter.name)
+
+const toggleMeterSelection = (meter) => {
+  if (isMeterSelected(meter)) {
+    selectedRows.value = selectedRows.value.filter((item) => item.name !== meter.name)
+  } else {
+    selectedRows.value = [...selectedRows.value, meter]
+  }
+}
+
+const focusOnMap = (meter) => {
+  activeTab.value = 'map'
+  nextTick(() => {
+    setTimeout(() => {
+      if (!mapInstance) {
+        initMap()
+      }
+      if (!mapInstance) return
+
+      mapInstance.setView([meter.lat, meter.lng], 17, { animate: true })
+      L.popup({ autoClose: true })
+        .setLatLng([meter.lat, meter.lng])
+        .setContent(
+          `<strong>${meter.name}</strong><br>${meter.type} • <span style="font-weight:600;">${meter.status}</span>`,
+        )
+        .openOn(mapInstance)
+    }, 250)
+  })
 }
 
 watch(filteredTools, () => {
-  const allowed = new Set(tableItems.value.map((tool) => tool.name))
+  const allowed = new Set(filteredTools.value.map((tool) => tool.name))
   selectedRows.value = selectedRows.value.filter((row) => allowed.has(row.name))
   if (activeTab.value === 'map') {
     setTimeout(initMap, 150)
@@ -637,17 +834,6 @@ function initMap() {
       .addTo(mapInstance)
   })
 }
-
-const workOrderHeaders = [
-  { title: 'Sayaç No', key: 'name', sortable: true },
-  { title: 'İş Emri Tipi', key: 'type', sortable: true },
-  { title: 'İş Emri Datası', key: 'workOrderId', sortable: true },
-  { title: 'Data', key: 'data', sortable: true },
-  { title: 'Durum', key: 'status', sortable: true },
-  { title: 'Oluşturulma', key: 'createdDate', sortable: true },
-  { title: 'Gönderim', key: 'sentDate', sortable: true },
-  { title: 'Cevap', key: 'responseDate', sortable: true },
-]
 
 const workOrderData = ref([
   {
@@ -811,15 +997,6 @@ const confirmSendWorkOrder = () => {
   workOrderPayload.value = { description: '', readCommand: '', limit: '', resetCode: '' }
 }
 
-const alertHeaders = [
-  { title: 'Sayaç No', key: 'deviceName', sortable: true },
-  { title: 'Payload', key: 'alertId', sortable: true },
-  { title: 'Uyarı Tipi', key: 'type', sortable: true },
-  { title: 'Önem', key: 'severity', sortable: true },
-  { title: 'Tarih', key: 'createdDate', sortable: true },
-  { title: 'Durum', key: 'status', sortable: true },
-]
-
 const alertData = ref([
   {
     alertId: 'AABBCCDDEEFC',
@@ -923,30 +1100,14 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Yerleşim */
 .products-layout {
   display: flex !important;
   align-items: stretch !important;
   gap: 18px;
 }
 
-@media (max-width: 1280px) {
-  .products-layout {
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .side-column {
-    flex: 1;
-    min-width: 300px;
-  }
-  .grid-column {
-    width: 100%;
-    order: -1;
-  }
-}
-
 .side-column,
-.grid-column {
+.board-column {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -956,182 +1117,385 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  gap: 16px;
 }
 
-/* Kart stilleri */
 .filter-card,
 .group-card,
-.grid-card {
-  background: rgba(15, 23, 42, 0.95);
+.board-card {
+  background: var(--surface-card);
   border-radius: 18px;
   padding: 20px;
-  border: 1px solid rgba(148, 163, 184, 0.15);
-  color: #e2e8f0;
+  border: 1px solid var(--border-soft);
+  color: var(--text-color);
+  box-shadow: none;
+  transition: background var(--transition-speed) ease, color var(--transition-speed) ease,
+    border-color var(--transition-speed) ease;
+}
+
+.board-card {
+  padding: 28px 26px;
+  gap: 24px;
+  display: flex;
+  flex-direction: column;
 }
 
 .group-card {
-  margin-top: 18px;
-  padding-bottom: 12px;
-  flex-grow: 1;
+  flex: 1;
 }
 
-/* Başlıklar */
-.group-header h2,
-.filter-header h2 {
+.filter-header,
+.group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.filter-header h2,
+.group-header h2 {
   font-size: 18px;
   font-weight: 600;
+  color: var(--heading-color);
   margin: 0;
-  color: #f8fafc;
 }
 
 .group-header p {
   margin: 6px 0 12px;
   font-size: 13px;
-  color: #cbd5f5;
+  color: var(--muted-text);
   line-height: 1.4;
-}
-
-/* Filtre alanı */
-.filter-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.filter-group {
-  margin-bottom: 18px;
-}
-
-.filter-group:last-of-type {
-  margin-bottom: 0;
 }
 
 .filter-title {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.4px;
-  color: #a5b4fc;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted-text);
+}
+
+.filter-group {
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--border-soft);
+}
+
+.filter-group:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .filter-chip {
   margin-bottom: 8px;
+  border-radius: 999px;
+  font-weight: 500;
 }
 
-/* Tablo alanı */
-.grid-card {
+.board-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.board-title h2 {
+  margin: 0;
+  font-size: 22px;
+  color: var(--heading-color);
+}
+
+.card-subtitle {
+  display: block;
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--muted-text);
+}
+
+.board-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.board-glance {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--note-surface);
+  border: 1px solid var(--border-soft);
+}
+
+.glance-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted-text);
+  font-size: 13px;
+}
+
+.glance-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted-text);
+}
+
+.glance-item strong {
+  font-size: 20px;
+  color: var(--heading-color);
+  font-weight: 700;
+}
+
+.board-content {
+  display: flex;
+  gap: 18px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.list-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.board-content::-webkit-scrollbar {
+  height: 8px;
+}
+
+.board-content::-webkit-scrollbar-thumb {
+  background: var(--border-soft);
+  border-radius: 999px;
+}
+
+.board-lane {
+  min-width: 260px;
   flex: 1;
   display: flex;
   flex-direction: column;
-  width: 100%;
-  backdrop-filter: blur(10px);
+  gap: 14px;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-elevated);
+  box-shadow: var(--card-shadow);
+  transition: background var(--transition-speed) ease, border-color var(--transition-speed) ease;
 }
 
-.grid-toolbar {
+.lane-header {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
 }
 
-.grid-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.summary-chip {
+.lane-title {
   font-weight: 600;
-  letter-spacing: 0.3px;
+  color: var(--heading-color);
 }
 
-.toolbar-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.grid-wrapper {
-  flex: 1;
-  min-height: 600px;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.28);
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px solid rgba(148, 163, 184, 0.15);
-}
-
-.grid-table,
-.secondary-table {
-  background: transparent;
-}
-
-.grid-table :deep(table),
-.secondary-table :deep(table) {
-  background: transparent;
-}
-
-.grid-table :deep(thead tr),
-.secondary-table :deep(thead tr) {
-  background: rgba(15, 23, 42, 0.85);
-}
-
-.grid-table :deep(th),
-.secondary-table :deep(th) {
-  color: rgba(226, 232, 240, 0.85);
-  font-weight: 600;
-  text-transform: uppercase;
+.lane-subtitle {
+  display: block;
   font-size: 12px;
-  letter-spacing: 0.5px;
+  color: var(--muted-text);
+  margin-top: 2px;
 }
 
-.grid-table :deep(td),
-.secondary-table :deep(td) {
-  color: rgba(241, 245, 249, 0.92);
-  font-size: 14px;
+.lane-chip {
+  font-weight: 600;
 }
 
-.grid-table :deep(tbody tr:hover),
-.secondary-table :deep(tbody tr:hover) {
-  background: rgba(59, 130, 246, 0.08);
+.lane-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 6px;
 }
 
-.secondary-table {
+.lane-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.lane-body::-webkit-scrollbar-thumb {
+  background: var(--border-soft);
+  border-radius: 999px;
+}
+
+.meter-tile {
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  color: var(--text-color);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: border-color var(--transition-speed) ease, transform var(--transition-speed) ease,
+    box-shadow var(--transition-speed) ease;
+}
+
+.meter-tile:hover {
+  border-color: var(--accent-highlight);
+  transform: translateY(-2px);
+  box-shadow: var(--card-shadow);
+}
+
+.info-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
   border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.12);
-  box-shadow: 0 14px 24px rgba(15, 23, 42, 0.25);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--text-color);
+  transition: border-color var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
+}
+
+.info-card:hover {
+  border-color: var(--accent-highlight);
+  box-shadow: var(--card-shadow);
+}
+
+.info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.info-title {
+  font-weight: 700;
+  color: var(--heading-color);
+  font-size: 15px;
+}
+
+.info-subtitle {
+  display: block;
+  font-size: 13px;
+  color: var(--muted-text);
+  margin-top: 4px;
+}
+
+.info-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.info-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tile-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tile-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tile-code {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--heading-color);
+}
+
+.tile-model {
+  font-size: 13px;
+  color: var(--muted-text);
+}
+
+.status-chip {
+  font-weight: 600;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.status-chip.is-active {
+  background: var(--positive-pill-bg);
+  color: var(--positive-pill-color);
+}
+
+.status-chip.is-passive {
+  background: var(--negative-pill-bg);
+  color: var(--negative-pill-color);
+}
+
+.tile-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meta-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--muted-text);
+}
+
+.meta-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--heading-color);
+}
+
+.tile-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .mono {
-  font-family: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
-    monospace;
-  letter-spacing: 0.3px;
+  font-family: 'Fira Code', 'Roboto Mono', monospace;
 }
 
 .no-data {
-  padding: 24px;
+  padding: 28px;
   text-align: center;
-  color: rgba(148, 163, 184, 0.9);
+  border-radius: 16px;
+  background: var(--note-surface);
+  color: var(--muted-text);
 }
 
-/* Bildirim animasyonları */
 .slide-fade-enter-active {
   transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
 }
+
 .slide-fade-leave-active {
   transition: all 0.4s ease;
 }
+
 .slide-fade-enter-from,
 .slide-fade-leave-to {
   opacity: 0;
   transform: translateY(30px);
 }
 
-/* Bildirim kutuları */
 .fancy-toast {
   position: fixed;
   bottom: 24px;
@@ -1204,7 +1568,6 @@ onUnmounted(() => {
   }
 }
 
-/* Responsive */
 @media (max-width: 1280px) {
   .products-layout {
     gap: 12px;
@@ -1212,33 +1575,41 @@ onUnmounted(() => {
   }
   .side-column {
     flex: 1;
-    min-width: 300px;
+    min-width: 280px;
   }
-  .grid-column {
-    width: 100%;
+  .board-column {
     order: -1;
   }
 }
 
 @media (max-width: 960px) {
-  .grid-toolbar {
+  .board-header {
     flex-direction: column;
     align-items: flex-start;
   }
-  .toolbar-actions {
+  .board-actions {
     width: 100%;
-    justify-content: flex-start;
+  }
+  .lane-body {
+    max-height: none;
   }
 }
 
 @media (max-width: 600px) {
+  .board-content {
+    flex-direction: column;
+  }
+  .board-lane {
+    min-width: auto;
+  }
   .fancy-toast,
   .alarm-toast {
     right: 16px;
     left: 16px;
   }
   .alarm-toast {
-    bottom: 180px;
+    bottom: 170px;
   }
 }
 </style>
+
