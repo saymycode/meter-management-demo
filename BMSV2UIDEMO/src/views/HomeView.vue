@@ -3,13 +3,35 @@
     <v-row class="g-6" no-gutters>
       <v-col cols="12">
         <v-card class="intro-card" elevation="0">
-          <div class="intro-left">
-            <div class="org-chip">{{ organizationName }}</div>
-            <h1 class="intro-title">Su sayaçları operasyon merkezi</h1>
-            <p class="intro-subtitle">
-              {{ organizationRegion }} için LoRa ve GPRS sayaçlarından gelen toplu ölçümleri takip ediyoruz.
-              Sistem günde üç defa veri alır; son çekilen parti üzerinden tüm göstergeler güncellenir.
-            </p>
+            <div class="intro-left">
+              <div class="intro-top">
+                <div class="org-chip">{{ organizationName }}</div>
+                <v-btn-toggle
+                  v-model="selectedDomain"
+                  class="domain-toggle"
+                  density="comfortable"
+                  mandatory
+                  rounded="xl"
+                >
+                  <v-btn
+                    v-for="option in domainOptions"
+                    :key="option.value"
+                    :value="option.value"
+                    class="domain-toggle-btn"
+                    size="small"
+                    variant="text"
+                    :class="{ 'is-active': selectedDomain === option.value }"
+                  >
+                    <v-icon size="18">{{ option.icon }}</v-icon>
+                    <span>{{ option.label }}</span>
+                  </v-btn>
+                </v-btn-toggle>
+              </div>
+              <h1 class="intro-title">{{ introTitle }}</h1>
+              <p class="intro-subtitle">
+                {{ introLead }}
+                <span class="intro-subtitle-break">{{ introBody }}</span>
+              </p>
             <div class="intro-meta">
               <div class="meta-block">
                 <span class="meta-label">Son veri alımı</span>
@@ -49,7 +71,7 @@
               <div class="cadence-header">
                 <div>
                   <h2 class="cadence-title">Günlük iletim pencereleri</h2>
-                  <span class="cadence-subtitle">08:00, 12:00 ve 24:00 partileri; durum çipleri gecikmeleri net biçimde gösterir.</span>
+                  <span class="cadence-subtitle">{{ cadenceSubtitle }}</span>
                 </div>
                 <v-chip class="cadence-chip" prepend-icon="mdi-calendar-clock" size="small" variant="flat">
                   Sıradaki: {{ nextWindowLabel }}
@@ -268,15 +290,6 @@
 <script setup>
 import { computed, ref } from 'vue'
 
-const organizationName = 'ASKİ Su Operasyon Merkezi'
-const organizationRegion = 'Ankara hizmet bölgesi'
-const totalMeters = 16842
-const activeMeters = 15620
-const freshBatchNow = ref(new Date())
-const lastBatchReceived = ref(new Date(Date.now() - 1000 * 60 * 165))
-const scheduleWindows = [8, 12, 24]
-const trendGradient = ['rgba(14,165,233,0.18)', 'rgba(14,165,233,0.05)']
-
 const formatNumber = (value) => value.toLocaleString('tr-TR')
 
 const formatTime = (date) =>
@@ -343,8 +356,426 @@ const getWindowDate = (base, hour) => {
   return result
 }
 
+const domainOptions = [
+  { value: 'water', label: 'Su', icon: 'mdi-water' },
+  { value: 'electric', label: 'Elektrik', icon: 'mdi-flash' }
+]
+
+const domainProfiles = {
+  water: {
+    organizationName: 'ASKİ Su Operasyon Merkezi',
+    organizationRegion: 'Ankara hizmet bölgesi',
+    introTitle: 'Su sayaçları operasyon merkezi',
+    introLead: '{region} için LoRa ve GPRS sayaçlarından gelen toplu ölçümleri takip ediyoruz.',
+    introBody: 'Sistem günde üç defa veri alır; son çekilen parti üzerinden tüm göstergeler güncellenir.',
+    lastBatchDelayMinutes: 165,
+    scheduleWindows: [8, 12, 24],
+    cadenceSubtitle: '08:00, 12:00 ve 24:00 partileri; durum çipleri gecikmeleri net biçimde gösterir.',
+    totalMeters: 16842,
+    activeMeters: 15620,
+    trendGradient: ['rgba(14,165,233,0.18)', 'rgba(14,165,233,0.05)'],
+    overviewMetrics: [
+      {
+        title: 'Aktif sayaç',
+        value: formatNumber(15620),
+        caption: 'Son parti içinde veri gönderen sayaç',
+        trend: '+124 sayaç',
+        trendLabel: 'Önceki pencereye göre',
+        trendPositive: true,
+        icon: 'mdi-water',
+        accent: 'linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(56, 189, 248, 0.32))'
+      },
+      {
+        title: 'Geciken sayaç',
+        value: formatNumber(482),
+        caption: '1 çevrim ve üzeri gecikme yaşayan sayaç',
+        trend: '58 kritik',
+        trendLabel: 'Saha kontrolü gerekli',
+        trendPositive: false,
+        icon: 'mdi-timer-sand',
+        accent: 'linear-gradient(135deg, rgba(249, 115, 22, 0.18), rgba(234, 88, 12, 0.32))'
+      },
+      {
+        title: 'İletim başarısı',
+        value: '93%',
+        caption: 'Bugünkü pencerelerde alınan paket oranı',
+        trend: '+2 puan',
+        trendLabel: 'Haftalık ortalama',
+        trendPositive: true,
+        icon: 'mdi-swap-vertical',
+        accent: 'linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(16, 185, 129, 0.28))'
+      },
+      {
+        title: 'Açık alarm',
+        value: '12',
+        caption: '4 kritik, 8 takipte',
+        trend: 'Son parti: 3 yeni',
+        trendLabel: '12:00 verisine göre',
+        trendPositive: false,
+        icon: 'mdi-bell-alert',
+        accent: 'linear-gradient(135deg, rgba(59, 130, 246, 0.18), rgba(96, 165, 250, 0.32))'
+      }
+    ],
+    consumptionTrend: [18.6, 19.4, 19.1, 20.2, 21.5, 21.2, 22.4, 21.9, 22.6],
+    trendSummaries: [
+      { label: 'Son parti', value: '22.6 bin m³', hint: '12:00 verisi', highlight: true },
+      { label: 'Bugün toplam', value: '44.5 bin m³', hint: '08:00 + 12:00' },
+      { label: 'Dün', value: '43.8 bin m³', hint: '%1.6 artış' },
+      { label: 'Haftalık', value: '302 bin m³', hint: '3 parti gecikmeli' }
+    ],
+    freshnessBreakdown: [
+      {
+        label: 'Takvimde',
+        value: formatNumber(15138),
+        hint: 'Son 12 saatte veri gönderdi',
+        percentage: '%89',
+        color: 'rgba(34, 197, 94, 0.35)',
+        chipColor: 'success'
+      },
+      {
+        label: '1 çevrim gecikmeli',
+        value: formatNumber(964),
+        hint: 'Son pencere kaçırıldı',
+        percentage: '%6',
+        color: 'rgba(245, 158, 11, 0.35)',
+        chipColor: 'amber-darken-2'
+      },
+      {
+        label: '2+ çevrim gecikmeli',
+        value: formatNumber(296),
+        hint: '24 saati aştı',
+        percentage: '%5',
+        color: 'rgba(248, 113, 113, 0.35)',
+        chipColor: 'red-darken-2'
+      }
+    ],
+    criticalAlerts: 4,
+    alerts: [
+      {
+        title: 'DMA-3 basınç düşüşü',
+        subtitle: 'Son veri 12:00 paketinde geldi',
+        count: 'Acil',
+        icon: 'mdi-alert-decagram-outline',
+        color: 'red-darken-1'
+      },
+      {
+        title: 'Kapalı vana uyarısı',
+        subtitle: 'Çankaya vana-12 • 2 pencere gecikmeli',
+        count: '2',
+        icon: 'mdi-valve',
+        color: 'orange-darken-2'
+      },
+      {
+        title: 'Gateway bağlantısı koptu',
+        subtitle: 'Keçiören 5G-02 • 6 saattir offline',
+        count: '6 sa',
+        icon: 'mdi-access-point-network-off',
+        color: 'amber-darken-2'
+      },
+      {
+        title: 'Klor seviyesi yükseldi',
+        subtitle: 'Mamak kalite istasyonu • 08:00 partisi',
+        count: '1',
+        icon: 'mdi-flask-alert',
+        color: 'blue-darken-1'
+      }
+    ],
+    topRegions: [
+      {
+        rank: '1',
+        name: 'Çankaya - Merkez DMA',
+        subtitle: '1.842 aktif sayaç • 86 gateway',
+        value: '28.4 bin m³',
+        trend: '+5.2%',
+        trendPositive: true,
+        hint: 'Son parti 12:00'
+      },
+      {
+        rank: '2',
+        name: 'Keçiören - Kuzey hattı',
+        subtitle: '1.264 aktif sayaç • 54 gateway',
+        value: '24.1 bin m³',
+        trend: '+3.4%',
+        trendPositive: true,
+        hint: 'Son parti 12:00'
+      },
+      {
+        rank: '3',
+        name: 'Yenimahalle sanayi bölgesi',
+        subtitle: '932 aktif sayaç • 31 gateway',
+        value: '19.7 bin m³',
+        trend: '−1.1%',
+        trendPositive: false,
+        hint: 'Son parti 08:00'
+      },
+      {
+        rank: '4',
+        name: 'Mamak konut hattı',
+        subtitle: '1.506 aktif sayaç • 47 gateway',
+        value: '17.9 bin m³',
+        trend: '+0.9%',
+        trendPositive: true,
+        hint: 'Son parti 12:00'
+      },
+      {
+        rank: '5',
+        name: 'Sincan endüstriyel bölge',
+        subtitle: '684 aktif sayaç • 22 gateway',
+        value: '15.8 bin m³',
+        trend: '+0.4%',
+        trendPositive: true,
+        hint: 'Son parti 08:00'
+      }
+    ],
+    operationNotes: [
+      {
+        title: 'Gateway kontrol listesi',
+        description: '6 saati aşan gecikmeli sayaçlar için saha devresi taraması planlandı.',
+        icon: 'mdi-router-network',
+        badge: 'Saha ziyareti',
+        badgeColor: 'primary',
+        accent: 'rgba(59, 130, 246, 0.18)'
+      },
+      {
+        title: 'Bakım planı',
+        description: 'Batarya seviyesi düşük sayaçlar 12:00 partisinde tekrar doğrulanacak.',
+        icon: 'mdi-battery-alert',
+        badge: 'Yenilendi',
+        badgeColor: 'teal',
+        accent: 'rgba(45, 212, 191, 0.18)'
+      },
+      {
+        title: 'Veri kalite kontrolü',
+        description: 'İletim başarısı %90 altına düşen bölgeler için doğrulama kuralı eklendi.',
+        icon: 'mdi-clipboard-check',
+        badge: 'Aktif',
+        badgeColor: 'success',
+        accent: 'rgba(34, 197, 94, 0.18)'
+      }
+    ]
+  },
+  electric: {
+    organizationName: 'YEPAŞ Enerji Kontrol Merkezi',
+    organizationRegion: 'Orta Anadolu dağıtım bölgesi',
+    introTitle: 'Elektrik sayaçları operasyon merkezi',
+    introLead: '{region} için akıllı sayaç ve RTU verilerini gerilim seviyesine göre topluyoruz.',
+    introBody: 'SCADA entegrasyonu dört pencere ile veri yeniler; yük eğrileri kritik sapmalarda uyarır.',
+    lastBatchDelayMinutes: 95,
+    scheduleWindows: [3, 9, 15, 21],
+    cadenceSubtitle: '03:00, 09:00, 15:00 ve 21:00 pencereleri; kesinti riskleri proaktif olarak raporlanır.',
+    totalMeters: 20458,
+    activeMeters: 19812,
+    trendGradient: ['rgba(168,85,247,0.22)', 'rgba(59,130,246,0.18)'],
+    overviewMetrics: [
+      {
+        title: 'Aktif sayaç',
+        value: formatNumber(19812),
+        caption: 'Son pencere içinde veri gönderen sayaç',
+        trend: '+186 sayaç',
+        trendLabel: 'Dünkü 21:00 penceresine göre',
+        trendPositive: true,
+        icon: 'mdi-flash',
+        accent: 'linear-gradient(135deg, rgba(168, 85, 247, 0.24), rgba(129, 140, 248, 0.36))'
+      },
+      {
+        title: 'Kesinti uyarısı',
+        value: '28',
+        caption: 'Bölgesel ve noktasal kesinti riski',
+        trend: '6 kritik',
+        trendLabel: 'SCADA ile eşleşti',
+        trendPositive: false,
+        icon: 'mdi-transmission-tower-off',
+        accent: 'linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(249, 115, 22, 0.28))'
+      },
+      {
+        title: 'Sayaç sağlığı',
+        value: '97%',
+        caption: 'Ping yanıtı veren sayaç oranı',
+        trend: '+1.2 puan',
+        trendLabel: 'Haftalık ortalama',
+        trendPositive: true,
+        icon: 'mdi-heart-pulse',
+        accent: 'linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(16, 185, 129, 0.28))'
+      },
+      {
+        title: 'Yük yönetimi',
+        value: '5.2 MW',
+        caption: 'Talep yanıtında aktif yük',
+        trend: '−0.4 MW',
+        trendLabel: 'Önceki gün aynı saat',
+        trendPositive: false,
+        icon: 'mdi-lightning-bolt',
+        accent: 'linear-gradient(135deg, rgba(14, 165, 233, 0.2), rgba(56, 189, 248, 0.32))'
+      }
+    ],
+    consumptionTrend: [4.2, 4.6, 4.9, 5.3, 5.7, 6.1, 6.4, 6.2, 6.5],
+    trendSummaries: [
+      { label: 'Son pencere', value: '6.5 MWh', hint: '21:00 verisi', highlight: true },
+      { label: 'Bugün toplam', value: '12.8 MWh', hint: '03:00 + 09:00' },
+      { label: 'Dün', value: '12.1 MWh', hint: '%5.8 artış' },
+      { label: 'Haftalık', value: '84.6 MWh', hint: '1 pencere gecikmeli' }
+    ],
+    freshnessBreakdown: [
+      {
+        label: 'Takvimde',
+        value: formatNumber(21908),
+        hint: 'Son 6 saatte veri gönderdi',
+        percentage: '%92',
+        color: 'rgba(59, 130, 246, 0.32)',
+        chipColor: 'info'
+      },
+      {
+        label: '1 çevrim gecikmeli',
+        value: formatNumber(1298),
+        hint: '21:00 penceresi kaçırıldı',
+        percentage: '%5',
+        color: 'rgba(250, 204, 21, 0.28)',
+        chipColor: 'amber-darken-2'
+      },
+      {
+        label: '2+ çevrim gecikmeli',
+        value: formatNumber(812),
+        hint: '12 saati aştı',
+        percentage: '%3',
+        color: 'rgba(248, 113, 113, 0.32)',
+        chipColor: 'red-darken-2'
+      }
+    ],
+    criticalAlerts: 6,
+    alerts: [
+      {
+        title: 'Trafo çıkışında harmonik artışı',
+        subtitle: 'Ostim TM • %18 THD',
+        count: '3',
+        icon: 'mdi-sine-wave',
+        color: 'deep-purple-darken-2'
+      },
+      {
+        title: 'Planlanmayan kesinti',
+        subtitle: 'Polatlı fider-4 • 42 müşteri',
+        count: 'Acil',
+        icon: 'mdi-power-plug-off',
+        color: 'red-darken-1'
+      },
+      {
+        title: 'Sayaç kesme komutu beklemede',
+        subtitle: 'Altındağ konut hattı • 2 çevrim',
+        count: '5',
+        icon: 'mdi-flash-alert',
+        color: 'amber-darken-2'
+      },
+      {
+        title: 'Endüstriyel yük sınırı aşıldı',
+        subtitle: 'Sincan OSB • 3.6 MW talep',
+        count: 'Yeni',
+        icon: 'mdi-factory',
+        color: 'blue-darken-2'
+      }
+    ],
+    topRegions: [
+      {
+        rank: '1',
+        name: 'Ostim OSB',
+        subtitle: '1.120 aktif sayaç • 28 trafo',
+        value: '6.5 MWh',
+        trend: '+6.2%',
+        trendPositive: true,
+        hint: 'Son pencere 21:00'
+      },
+      {
+        rank: '2',
+        name: 'Sincan trafo merkezi',
+        subtitle: '948 aktif sayaç • 19 trafo',
+        value: '5.9 MWh',
+        trend: '+2.4%',
+        trendPositive: true,
+        hint: 'Son pencere 21:00'
+      },
+      {
+        rank: '3',
+        name: 'Yenimahalle hattı',
+        subtitle: '1.406 aktif sayaç • 34 trafo',
+        value: '5.1 MWh',
+        trend: '−1.8%',
+        trendPositive: false,
+        hint: 'Son pencere 15:00'
+      },
+      {
+        rank: '4',
+        name: 'Polatlı kırsal',
+        subtitle: '782 aktif sayaç • 14 trafo',
+        value: '4.4 MWh',
+        trend: '+0.7%',
+        trendPositive: true,
+        hint: 'Son pencere 15:00'
+      },
+      {
+        rank: '5',
+        name: 'Keçiören merkezi',
+        subtitle: '1.264 aktif sayaç • 22 trafo',
+        value: '4.0 MWh',
+        trend: '−0.9%',
+        trendPositive: false,
+        hint: 'Son pencere 21:00'
+      }
+    ],
+    operationNotes: [
+      {
+        title: 'Trafo bakım planı',
+        description: 'Yüksek harmonik gözlenen trafolar için saha ölçümü planlandı.',
+        icon: 'mdi-transmission-tower',
+        badge: 'Saha ziyareti',
+        badgeColor: 'primary',
+        accent: 'rgba(168, 85, 247, 0.24)'
+      },
+      {
+        title: 'Uzaktan kesme listesi',
+        description: 'Faturalandırma sonrası otomatik kesme komutları sıraya alındı.',
+        icon: 'mdi-power-plug',
+        badge: 'Hazır',
+        badgeColor: 'amber-darken-2',
+        accent: 'rgba(250, 204, 21, 0.24)'
+      },
+      {
+        title: 'Talep yanıt senaryosu',
+        description: 'Gündüz yük dengelemesi için 3 endüstriyel abone ile iletişimdeyiz.',
+        icon: 'mdi-lightning-bolt-circle',
+        badge: 'Aktif',
+        badgeColor: 'success',
+        accent: 'rgba(56, 189, 248, 0.24)'
+      }
+    ]
+  }
+}
+
+const selectedDomain = ref('water')
+const freshBatchNow = ref(new Date())
+
+const currentProfile = computed(() => domainProfiles[selectedDomain.value])
+
+const organizationName = computed(() => currentProfile.value.organizationName)
+const organizationRegion = computed(() => currentProfile.value.organizationRegion)
+const introTitle = computed(() => currentProfile.value.introTitle)
+const introLead = computed(() =>
+  currentProfile.value.introLead.replace('{region}', currentProfile.value.organizationRegion)
+)
+const introBody = computed(() => currentProfile.value.introBody)
+const cadenceSubtitle = computed(() => currentProfile.value.cadenceSubtitle)
+
+const totalMeters = computed(() => currentProfile.value.totalMeters)
+const activeMeters = computed(() => currentProfile.value.activeMeters)
+const scheduleWindows = computed(() => currentProfile.value.scheduleWindows)
+const trendGradient = computed(() => currentProfile.value.trendGradient)
+
+const lastBatchReceived = computed(() => {
+  const minutes = currentProfile.value.lastBatchDelayMinutes ?? 0
+  const result = new Date(freshBatchNow.value)
+  result.setMinutes(result.getMinutes() - minutes)
+  return result
+})
+
 const scheduleTimeline = computed(() => {
-  return scheduleWindows.map((hour) => {
+  return scheduleWindows.value.map((hour) => {
     const now = freshBatchNow.value
     const windowDate = getWindowDate(now, hour)
     const lastBatch = lastBatchReceived.value
@@ -380,7 +811,7 @@ const scheduleStatusColor = (status) => {
 
 const nextWindow = computed(() => {
   const now = freshBatchNow.value
-  for (const hour of scheduleWindows) {
+  for (const hour of scheduleWindows.value) {
     const candidate = getWindowDate(now, hour)
     if (candidate.getTime() > now.getTime()) {
       return candidate
@@ -388,7 +819,7 @@ const nextWindow = computed(() => {
   }
   const tomorrow = new Date(now)
   tomorrow.setDate(now.getDate() + 1)
-  tomorrow.setHours(scheduleWindows[0], 0, 0, 0)
+  tomorrow.setHours(scheduleWindows.value[0], 0, 0, 0)
   return tomorrow
 })
 
@@ -398,202 +829,22 @@ const lastUpdateLabel = computed(() => formatTime(lastBatchReceived.value))
 const freshnessChip = computed(() => getFreshnessChip(lastBatchReceived.value, freshBatchNow.value))
 
 const activeMeterRatio = computed(() => {
-  const ratio = (activeMeters / totalMeters) * 100
-  return `${formatNumber(activeMeters)} aktif • %${ratio.toFixed(1)}`
+  const ratio = (activeMeters.value / totalMeters.value) * 100
+  return `${formatNumber(activeMeters.value)} aktif • %${ratio.toFixed(1)}`
 })
 
-const overviewMetrics = [
-  {
-    title: 'Aktif sayaç',
-    value: formatNumber(activeMeters),
-    caption: 'Son parti içinde veri gönderen sayaç',
-    trend: '+124 sayaç',
-    trendLabel: 'Önceki pencereye göre',
-    trendPositive: true,
-    icon: 'mdi-water',
-    accent: 'linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(56, 189, 248, 0.32))'
-  },
-  {
-    title: 'Geciken sayaç',
-    value: formatNumber(482),
-    caption: '1 çevrim ve üzeri gecikme yaşayan sayaç',
-    trend: '58 kritik',
-    trendLabel: 'Saha kontrolü gerekli',
-    trendPositive: false,
-    icon: 'mdi-timer-sand',
-    accent: 'linear-gradient(135deg, rgba(249, 115, 22, 0.18), rgba(234, 88, 12, 0.32))'
-  },
-  {
-    title: 'İletim başarısı',
-    value: '93%',
-    caption: 'Bugünkü pencerelerde alınan paket oranı',
-    trend: '+2 puan',
-    trendLabel: 'Haftalık ortalama',
-    trendPositive: true,
-    icon: 'mdi-swap-vertical',
-    accent: 'linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(16, 185, 129, 0.28))'
-  },
-  {
-    title: 'Açık alarm',
-    value: '12',
-    caption: '4 kritik, 8 takipte',
-    trend: 'Son parti: 3 yeni',
-    trendLabel: '12:00 verisine göre',
-    trendPositive: false,
-    icon: 'mdi-bell-alert',
-    accent: 'linear-gradient(135deg, rgba(59, 130, 246, 0.18), rgba(96, 165, 250, 0.32))'
-  }
-]
-
-const consumptionTrend = ref([18.6, 19.4, 19.1, 20.2, 21.5, 21.2, 22.4, 21.9, 22.6])
-
-const trendSummaries = [
-  { label: 'Son parti', value: '22.6 bin m³', hint: '12:00 verisi', highlight: true },
-  { label: 'Bugün toplam', value: '44.5 bin m³', hint: '08:00 + 12:00' },
-  { label: 'Dün', value: '43.8 bin m³', hint: '%1.6 artış' },
-  { label: 'Haftalık', value: '302 bin m³', hint: '3 parti gecikmeli' }
-]
-
+const overviewMetrics = computed(() => currentProfile.value.overviewMetrics)
+const consumptionTrend = computed(() => currentProfile.value.consumptionTrend)
+const trendSummaries = computed(() => currentProfile.value.trendSummaries)
 const cadenceDescription = computed(() => {
   const diff = Math.abs(Math.round((freshBatchNow.value - lastBatchReceived.value) / 60000))
   return diff <= 180 ? 'Takvimde' : diff <= 360 ? '1 çevrim gecikmeli' : '2+ çevrim gecikmeli'
 })
-
-const freshnessBreakdown = [
-  {
-    label: 'Takvimde',
-    value: formatNumber(15138),
-    hint: 'Son 12 saatte veri gönderdi',
-    percentage: '%89',
-    color: 'rgba(34, 197, 94, 0.35)',
-    chipColor: 'success'
-  },
-  {
-    label: '1 çevrim gecikmeli',
-    value: formatNumber(964),
-    hint: 'Son pencere kaçırıldı',
-    percentage: '%6',
-    color: 'rgba(245, 158, 11, 0.35)',
-    chipColor: 'amber-darken-2'
-  },
-  {
-    label: '2+ çevrim gecikmeli',
-    value: formatNumber(296),
-    hint: '24 saati aştı',
-    percentage: '%5',
-    color: 'rgba(248, 113, 113, 0.35)',
-    chipColor: 'red-darken-2'
-  }
-]
-
-const criticalAlerts = 4
-
-const alerts = [
-  {
-    title: 'DMA-3 basınç düşüşü',
-    subtitle: 'Son veri 12:00 paketinde geldi',
-    count: 'Acil',
-    icon: 'mdi-alert-decagram-outline',
-    color: 'red-darken-1'
-  },
-  {
-    title: 'Kapalı vana uyarısı',
-    subtitle: 'Çankaya vana-12 • 2 pencere gecikmeli',
-    count: '2',
-    icon: 'mdi-valve',
-    color: 'orange-darken-2'
-  },
-  {
-    title: 'Gateway bağlantısı koptu',
-    subtitle: 'Keçiören 5G-02 • 6 saattir offline',
-    count: '6 sa',
-    icon: 'mdi-access-point-network-off',
-    color: 'amber-darken-2',
-    count: 3
-  },
-  {
-    title: 'Klor seviyesi yükseldi',
-    subtitle: 'Mamak kalite istasyonu • 08:00 partisi',
-    count: '1',
-    icon: 'mdi-flask-alert',
-    color: 'blue-darken-1'
-  }
-]
-
-const topRegions = [
-  {
-    rank: '1',
-    name: 'Çankaya - Merkez DMA',
-    subtitle: '1.842 aktif sayaç • 86 gateway',
-    value: '28.4 bin m³',
-    trend: '+5.2%',
-    trendPositive: true,
-    hint: 'Son parti 12:00'
-  },
-  {
-    rank: '2',
-    name: 'Keçiören - Kuzey hattı',
-    subtitle: '1.264 aktif sayaç • 54 gateway',
-    value: '24.1 bin m³',
-    trend: '+3.4%',
-    trendPositive: true,
-    hint: 'Son parti 12:00'
-  },
-  {
-    rank: '3',
-    name: 'Yenimahalle sanayi bölgesi',
-    subtitle: '932 aktif sayaç • 31 gateway',
-    value: '19.7 bin m³',
-    trend: '−1.1%',
-    trendPositive: false,
-    hint: 'Son parti 08:00'
-  },
-  {
-    rank: '4',
-    name: 'Mamak konut hattı',
-    subtitle: '1.506 aktif sayaç • 47 gateway',
-    value: '17.9 bin m³',
-    trend: '+0.9%',
-    trendPositive: true,
-    hint: 'Son parti 12:00'
-  },
-  {
-    rank: '5',
-    name: 'Sincan endüstriyel bölge',
-    subtitle: '684 aktif sayaç • 22 gateway',
-    value: '15.8 bin m³',
-    trend: '+0.4%',
-    trendPositive: true,
-    hint: 'Son parti 08:00'
-  }
-]
-
-const operationNotes = [
-  {
-    title: 'Gateway kontrol listesi',
-    description: '6 saati aşan gecikmeli sayaçlar için saha devresi taraması planlandı.',
-    icon: 'mdi-router-network',
-    badge: 'Saha ziyareti',
-    badgeColor: 'primary',
-    accent: 'rgba(59, 130, 246, 0.18)'
-  },
-  {
-    title: 'Bakım planı',
-    description: 'Batarya seviyesi düşük sayaçlar 12:00 partisinde tekrar doğrulanacak.',
-    icon: 'mdi-battery-alert',
-    badge: 'Yenilendi',
-    badgeColor: 'teal',
-    accent: 'rgba(45, 212, 191, 0.18)'
-  },
-  {
-    title: 'Veri kalite kontrolü',
-    description: 'İletim başarısı %90 altına düşen bölgeler için doğrulama kuralı eklendi.',
-    icon: 'mdi-clipboard-check',
-    badge: 'Aktif',
-    badgeColor: 'success',
-    accent: 'rgba(34, 197, 94, 0.18)'
-  }
-]
+const freshnessBreakdown = computed(() => currentProfile.value.freshnessBreakdown)
+const criticalAlerts = computed(() => currentProfile.value.criticalAlerts)
+const alerts = computed(() => currentProfile.value.alerts)
+const topRegions = computed(() => currentProfile.value.topRegions)
+const operationNotes = computed(() => currentProfile.value.operationNotes)
 </script>
 
 <style scoped>
@@ -614,10 +865,14 @@ const operationNotes = [
   gap: 32px;
   justify-content: space-between;
   padding: 32px 36px;
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(45, 212, 191, 0.12));
+  background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--accent-color) 18%, transparent),
+      color-mix(in srgb, var(--accent-highlight) 16%, transparent)
+    );
   border-radius: 26px;
   border: 1px solid var(--border-soft);
-  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--card-shadow);
 }
 
 .intro-left {
@@ -628,15 +883,59 @@ const operationNotes = [
   gap: 20px;
 }
 
+.intro-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.domain-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: color-mix(in srgb, var(--surface-card) 85%, transparent);
+  box-shadow: var(--card-shadow);
+}
+
+.domain-toggle-btn {
+  border-radius: 999px !important;
+  text-transform: none;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--muted-text) !important;
+  min-height: 34px;
+  padding: 0 14px;
+}
+
+.domain-toggle-btn .v-btn__content {
+  gap: 6px;
+}
+
+.domain-toggle-btn.is-active {
+  background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--accent-color) 70%, transparent),
+      color-mix(in srgb, var(--accent-highlight) 70%, transparent)
+    ) !important;
+  color: #022c22 !important;
+  box-shadow: var(--accent-shadow);
+}
+
 .org-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(15, 118, 110, 0.12);
+  background: var(--accent-surface);
+  box-shadow: var(--accent-shadow);
   padding: 6px 12px;
   border-radius: 999px;
   font-weight: 600;
-  color: #0f766e;
+  color: var(--accent-color);
   font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -656,15 +955,22 @@ const operationNotes = [
   line-height: 1.6;
 }
 
+.intro-subtitle-break {
+  display: block;
+  margin-top: 6px;
+}
+
 .intro-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 18px 32px;
   align-items: center;
   padding: 18px 20px;
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--surface-glass);
   border-radius: 20px;
   border: 1px solid var(--border-soft);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--card-shadow);
 }
 
 .meta-block {
@@ -719,6 +1025,7 @@ const operationNotes = [
   display: flex;
   flex-direction: column;
   gap: 16px;
+  box-shadow: var(--card-shadow);
 }
 
 .cadence-header {
@@ -802,6 +1109,7 @@ const operationNotes = [
   border-radius: 22px;
   background: var(--surface-card);
   border: 1px solid var(--border-soft);
+  box-shadow: var(--card-shadow);
 }
 
 .metric-header {
@@ -811,7 +1119,7 @@ const operationNotes = [
 }
 
 .metric-icon {
-  color: #0f172a;
+  color: var(--heading-color);
 }
 
 .metric-text {
@@ -855,13 +1163,13 @@ const operationNotes = [
 }
 
 .metric-trend.positive {
-  background: rgba(16, 185, 129, 0.12);
-  color: #047857;
+  background: var(--positive-pill-bg);
+  color: var(--positive-pill-color);
 }
 
 .metric-trend.negative {
-  background: rgba(248, 113, 113, 0.12);
-  color: #b91c1c;
+  background: var(--negative-pill-bg);
+  color: var(--negative-pill-color);
 }
 
 .metric-trend .trend-label {
@@ -877,6 +1185,7 @@ const operationNotes = [
   background: var(--surface-card);
   border-radius: 24px;
   border: 1px solid var(--border-soft);
+  box-shadow: var(--card-shadow);
 }
 
 .panel-card.compact {
@@ -910,8 +1219,8 @@ const operationNotes = [
 }
 
 .panel-chip.warning {
-  background: rgba(248, 113, 113, 0.14);
-  color: #b91c1c;
+  background: var(--warning-soft-bg);
+  color: var(--warning-soft-color);
 }
 
 .panel-body {
@@ -945,11 +1254,11 @@ const operationNotes = [
 }
 
 .legend-item .dot.primary {
-  background: #0ea5e9;
+  background: var(--accent-highlight);
 }
 
 .legend-item .dot.secondary {
-  background: rgba(2, 132, 199, 0.35);
+  background: color-mix(in srgb, var(--accent-highlight) 35%, transparent);
 }
 
 .panel-summary {
@@ -976,7 +1285,7 @@ const operationNotes = [
 }
 
 .summary-value.positive {
-  color: #047857;
+  color: var(--positive-pill-color);
 }
 
 .summary-hint {
@@ -1071,15 +1380,12 @@ const operationNotes = [
   width: 32px;
   height: 32px;
   border-radius: 12px;
-  background: rgba(15, 118, 110, 0.12);
-  color: #0f766e;
+  background: var(--region-rank-bg);
+  color: var(--region-rank-color);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
-  background: rgba(15, 23, 42, 0.05);
   font-weight: 700;
-  color: var(--heading-color);
 }
 
 .region-meta {
@@ -1096,12 +1402,12 @@ const operationNotes = [
 }
 
 .region-trend.positive {
-  color: #059669;
+  color: var(--positive-pill-color);
   font-weight: 600;
 }
 
 .region-trend.negative {
-  color: #dc2626;
+  color: var(--negative-pill-color);
   font-weight: 600;
 }
 
@@ -1119,9 +1425,10 @@ const operationNotes = [
   align-items: flex-start;
   gap: 14px;
   padding: 16px;
-  background: rgba(15, 23, 42, 0.02);
+  background: color-mix(in srgb, var(--surface-card) 88%, var(--note-surface));
   border-radius: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--card-shadow);
   min-height: 132px;
 }
 
@@ -1154,6 +1461,14 @@ const operationNotes = [
   gap: 8px;
   font-size: 13px;
   color: var(--muted-text);
+}
+
+@media (max-width: 600px) {
+  .domain-toggle {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+  }
 }
 
 @media (max-width: 960px) {
