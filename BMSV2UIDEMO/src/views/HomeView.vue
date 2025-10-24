@@ -111,8 +111,8 @@
                   <v-icon
                     :icon="
                       selectedConsumption.positive
-                        ? 'mdi-arrow-trending-up'
-                        : 'mdi-arrow-trending-down'
+                        ? 'trending_up'
+                        : 'trending_down'
                     "
                     size="16"
                   />
@@ -173,7 +173,7 @@
                   <span>{{ option.label }}</span>
                 </v-btn>
               </v-btn-toggle>
-              <v-chip prepend-icon="mdi-clock-time-four-outline" size="small" variant="flat">
+              <v-chip prepend-icon="schedule" size="small" variant="flat">
                 Son paket: {{ lastPacketClockByType[activityResource] }}
               </v-chip>
             </div>
@@ -186,7 +186,7 @@
             :color="resourceMeta[activityResource].chartColor"
           />
           <div class="chart-hint">
-            <v-icon icon="mdi-information-outline" size="18" />
+            <v-icon icon="info" size="18" />
             <span>Grafik gerçek zamanlı değildir; rastgele paketler ilgili saate yazılır.</span>
           </div>
         </v-card>
@@ -220,7 +220,7 @@
               </v-btn-toggle>
               <v-chip
                 color="red-darken-2"
-                prepend-icon="mdi-alert-decagram"
+                prepend-icon="new_releases"
                 size="small"
                 variant="flat"
               >
@@ -331,7 +331,7 @@
               }}</span>
             </div>
             <div class="scope-note">
-              <v-icon icon="mdi-shield-lock-outline" size="18" />
+              <v-icon icon="shield_lock" size="18" />
               <span
                 >Bu dashboard yalnızca {{ organization.scope }} organizasyonundan gelen veriyle
                 çalışır.</span
@@ -366,8 +366,8 @@ const meters = ref(meterSnapshots)
 const organization = organizationProfile
 
 const resourceOptions = [
-  { value: 'water', label: 'Su', icon: 'mdi-water' },
-  { value: 'electric', label: 'Elektrik', icon: 'mdi-flash-triangle-outline' },
+  { value: 'water', label: 'Su', icon: 'water_drop' },
+  { value: 'electric', label: 'Elektrik', icon: 'bolt' },
 ]
 
 const resourceLabels = {
@@ -610,7 +610,7 @@ const consumptionSummaryByType = computed(() => {
       change: waterChange.text,
       positive: waterChange.positive,
       hint: 'Son 24 saat',
-      icon: 'mdi-water',
+      icon: 'water_drop',
       accent: 'linear-gradient(135deg, rgba(45,212,191,0.18), rgba(56,189,248,0.22))',
       sparkline: buildSparkline('water'),
       sparklineGradient: resourceMeta.water.sparklineGradient,
@@ -634,7 +634,7 @@ const consumptionSummaryByType = computed(() => {
       change: electricChange.text,
       positive: electricChange.positive,
       hint: 'Son 24 saat',
-      icon: 'mdi-flash-triangle-outline',
+      icon: 'bolt',
       accent: 'linear-gradient(135deg, rgba(129,140,248,0.22), rgba(96,165,250,0.25))',
       sparkline: buildSparkline('electric'),
       sparklineGradient: resourceMeta.electric.sparklineGradient,
@@ -678,7 +678,7 @@ const topConsumersByType = computed(() => {
       .map((meter) => ({
         id: meter.id,
         type: meter.type,
-        icon: meter.type === 'water' ? 'mdi-water' : 'mdi-flash',
+        icon: meter.type === 'water' ? 'water_drop' : 'bolt',
         location: meter.location,
         value: `${(meter.consumption?.last24h ?? 0).toLocaleString('tr-TR', {
           maximumFractionDigits: 1,
@@ -750,7 +750,7 @@ const alertsByType = computed(() => {
           title: `${meter.id} • ${meter.location}`,
           subtitle: `Son iletişim ${formatRelativeAgo(meter.lastCommunication, now.value)}`,
           delay: `${Math.floor(hoursBetween(meter.lastCommunication, now.value))} saat`,
-          icon: meter.type === 'water' ? 'mdi-water-alert' : 'mdi-flash-alert',
+          icon: meter.type === 'water' ? 'warning' : 'bolt',
           badgeColor: 'red-darken-4',
           filter: { status: 'Pasif', sensorId: meter.id },
         })
@@ -766,7 +766,7 @@ const alertsByType = computed(() => {
           title: `${item.id} • ${item.location}`,
           subtitle: `Son iletişim ${formatRelativeAgo(timestamp, now.value)}`,
           delay: `${item.hoursAgo} saat`,
-          icon: type === 'water' ? 'mdi-water-alert' : 'mdi-flash-alert',
+          icon: type === 'water' ? 'warning' : 'bolt',
           badgeColor: 'red-darken-4',
           filter: { status: 'Pasif', sensorId: item.id },
         }

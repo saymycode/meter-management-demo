@@ -59,8 +59,8 @@ const toggleSidebar = () => (isExpanded.value = !isExpanded.value)
 
 const menuItems = [
   { title: 'Dashboard', icon: 'space_dashboard', to: '/homeview' },
-  { title: 'Elektrik', icon: 'bolt', to: '/electricity' },
   { title: 'Su', icon: 'water_drop', to: '/water' },
+  { title: 'Elektrik', icon: 'bolt', to: '/electricity' },
   { title: 'Sensör', icon: 'sensors', to: '/sensor' },
   { title: 'Ayarlar', icon: 'settings', to: '/settings' },
 ]

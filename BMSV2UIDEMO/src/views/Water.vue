@@ -24,7 +24,7 @@
             <v-text-field
               v-model="quickFilterText"
               label="Genel Arama"
-              prepend-inner-icon="mdi-magnify"
+              prepend-inner-icon="search"
               variant="outlined"
               hide-details
               density="comfortable"
@@ -33,7 +33,6 @@
           </div>
 
           <ag-grid-vue
-            ref="gridRef"
             class="ag-theme-alpine"
             style="height: 600px; width: 100%"
             :columnDefs="columnDefs"
@@ -48,6 +47,7 @@
             :defaultColDef="defaultColDef"
             pagination
             :paginationPageSize="6"
+            @grid-ready="onGridReady"
             @selection-changed="onSelectionChanged"
           />
         </div>
@@ -62,7 +62,7 @@
           <v-text-field
             v-model="workOrderFilter"
             label="Genel Arama"
-            prepend-inner-icon="mdi-magnify"
+            prepend-inner-icon="search"
             variant="outlined"
             hide-details
             density="comfortable"
@@ -72,7 +72,6 @@
           />
 
           <ag-grid-vue
-            ref="workOrderGridRef"
             class="ag-theme-alpine"
             style="height: 600px; width: 100%"
             :columnDefs="workOrderColumnDefs"
@@ -94,7 +93,7 @@
           <v-text-field
             v-model="alertFilter"
             label="Genel Arama"
-            prepend-inner-icon="mdi-bell-alert"
+            prepend-inner-icon="notifications_active"
             variant="outlined"
             hide-details
             density="comfortable"
@@ -104,7 +103,6 @@
           />
 
           <ag-grid-vue
-            ref="alertGridRef"
             class="ag-theme-alpine"
             style="height: 600px; width: 100%"
             :columnDefs="alertColumnDefs"
@@ -134,7 +132,7 @@
     <v-card flat>
       <v-card-title class="text-h6 d-flex align-center justify-space-between">
         <span>İş Emri Gönder</span>
-        <v-btn icon="mdi-close" variant="text" @click="workOrderPanel = false" />
+        <v-btn icon="close" variant="text" @click="workOrderPanel = false" />
       </v-card-title>
 
       <v-divider />
@@ -206,7 +204,7 @@
   <transition name="slide-fade">
     <div v-if="workOrderNotification.visible" class="fancy-toast">
       <div class="toast-icon">
-        <v-icon size="28" color="white">mdi-water-check</v-icon>
+        <v-icon size="28" color="white">water</v-icon>
       </div>
       <div class="toast-text">
         💧 <strong>{{ workOrderNotification.message }}</strong>
@@ -217,7 +215,7 @@
   <transition name="slide-fade">
     <div v-if="alarmNotification.visible" class="alarm-toast">
       <div class="toast-icon">
-        <v-icon size="28" color="white">mdi-water-alert</v-icon>
+        <v-icon size="28" color="white">warning</v-icon>
       </div>
       <div class="toast-text">
         <strong>{{ alarmNotification.message }}</strong>
@@ -229,10 +227,8 @@
 <script setup>
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
-import 'ag-grid-enterprise'
-import { ModuleRegistry } from 'ag-grid-community'
-import { AllEnterpriseModule } from 'ag-grid-enterprise'
-ModuleRegistry.registerModules([AllEnterpriseModule])
+import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community'
+ModuleRegistry.registerModules([AllCommunityModule])
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -241,9 +237,7 @@ const quickFilterText = ref('')
 const workOrderFilter = ref('')
 const alertFilter = ref('')
 
-const gridRef = ref(null)
-const workOrderGridRef = ref(null)
-const alertGridRef = ref(null)
+const gridApi = ref(null)
 const selectedRows = ref([])
 const workOrderPanel = ref(false)
 
@@ -624,15 +618,19 @@ function confirmSendWorkOrder() {
   workOrderPayload.value = { description: '', readCommand: '', flowRate: '', pressureThreshold: '' }
 }
 
-function onSelectionChanged() {
-  if (!gridRef.value) return
-  selectedRows.value = gridRef.value.api.getSelectedRows()
+function onSelectionChanged(event) {
+  selectedRows.value = event.api.getSelectedRows()
 }
 
 function selectAllRows() {
-  if (!gridRef.value) return
-  gridRef.value.api.selectAll()
-  selectedRows.value = gridRef.value.api.getSelectedRows()
+  gridApi.value?.selectAll()
+  if (gridApi.value) {
+    selectedRows.value = gridApi.value.getSelectedRows()
+  }
+}
+
+function onGridReady(params) {
+  gridApi.value = params.api
 }
 
 let mapInstance = null
@@ -733,6 +731,7 @@ onUnmounted(() => {
     mapInstance.remove()
     mapInstance = null
   }
+  gridApi.value = null
 })
 
 const localeText = {

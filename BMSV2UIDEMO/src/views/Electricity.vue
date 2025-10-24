@@ -26,7 +26,7 @@
             <v-text-field
               v-model="quickFilterText"
               label="Genel Arama"
-              prepend-inner-icon="mdi-magnify"
+              prepend-inner-icon="search"
               variant="outlined"
               hide-details
               density="comfortable"
@@ -37,7 +37,6 @@
           <ag-grid-vue
             class="ag-theme-alpine"
             style="height: 600px; width: 100%"
-            ref="gridRef"
             :columnDefs="columnDefs"
             :rowData="tools"
             :quickFilterText="quickFilterText"
@@ -49,6 +48,7 @@
             :defaultColDef="defaultColDef"
             pagination
             :paginationPageSize="6"
+            @grid-ready="onGridReady"
             @selection-changed="onSelectionChanged"
           />
         </div>
@@ -65,7 +65,7 @@
           <v-text-field
             v-model="workOrderFilter"
             label="Genel Arama"
-            prepend-inner-icon="mdi-magnify"
+            prepend-inner-icon="search"
             variant="outlined"
             hide-details
             density="comfortable"
@@ -77,7 +77,6 @@
           <ag-grid-vue
             class="ag-theme-alpine"
             style="height: 600px; width: 100%"
-            ref="workOrderGridRef"
             :columnDefs="workOrderColumnDefs"
             :rowData="workOrderData"
             :quickFilterText="workOrderFilter"
@@ -96,7 +95,7 @@
           <v-text-field
             v-model="alertFilter"
             label="Genel Arama"
-            prepend-inner-icon="mdi-bell-alert"
+            prepend-inner-icon="notifications_active"
             variant="outlined"
             hide-details
             density="comfortable"
@@ -108,7 +107,6 @@
           <ag-grid-vue
             class="ag-theme-alpine"
             style="height: 600px; width: 100%"
-            ref="alertGridRef"
             :columnDefs="alertColumnDefs"
             :rowData="alertData"
             :quickFilterText="alertFilter"
@@ -136,7 +134,7 @@
     <v-card flat>
       <v-card-title class="text-h6 d-flex align-center justify-space-between">
         <span>İş Emri Gönder</span>
-        <v-btn icon="mdi-close" variant="text" @click="workOrderPanel = false" />
+        <v-btn icon="close" variant="text" @click="workOrderPanel = false" />
       </v-card-title>
 
       <v-divider />
@@ -209,7 +207,7 @@
   <transition name="slide-fade">
     <div v-if="workOrderNotification.visible" class="fancy-toast">
       <div class="toast-icon">
-        <v-icon size="28" color="white">mdi-bolt</v-icon>
+        <v-icon size="28" color="white">bolt</v-icon>
       </div>
       <div class="toast-text">
         ⚡ <strong>{{ workOrderNotification.message }}</strong>
@@ -220,7 +218,7 @@
   <transition name="slide-fade">
     <div v-if="alarmNotification.visible" class="alarm-toast">
       <div class="toast-icon">
-        <v-icon size="28" color="white">mdi-alert-decagram</v-icon>
+        <v-icon size="28" color="white">new_releases</v-icon>
       </div>
       <div class="toast-text">
         <strong>{{ alarmNotification.message }}</strong>
@@ -232,20 +230,17 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
-import 'ag-grid-enterprise'
-import { ModuleRegistry } from 'ag-grid-community'
-import { AllEnterpriseModule } from 'ag-grid-enterprise'
-ModuleRegistry.registerModules([AllEnterpriseModule])
+import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community'
+ModuleRegistry.registerModules([AllCommunityModule])
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
 // ---- Reaktif değişkenler ----
 const activeTab = ref('products')
 const quickFilterText = ref('')
-const gridRef = ref(null)
+const gridApi = ref(null)
 const selectedRows = ref([])
 const workOrderFilter = ref('')
-const workOrderGridRef = ref(null)
 
 // ---- Kolon tanımları ----
 const columnDefs = ref([
@@ -278,7 +273,6 @@ const columnDefs = ref([
   },
 ])
 const alertFilter = ref('')
-const alertGridRef = ref(null)
 
 const alertData = ref([
   {
@@ -641,12 +635,18 @@ function confirmSendWorkOrder() {
 }
 
 // ---- Grid Eventleri ----
-function onSelectionChanged() {
-  selectedRows.value = gridRef.value.api.getSelectedRows()
+function onSelectionChanged(event) {
+  selectedRows.value = event.api.getSelectedRows()
 }
 function selectAllRows() {
-  gridRef.value.api.selectAll()
-  selectedRows.value = gridRef.value.api.getSelectedRows()
+  gridApi.value?.selectAll()
+  if (gridApi.value) {
+    selectedRows.value = gridApi.value.getSelectedRows()
+  }
+}
+
+function onGridReady(params) {
+  gridApi.value = params.api
 }
 
 // ---- Harita Başlatma ----
@@ -732,7 +732,10 @@ onMounted(() => {
   alarmLoop()
 })
 
-onUnmounted(() => clearTimeout(alarmTimer))
+onUnmounted(() => {
+  clearTimeout(alarmTimer)
+  gridApi.value = null
+})
 
 onUnmounted(() => clearTimeout(workOrderTimer))
 

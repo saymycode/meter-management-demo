@@ -1,18 +1,73 @@
-import { createApp } from 'vue'
+import { createApp, h } from 'vue'
 import App from './App.vue'
 import router from './router'
 import { createPinia } from 'pinia'
-import 'ag-grid-enterprise' // En kolay yol: tüm enterprise özelliklerini alırsın
-
 // Vuetify
 import 'vuetify/styles'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 
+const iconAliases = {
+  close: 'close',
+  cancel: 'close',
+  clear: 'close',
+  complete: 'check',
+  delete: 'delete',
+  success: 'check_circle',
+  info: 'info',
+  warning: 'warning',
+  error: 'error',
+  prev: 'chevron_left',
+  next: 'chevron_right',
+  expand: 'expand_more',
+  collapse: 'expand_less',
+  delimiter: 'fiber_manual_record',
+  sort: 'arrow_upward',
+  menu: 'menu',
+  subgroup: 'arrow_drop_down',
+  dropdown: 'arrow_drop_down',
+  radioOn: 'radio_button_checked',
+  radioOff: 'radio_button_unchecked',
+  checkboxOn: 'check_box',
+  checkboxOff: 'check_box_outline_blank',
+  checkboxIndeterminate: 'indeterminate_check_box',
+  ratingEmpty: 'star',
+  ratingFull: 'star',
+  ratingHalf: 'star_half',
+  loading: 'autorenew',
+  first: 'first_page',
+  last: 'last_page',
+  unfold: 'unfold_more',
+  file: 'description',
+  plus: 'add',
+  minus: 'remove',
+  calendar: 'event',
+}
+
+const materialSymbols = {
+  component: (props) =>
+    h(
+      'span',
+      {
+        class: 'material-symbols-outlined',
+        style: { fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" },
+        'aria-hidden': 'true',
+      },
+      props.icon,
+    ),
+}
+
 const vuetify = createVuetify({
   components,
   directives,
+  icons: {
+    defaultSet: 'materialSymbols',
+    aliases: iconAliases,
+    sets: {
+      materialSymbols,
+    },
+  },
   theme: {
     defaultTheme: 'dark',
     themes: {
@@ -46,11 +101,7 @@ const vuetify = createVuetify({
 })
 // EN ÜSTE (main.js ya da bu Vue dosyası)
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community'
-import { RowGroupingModule, RowGroupingPanelModule } from 'ag-grid-enterprise'
 
-// daha önce yanlış yaptığın şu importu SİL:
-// import { RowGroupingModule } from 'ag-grid-community'  // ❌
-
-ModuleRegistry.registerModules([AllCommunityModule, RowGroupingModule, RowGroupingPanelModule])
+ModuleRegistry.registerModules([AllCommunityModule])
 
 createApp(App).use(router).use(createPinia()).use(vuetify).mount('#app')

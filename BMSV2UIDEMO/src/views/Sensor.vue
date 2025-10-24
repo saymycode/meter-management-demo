@@ -5,8 +5,9 @@
         <div class="header-chip">{{ organization.scope }} • Sensör listesi</div>
         <h1>Kurumsal sayaç yönetimi</h1>
         <p>
-          ASKİ'ye bağlı su ve elektrik sayaçları gün içinde rastgele saatlerde paket gönderir. Bu ekran yalnızca kurumunuza ait
-          LoRa ve GPRS sayaçlarını gösterir; farklı organizasyonların verileri görünmez.
+          ASKİ'ye bağlı su ve elektrik sayaçları gün içinde rastgele saatlerde paket gönderir. Bu
+          ekran yalnızca kurumunuza ait LoRa ve GPRS sayaçlarını gösterir; farklı organizasyonların
+          verileri görünmez.
         </p>
         <div class="header-meta">
           <DataFreshnessIndicator
@@ -33,16 +34,23 @@
         <div class="summary-split">
           <div>
             <span class="summary-label">LoRa</span>
-            <span class="summary-value">{{ communicationBreakdown.LoRa.toLocaleString('tr-TR') }}</span>
+            <span class="summary-value">{{
+              communicationBreakdown.LoRa.toLocaleString('tr-TR')
+            }}</span>
           </div>
           <div>
             <span class="summary-label">GPRS</span>
-            <span class="summary-value">{{ communicationBreakdown.GPRS.toLocaleString('tr-TR') }}</span>
+            <span class="summary-value">{{
+              communicationBreakdown.GPRS.toLocaleString('tr-TR')
+            }}</span>
           </div>
         </div>
         <div class="summary-note">
-          <v-icon icon="mdi-lightning-bolt" size="18" />
-          <span>Veriler canlı değil; her sayaç 24 saatlik pencere içinde rastgele saatlerde görünür.</span>
+          <v-icon icon="bolt" size="18" />
+          <span
+            >Veriler canlı değil; her sayaç 24 saatlik pencere içinde rastgele saatlerde
+            görünür.</span
+          >
         </div>
       </div>
     </section>
@@ -143,16 +151,28 @@
           </div>
           <v-list density="compact" class="plan-list">
             <v-list-item>
-              <v-list-item-title>• Koyu kartlar, neon aksanlar ve yuvarlatılmış köşeler HomeView ile aynıdır.</v-list-item-title>
+              <v-list-item-title
+                >• Koyu kartlar, neon aksanlar ve yuvarlatılmış köşeler HomeView ile
+                aynıdır.</v-list-item-title
+              >
             </v-list-item>
             <v-list-item>
-              <v-list-item-title>• Veri tazeliği çip renkleri (yeşil/sarı/kırmızı) hem grid hem kart görünümünde tekrar eder.</v-list-item-title>
+              <v-list-item-title
+                >• Veri tazeliği çip renkleri (yeşil/sarı/kırmızı) hem grid hem kart görünümünde
+                tekrar eder.</v-list-item-title
+              >
             </v-list-item>
             <v-list-item>
-              <v-list-item-title>• Tipografi hiyerarşisi: başlıklar 20px, etiketler 13px üst-alt boşluklu.</v-list-item-title>
+              <v-list-item-title
+                >• Tipografi hiyerarşisi: başlıklar 20px, etiketler 13px üst-alt
+                boşluklu.</v-list-item-title
+              >
             </v-list-item>
             <v-list-item>
-              <v-list-item-title>• Kart geçişlerinde hafif gölge ve hover ışımaları kullanılır; animasyonlar 160ms.</v-list-item-title>
+              <v-list-item-title
+                >• Kart geçişlerinde hafif gölge ve hover ışımaları kullanılır; animasyonlar
+                160ms.</v-list-item-title
+              >
             </v-list-item>
           </v-list>
         </v-card>
@@ -167,7 +187,7 @@
               density="comfortable"
               hide-details
               label="Sayaç, bölge veya adres ara"
-              prepend-inner-icon="mdi-magnify"
+              prepend-inner-icon="search"
               variant="outlined"
               clearable
             />
@@ -175,7 +195,7 @@
               <v-btn variant="text" @click="selectAllRows">Tümünü seç</v-btn>
               <v-btn
                 color="primary"
-                prepend-icon="mdi-clipboard-text-outline"
+                prepend-icon="assignment"
                 variant="flat"
                 :disabled="selectedRows.length === 0"
                 @click="openWorkOrder"
@@ -183,22 +203,29 @@
                 İş emri planla
               </v-btn>
               <v-btn-toggle v-model="viewMode" class="view-toggle" density="comfortable" mandatory>
-                <v-btn value="table" icon="mdi-table" />
-                <v-btn value="cards" icon="mdi-view-grid-outline" />
+                <v-btn value="table" icon="table" />
+                <v-btn value="cards" icon="grid_view" />
               </v-btn-toggle>
             </div>
           </div>
 
           <div class="list-meta">
-            <v-chip class="meta-chip" color="primary" variant="tonal">Toplam: {{ filteredStats.total }}</v-chip>
-            <v-chip class="meta-chip" color="success" variant="tonal">Aktif: {{ filteredStats.active }}</v-chip>
-            <v-chip class="meta-chip" color="amber-darken-2" variant="tonal">Beklemede: {{ filteredStats.pending }}</v-chip>
-            <v-chip class="meta-chip" color="red-darken-2" variant="tonal">Pasif: {{ filteredStats.inactive }}</v-chip>
+            <v-chip class="meta-chip" color="primary" variant="tonal"
+              >Toplam: {{ filteredStats.total }}</v-chip
+            >
+            <v-chip class="meta-chip" color="success" variant="tonal"
+              >Aktif: {{ filteredStats.active }}</v-chip
+            >
+            <v-chip class="meta-chip" color="amber-darken-2" variant="tonal"
+              >Beklemede: {{ filteredStats.pending }}</v-chip
+            >
+            <v-chip class="meta-chip" color="red-darken-2" variant="tonal"
+              >Pasif: {{ filteredStats.inactive }}</v-chip
+            >
           </div>
 
           <div v-if="viewMode === 'table'" class="grid-wrapper">
             <ag-grid-vue
-              ref="gridRef"
               class="ag-theme-alpine-dark sensor-grid"
               :columnDefs="columnDefs"
               :rowData="filteredSensors"
@@ -210,6 +237,7 @@
               :pagination="true"
               :paginationPageSize="10"
               suppressMovableColumns
+              @grid-ready="onGridReady"
               @selection-changed="onSelectionChanged"
             />
           </div>
@@ -223,12 +251,16 @@
                       <span class="sensor-id">{{ sensor.sensorId }}</span>
                       <span class="sensor-zone">{{ sensor.zone }}</span>
                     </div>
-                    <v-chip :color="sensor.freshnessChip" size="small" variant="tonal">{{ sensor.freshnessBadge }}</v-chip>
+                    <v-chip :color="sensor.freshnessChip" size="small" variant="tonal">{{
+                      sensor.freshnessBadge
+                    }}</v-chip>
                   </div>
                   <div class="sensor-card-body">
                     <div class="sensor-row">
                       <span class="sensor-label">Tip</span>
-                      <span class="sensor-value">{{ sensor.typeLabel }} • {{ sensor.commMethod }}</span>
+                      <span class="sensor-value"
+                        >{{ sensor.typeLabel }} • {{ sensor.commMethod }}</span
+                      >
                     </div>
                     <div class="sensor-row">
                       <span class="sensor-label">Son veri</span>
@@ -265,36 +297,41 @@
           <div class="map-header">
             <div>
               <h2>Konum görünümü</h2>
-              <span class="map-subtitle">Son paket: {{ lastPacketLabel }} • {{ lastPacketAgo }}</span>
+              <span class="map-subtitle"
+                >Son paket: {{ lastPacketLabel }} • {{ lastPacketAgo }}</span
+              >
             </div>
-            <v-chip prepend-icon="mdi-crosshairs-gps" size="small" variant="tonal">Kurum kapsamı</v-chip>
+            <v-chip prepend-icon="my_location" size="small" variant="tonal">Kurum kapsamı</v-chip>
           </div>
           <div id="sensor-map" class="map-container" />
           <div class="map-legend">
-            <div class="legend-item">
-              <span class="legend-dot active" /> Aktif
-            </div>
-            <div class="legend-item">
-              <span class="legend-dot pending" /> Beklemede
-            </div>
-            <div class="legend-item">
-              <span class="legend-dot inactive" /> Pasif
-            </div>
+            <div class="legend-item"><span class="legend-dot active" /> Aktif</div>
+            <div class="legend-item"><span class="legend-dot pending" /> Beklemede</div>
+            <div class="legend-item"><span class="legend-dot inactive" /> Pasif</div>
           </div>
         </v-card>
       </v-col>
     </v-row>
   </v-container>
 
-  <v-navigation-drawer v-model="workOrderPanel" location="right" width="420" temporary scrim="false" elevation="10">
+  <v-navigation-drawer
+    v-model="workOrderPanel"
+    location="right"
+    width="420"
+    temporary
+    scrim="false"
+    elevation="10"
+  >
     <v-card flat>
       <v-card-title class="drawer-title">
         <span>İş emri planla</span>
-        <v-btn icon="mdi-close" variant="text" @click="workOrderPanel = false" />
+        <v-btn icon="close" variant="text" @click="workOrderPanel = false" />
       </v-card-title>
       <v-divider />
       <v-card-text>
-        <div class="drawer-summary">Seçili sayaç sayısı: <strong>{{ selectedRows.length }}</strong></div>
+        <div class="drawer-summary">
+          Seçili sayaç sayısı: <strong>{{ selectedRows.length }}</strong>
+        </div>
         <v-select
           v-model="selectedWorkOrderType"
           :items="workOrderTypes"
@@ -304,15 +341,32 @@
           class="mb-3"
         />
         <template v-if="selectedWorkOrderType === 'Kalibrasyon'">
-          <v-text-field v-model="workOrderPayload.calibrationCode" label="Kalibrasyon kodu" variant="outlined" />
+          <v-text-field
+            v-model="workOrderPayload.calibrationCode"
+            label="Kalibrasyon kodu"
+            variant="outlined"
+          />
         </template>
         <template v-else-if="selectedWorkOrderType === 'Firmware Güncelleme'">
-          <v-text-field v-model="workOrderPayload.firmwareVersion" label="Hedef sürüm" variant="outlined" />
+          <v-text-field
+            v-model="workOrderPayload.firmwareVersion"
+            label="Hedef sürüm"
+            variant="outlined"
+          />
         </template>
         <template v-else-if="selectedWorkOrderType === 'Sensör Sıfırlama'">
-          <v-text-field v-model="workOrderPayload.resetReason" label="Sıfırlama nedeni" variant="outlined" />
+          <v-text-field
+            v-model="workOrderPayload.resetReason"
+            label="Sıfırlama nedeni"
+            variant="outlined"
+          />
         </template>
-        <v-textarea v-model="workOrderPayload.description" label="Açıklama" variant="outlined" rows="3" />
+        <v-textarea
+          v-model="workOrderPayload.description"
+          label="Açıklama"
+          variant="outlined"
+          rows="3"
+        />
       </v-card-text>
       <v-divider />
       <v-card-actions class="justify-end">
@@ -327,15 +381,17 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { AgGridVue } from 'ag-grid-vue3'
-import { ModuleRegistry } from 'ag-grid-community'
-import { AllEnterpriseModule } from 'ag-grid-enterprise'
+import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import DataFreshnessIndicator from '@/components/common/DataFreshnessIndicator.vue'
 import { meterSnapshots, organizationProfile, referenceNow } from '@/data/mockMeters'
 import { formatAbsolute, formatClock, formatRelativeAgo, hoursBetween, toDate } from '@/utils/time'
+import 'ag-grid-community/styles/ag-grid.css'
+import 'ag-grid-community/styles/ag-theme-alpine.css'
+import 'ag-grid-community/styles/ag-theme-alpine-dark.css'
 
-ModuleRegistry.registerModules([AllEnterpriseModule])
+ModuleRegistry.registerModules([AllCommunityModule])
 
 const organization = organizationProfile
 const now = ref(new Date(referenceNow))
@@ -378,7 +434,7 @@ const sensorRecords = computed(() =>
     const freshnessMap = {
       '< 24 saat': { badge: 'Takvimde', chip: 'success', level: 'on-time' },
       '24-48 saat': { badge: 'Beklemede', chip: 'amber-darken-2', level: 'delayed' },
-      '48+ saat': { badge: 'Pasif', chip: 'red-darken-2', level: 'missed' }
+      '48+ saat': { badge: 'Pasif', chip: 'red-darken-2', level: 'missed' },
     }
     const mapping = freshnessMap[freshness]
 
@@ -405,9 +461,9 @@ const sensorRecords = computed(() =>
       commSort: meter.communication,
       sparkline: meter.consumption?.history ?? [],
       lat: meter.lat,
-      lng: meter.lng
+      lng: meter.lng,
     }
-  })
+  }),
 )
 
 const zoneOptions = computed(() => [...new Set(sensorRecords.value.map((sensor) => sensor.zone))])
@@ -415,14 +471,17 @@ const zoneOptions = computed(() => [...new Set(sensorRecords.value.map((sensor) 
 const filteredSensors = computed(() => {
   const term = searchTerm.value.trim().toLowerCase()
   return sensorRecords.value.filter((sensor) => {
-    if (selectedStatuses.value.length && !selectedStatuses.value.includes(sensor.status)) return false
-    if (selectedFreshness.value.length && !selectedFreshness.value.includes(sensor.freshnessBucket)) return false
+    if (selectedStatuses.value.length && !selectedStatuses.value.includes(sensor.status))
+      return false
+    if (selectedFreshness.value.length && !selectedFreshness.value.includes(sensor.freshnessBucket))
+      return false
     if (selectedComm.value.length && !selectedComm.value.includes(sensor.commMethod)) return false
     if (selectedTypes.value.length && !selectedTypes.value.includes(sensor.typeLabel)) return false
     if (selectedZones.value.length && !selectedZones.value.includes(sensor.zone)) return false
 
     if (!term) return true
-    const haystack = `${sensor.sensorId} ${sensor.zone} ${sensor.location} ${sensor.commMethod} ${sensor.status}`.toLowerCase()
+    const haystack =
+      `${sensor.sensorId} ${sensor.zone} ${sensor.location} ${sensor.commMethod} ${sensor.status}`.toLowerCase()
     return haystack.includes(term)
   })
 })
@@ -445,30 +504,33 @@ const communicationBreakdown = computed(() =>
       acc[sensor.commMethod] = (acc[sensor.commMethod] ?? 0) + 1
       return acc
     },
-    { LoRa: 0, GPRS: 0 }
-  )
+    { LoRa: 0, GPRS: 0 },
+  ),
 )
 
 const headerMetrics = computed(() => [
   {
     label: 'Aktif sayaç',
     value: `${filteredStats.value.active.toLocaleString('tr-TR')}`,
-    hint: `Toplamın %${totalSensors.value ? ((filteredStats.value.active / totalSensors.value) * 100).toFixed(1) : '0.0'}`
+    hint: `Toplamın %${totalSensors.value ? ((filteredStats.value.active / totalSensors.value) * 100).toFixed(1) : '0.0'}`,
   },
   {
     label: 'Beklemede',
     value: filteredStats.value.pending.toLocaleString('tr-TR'),
-    hint: '24-48 saat arası'
+    hint: '24-48 saat arası',
   },
   {
     label: 'Pasif',
     value: filteredStats.value.inactive.toLocaleString('tr-TR'),
-    hint: '48+ saat'
-  }
+    hint: '48+ saat',
+  },
 ])
 
 const lastPacket = computed(() =>
-  sensorRecords.value.reduce((latest, sensor) => (sensor.lastPacketAt > latest ? sensor.lastPacketAt : latest), new Date(0))
+  sensorRecords.value.reduce(
+    (latest, sensor) => (sensor.lastPacketAt > latest ? sensor.lastPacketAt : latest),
+    new Date(0),
+  ),
 )
 
 const lastPacketLabel = computed(() => formatAbsolute(lastPacket.value))
@@ -483,7 +545,7 @@ const columnDefs = ref([
     field: 'lastPacketLabel',
     headerName: 'Son veri',
     minWidth: 200,
-    valueGetter: (params) => `${params.data.lastPacketLabel} • ${params.data.lastPacketAgo}`
+    valueGetter: (params) => `${params.data.lastPacketLabel} • ${params.data.lastPacketAgo}`,
   },
   {
     field: 'freshnessBadge',
@@ -494,16 +556,16 @@ const columnDefs = ref([
       const colors = {
         Takvimde: 'rgba(34,197,94,0.18)',
         Beklemede: 'rgba(251,191,36,0.18)',
-        Pasif: 'rgba(248,113,113,0.18)'
+        Pasif: 'rgba(248,113,113,0.18)',
       }
       const color = colors[params.value] || 'rgba(59,130,246,0.18)'
       return `<span style="display:inline-flex;align-items:center;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:600;background:${color};color:#f8fafc;">${params.value}</span>`
-    }
+    },
   },
   { field: 'lastReading', headerName: 'Okuma', width: 130 },
   { field: 'battery', headerName: 'Batarya', width: 110 },
   { field: 'signal', headerName: 'Sinyal', width: 140 },
-  { field: 'window', headerName: 'Pencere', width: 140 }
+  { field: 'window', headerName: 'Pencere', width: 140 },
 ])
 
 const defaultColDef = {
@@ -512,24 +574,29 @@ const defaultColDef = {
   filter: true,
   floatingFilter: true,
   minWidth: 120,
-  flex: 1
+  flex: 1,
 }
 
 const gridOptions = {
   rowClassRules: {
     'row-delayed': (params) => params.data?.freshnessLevel === 'delayed',
-    'row-missed': (params) => params.data?.freshnessLevel === 'missed'
-  }
+    'row-missed': (params) => params.data?.freshnessLevel === 'missed',
+  },
 }
 
-const gridRef = ref(null)
+const gridApi = ref(null)
 const selectedRows = ref([])
 const viewMode = ref('table')
 
 const workOrderPanel = ref(false)
 const workOrderTypes = ['Kalibrasyon', 'Firmware Güncelleme', 'Sensör Sıfırlama']
 const selectedWorkOrderType = ref(null)
-const workOrderPayload = ref({ description: '', calibrationCode: '', firmwareVersion: '', resetReason: '' })
+const workOrderPayload = ref({
+  description: '',
+  calibrationCode: '',
+  firmwareVersion: '',
+  resetReason: '',
+})
 
 const resetFilters = () => {
   selectedStatuses.value = []
@@ -540,13 +607,15 @@ const resetFilters = () => {
 }
 
 const selectAllRows = () => {
-  if (gridRef.value) {
-    gridRef.value.api.selectAll()
-  }
+  gridApi.value?.selectAll()
 }
 
 const onSelectionChanged = (event) => {
   selectedRows.value = event.api.getSelectedRows()
+}
+
+const onGridReady = (params) => {
+  gridApi.value = params.api
 }
 
 const openWorkOrder = () => {
@@ -560,24 +629,25 @@ const confirmWorkOrder = () => {
 const applyRoutePrefill = () => {
   const { status, communication, zone } = route.query
   if (status && statusOptions.includes(status)) selectedStatuses.value = [status]
-  if (communication && communicationOptions.includes(communication)) selectedComm.value = [communication]
+  if (communication && communicationOptions.includes(communication))
+    selectedComm.value = [communication]
   if (zone) selectedZones.value = [zone]
 }
 
 const mapState = {
   instance: null,
-  markers: []
+  markers: [],
 }
 
 const initMap = () => {
   if (mapState.instance) return
   mapState.instance = L.map('sensor-map', {
     zoomControl: false,
-    attributionControl: false
+    attributionControl: false,
   }).setView([39.9334, 32.8597], 10)
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18
+    maxZoom: 18,
   }).addTo(mapState.instance)
 
   updateMarkers()
@@ -597,17 +667,19 @@ const updateMarkers = () => {
           : sensor.status === 'Beklemede'
             ? 'rgba(251,191,36,0.7)'
             : 'rgba(248,113,113,0.75)',
-      fillOpacity: 0.85
+      fillOpacity: 0.85,
     }).addTo(mapState.instance)
-    marker.bindPopup(`<strong>${sensor.sensorId}</strong><br/>${sensor.location}<br/>${sensor.lastPacketDisplay}`)
+    marker.bindPopup(
+      `<strong>${sensor.sensorId}</strong><br/>${sensor.location}<br/>${sensor.lastPacketDisplay}`,
+    )
     return marker
   })
 }
 
 watch(filteredSensors, () => {
   updateMarkers()
-  if (viewMode.value === 'table' && gridRef.value) {
-    gridRef.value.api.setRowData(filteredSensors.value)
+  if (viewMode.value === 'table' && gridApi.value) {
+    gridApi.value.setGridOption('rowData', filteredSensors.value)
   }
 })
 
@@ -617,6 +689,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  gridApi.value = null
   if (mapState.instance) {
     mapState.instance.remove()
     mapState.instance = null
@@ -639,7 +712,9 @@ onBeforeUnmount(() => {
   gap: 32px;
   padding: 28px 32px;
   border-radius: 26px;
-  background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.2), transparent 45%), rgba(13, 20, 34, 0.86);
+  background:
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.2), transparent 45%),
+    rgba(13, 20, 34, 0.86);
   border: 1px solid rgba(59, 130, 246, 0.18);
   box-shadow: 0 26px 54px rgba(2, 12, 24, 0.55);
 }
@@ -898,7 +973,9 @@ onBeforeUnmount(() => {
   border-radius: 22px;
   border: 1px solid rgba(59, 130, 246, 0.18);
   background: rgba(10, 16, 28, 0.78);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .sensor-card.on-time {

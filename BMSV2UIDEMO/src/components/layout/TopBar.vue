@@ -5,15 +5,15 @@
         <div class="topbar-label">BAYLAN</div>
         <h2 class="topbar-title">BMS V2</h2>
       </div>
-      <!-- <v-chip color="primary" class="topbar-chip" prepend-icon="mdi-lightning-bolt">
+      <!-- <v-chip color="primary" class="topbar-chip" prepend-icon="bolt">
         Grid Optimizer 2.0
       </v-chip> -->
     </div>
 
     <!-- <v-text-field
       v-model="search"
-      prepend-inner-icon="mdi-magnify"
-      append-inner-icon="mdi-tune"
+      prepend-inner-icon="search"
+      append-inner-icon="tune"
       placeholder="Sayaç, kullanıcı veya adres ara..."
       hide-details
       variant="outlined"
@@ -31,7 +31,7 @@
         <v-icon size="22">{{ themeIcon }}</v-icon>
       </v-btn>
 
-      <v-btn class="ghost-btn" prepend-icon="mdi-calendar-clock" variant="text"> </v-btn>
+      <v-btn class="ghost-btn" prepend-icon="event" variant="text"> </v-btn>
 
       <v-divider vertical class="mx-4" />
 
@@ -39,13 +39,13 @@
         <template #activator="{ props }">
           <v-btn v-bind="props" class="profile-btn" variant="text">
             <v-avatar size="40" class="profile-avatar">
-              <v-icon size="22">mdi-account-cog-outline</v-icon>
+              <v-icon size="22">manage_accounts</v-icon>
             </v-avatar>
             <div class="profile-meta">
               <span class="profile-name">Berk.Ulusoy</span>
               <span class="profile-role">Baylan.Admin</span>
             </div>
-            <v-icon size="18">mdi-chevron-down</v-icon>
+            <v-icon size="18">expand_more</v-icon>
           </v-btn>
         </template>
 
@@ -71,7 +71,7 @@ import { computed } from 'vue'
 import { useTheme } from 'vuetify'
 const theme = useTheme()
 const isDark = computed(() => theme.global.current.value.dark)
-const themeIcon = computed(() => (isDark.value ? 'mdi-weather-sunny' : 'mdi-weather-night'))
+const themeIcon = computed(() => (isDark.value ? 'sunny' : 'dark_mode'))
 
 function logout() {
   alert('Çıkış yapıldı (mock).')

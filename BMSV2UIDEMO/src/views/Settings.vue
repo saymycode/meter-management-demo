@@ -8,7 +8,7 @@
           parametrelerini yönetin.
         </p>
       </div>
-      <v-btn class="save-btn" color="primary" prepend-icon="mdi-content-save-outline" size="large" variant="flat">
+      <v-btn class="save-btn" color="primary" prepend-icon="save" size="large" variant="flat">
         Değişiklikleri Kaydet
       </v-btn>
     </div>
@@ -57,21 +57,21 @@
           <v-divider class="mb-2" />
           <div class="contact-block">
             <div class="contact-row">
-              <v-icon icon="mdi-account-tie" size="18" />
+              <v-icon icon="business_center" size="18" />
               <div>
                 <span class="label">Saha Yöneticisi</span>
                 <p>{{ currentOrg.contact.manager }}</p>
               </div>
             </div>
             <div class="contact-row">
-              <v-icon icon="mdi-email-edit-outline" size="18" />
+              <v-icon icon="mail" size="18" />
               <div>
                 <span class="label">E-posta</span>
                 <p>{{ currentOrg.contact.email }}</p>
               </div>
             </div>
             <div class="contact-row">
-              <v-icon icon="mdi-phone-incoming" size="18" />
+              <v-icon icon="phone_callback" size="18" />
               <div>
                 <span class="label">Telefon</span>
                 <p>{{ currentOrg.contact.phone }}</p>
@@ -123,7 +123,7 @@
               class="mt-4"
               :color="currentOrg.health.statusColor"
               density="comfortable"
-              icon="mdi-pulse"
+              icon="monitor_heart"
               variant="tonal"
             >
               {{ currentOrg.health.summary }}
@@ -396,7 +396,7 @@ const organizations = ref([
         tech: 'ChirpStack',
         layer: 'Ağ Sunucusu',
         status: 'active',
-        icon: 'mdi-router-wireless',
+        icon: 'router',
         endpoint: 'https://chirpstack-a.example/api',
         lastSync: '12 dk önce',
         latency: 112,
@@ -408,7 +408,7 @@ const organizations = ref([
         tech: 'LoRa Gateway',
         layer: 'RF Backhaul',
         status: 'active',
-        icon: 'mdi-access-point-network',
+        icon: 'wifi',
         endpoint: 'GW-BOR-12',
         lastSync: '3 dk önce',
         latency: 54,
@@ -420,7 +420,7 @@ const organizations = ref([
         tech: 'NB-IoT Core',
         layer: 'Operatör',
         status: 'maintenance',
-        icon: 'mdi-cellphone-nfc',
+        icon: 'nfc',
         endpoint: 'tr-nbiot-01',
         lastSync: '43 dk önce',
         latency: 220,
@@ -432,7 +432,7 @@ const organizations = ref([
         tech: 'GPRS APN',
         layer: 'Yedek Kanal',
         status: 'active',
-        icon: 'mdi-signal-cellular-3',
+        icon: 'signal_cellular_alt',
         endpoint: 'apn.baylan.com',
         lastSync: '26 dk önce',
         latency: 180,
@@ -523,7 +523,7 @@ const organizations = ref([
         tech: 'ChirpStack',
         layer: 'Ağ Sunucusu',
         status: 'active',
-        icon: 'mdi-router-wireless',
+        icon: 'router',
         endpoint: 'https://chirpstack-b.example/api',
         lastSync: '25 dk önce',
         latency: 140,
@@ -535,7 +535,7 @@ const organizations = ref([
         tech: 'LoRa Gateway',
         layer: 'RF Backhaul',
         status: 'active',
-        icon: 'mdi-access-point-network',
+        icon: 'wifi',
         endpoint: 'GW-KCS-04',
         lastSync: '11 dk önce',
         latency: 72,
@@ -547,7 +547,7 @@ const organizations = ref([
         tech: 'NB-IoT Core',
         layer: 'Operatör',
         status: 'degraded',
-        icon: 'mdi-cellphone-nfc',
+        icon: 'nfc',
         endpoint: 'tr-nbiot-06',
         lastSync: '2 saat önce',
         latency: 320,
@@ -559,7 +559,7 @@ const organizations = ref([
         tech: 'GPRS APN',
         layer: 'Yedek Kanal',
         status: 'active',
-        icon: 'mdi-signal-cellular-3',
+        icon: 'signal_cellular_alt',
         endpoint: 'apn-irig.example',
         lastSync: '9 dk önce',
         latency: 190,
@@ -643,7 +643,7 @@ const organizations = ref([
         tech: 'ChirpStack',
         layer: 'Ağ Sunucusu',
         status: 'active',
-        icon: 'mdi-router-wireless',
+        icon: 'router',
         endpoint: 'https://chirpstack-c.example/api',
         lastSync: '5 dk önce',
         latency: 96,
@@ -655,7 +655,7 @@ const organizations = ref([
         tech: 'LoRa Gateway',
         layer: 'RF Backhaul',
         status: 'active',
-        icon: 'mdi-access-point-network',
+        icon: 'wifi',
         endpoint: 'GW-BES-21',
         lastSync: '1 dk önce',
         latency: 40,
@@ -667,7 +667,7 @@ const organizations = ref([
         tech: 'NB-IoT Core',
         layer: 'Operatör',
         status: 'active',
-        icon: 'mdi-cellphone-nfc',
+        icon: 'nfc',
         endpoint: 'tr-nbiot-11',
         lastSync: '8 dk önce',
         latency: 150,
@@ -679,7 +679,7 @@ const organizations = ref([
         tech: 'GPRS APN',
         layer: 'Yedek Kanal',
         status: 'maintenance',
-        icon: 'mdi-signal-cellular-3',
+        icon: 'signal_cellular_alt',
         endpoint: 'apn-light-backup',
         lastSync: '1 gün önce',
         latency: 260,
@@ -763,7 +763,7 @@ const organizations = ref([
         tech: 'ChirpStack',
         layer: 'Ağ Sunucusu',
         status: 'active',
-        icon: 'mdi-router-wireless',
+        icon: 'router',
         endpoint: 'https://chirpstack-d.example/api',
         lastSync: '55 dk önce',
         latency: 160,
@@ -775,7 +775,7 @@ const organizations = ref([
         tech: 'LoRa Gateway',
         layer: 'RF Backhaul',
         status: 'degraded',
-        icon: 'mdi-access-point-network',
+        icon: 'wifi',
         endpoint: 'GW-ADA-07',
         lastSync: '1 saat önce',
         latency: 280,
@@ -787,7 +787,7 @@ const organizations = ref([
         tech: 'NB-IoT Core',
         layer: 'Operatör',
         status: 'active',
-        icon: 'mdi-cellphone-nfc',
+        icon: 'nfc',
         endpoint: 'tr-nbiot-04',
         lastSync: '28 dk önce',
         latency: 210,
@@ -799,7 +799,7 @@ const organizations = ref([
         tech: 'GPRS APN',
         layer: 'Yedek Kanal',
         status: 'active',
-        icon: 'mdi-signal-cellular-3',
+        icon: 'signal_cellular_alt',
         endpoint: 'apn-agri.example',
         lastSync: '31 dk önce',
         latency: 205,
@@ -883,7 +883,7 @@ const organizations = ref([
         tech: 'ChirpStack',
         layer: 'Ağ Sunucusu',
         status: 'active',
-        icon: 'mdi-router-wireless',
+        icon: 'router',
         endpoint: 'https://chirpstack-e.example/api',
         lastSync: '3 dk önce',
         latency: 88,
@@ -895,7 +895,7 @@ const organizations = ref([
         tech: 'LoRa Gateway',
         layer: 'RF Backhaul',
         status: 'active',
-        icon: 'mdi-access-point-network',
+        icon: 'wifi',
         endpoint: 'GW-TRB-02',
         lastSync: '7 dk önce',
         latency: 66,
@@ -907,7 +907,7 @@ const organizations = ref([
         tech: 'NB-IoT Core',
         layer: 'Operatör',
         status: 'active',
-        icon: 'mdi-cellphone-nfc',
+        icon: 'nfc',
         endpoint: 'tr-nbiot-09',
         lastSync: '6 dk önce',
         latency: 134,
@@ -919,7 +919,7 @@ const organizations = ref([
         tech: 'GPRS APN',
         layer: 'Yedek Kanal',
         status: 'active',
-        icon: 'mdi-signal-cellular-3',
+        icon: 'signal_cellular_alt',
         endpoint: 'apn-water-backup',
         lastSync: '14 dk önce',
         latency: 176,
