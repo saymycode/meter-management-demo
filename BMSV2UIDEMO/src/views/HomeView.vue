@@ -36,7 +36,7 @@
     </section>
 
     <div class="dashboard-grid">
-      <div class="grid-cell span-7">
+      <div class="grid-cell span-6">
         <v-card class="dashboard-card" elevation="0">
           <div class="card-header">
             <div>
@@ -70,7 +70,7 @@
         </v-card>
       </div>
 
-      <div class="grid-cell span-5">
+      <div class="grid-cell span-6">
         <v-card class="dashboard-card" elevation="0">
           <div class="card-header">
             <div>
@@ -129,7 +129,7 @@
         </v-card>
       </div>
 
-      <div class="grid-cell span-7">
+      <div class="grid-cell span-6">
         <v-card class="dashboard-card" elevation="0">
           <div class="card-header">
             <div>
@@ -177,7 +177,7 @@
         </v-card>
       </div>
 
-      <div class="grid-cell span-5">
+      <div class="grid-cell span-6">
         <v-card class="dashboard-card alerts" elevation="0">
           <div class="card-header">
             <div>
