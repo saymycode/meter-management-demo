@@ -21,6 +21,18 @@
               İş Emri Gönder
             </v-btn>
 
+            <v-select
+              v-model="groupBy"
+              :items="groupOptions"
+              class="group-select"
+              density="comfortable"
+              hide-details
+              label="Grupla"
+              multiple
+              chips
+              variant="outlined"
+            />
+
             <v-text-field
               v-model="quickFilterText"
               label="Genel Arama"
@@ -32,24 +44,33 @@
             />
           </div>
 
-          <ag-grid-vue
-            class="ag-theme-alpine"
-            style="height: 600px; width: 100%"
-            :columnDefs="columnDefs"
-            :rowData="waterMeters"
-            :quickFilterText="quickFilterText"
-            :autoGroupColumnDef="autoGroupColumnDef"
-            rowGroupPanelShow="always"
-            animateRows="true"
-            groupSelectsChildren="true"
-            rowSelection="multiple"
-            :localeText="localeText"
-            :defaultColDef="defaultColDef"
-            pagination
-            :paginationPageSize="6"
-            @grid-ready="onGridReady"
-            @selection-changed="onSelectionChanged"
-          />
+          <v-data-table
+            v-model:selected="selectedRows"
+            :headers="tableHeaders"
+            :items="filteredMeters"
+            :group-by="tableGroupBy"
+            :sort-by="tableSortBy"
+            :items-per-page="6"
+            class="water-table"
+            density="comfortable"
+            item-value="name"
+            return-object
+            show-select
+            hover
+            fixed-header
+          >
+            <template #item.status="{ item }">
+              <v-chip :color="statusChipColor(item.status)" size="small" variant="tonal">
+                {{ item.status }}
+              </v-chip>
+            </template>
+            <template #item.consumptionDisplay="{ item }">
+              <span class="mono">{{ item.consumptionDisplay }}</span>
+            </template>
+            <template #no-data>
+              <div class="no-data">Eşleşen sayaç bulunamadı.</div>
+            </template>
+          </v-data-table>
         </div>
       </v-window-item>
 
@@ -71,20 +92,30 @@
             style="max-width: 950px"
           />
 
-          <ag-grid-vue
-            class="ag-theme-alpine"
-            style="height: 600px; width: 100%"
-            :columnDefs="workOrderColumnDefs"
-            :rowData="workOrderData"
-            :quickFilterText="workOrderFilter"
-            rowGroupPanelShow="always"
-            animateRows="true"
-            groupSelectsChildren="true"
-            :localeText="localeText"
-            :defaultColDef="defaultColDef"
-            pagination
-            :paginationPageSize="8"
-          />
+          <v-data-table
+            :headers="workOrderHeaders"
+            :items="filteredWorkOrders"
+            class="secondary-table"
+            density="comfortable"
+            :items-per-page="8"
+            hover
+            fixed-header
+          >
+            <template #item.status="{ item }">
+              <v-chip :color="workOrderStatusColor(item.status)" size="small" variant="tonal">
+                {{ item.status }}
+              </v-chip>
+            </template>
+            <template #item.payload="{ item }">
+              <span class="mono">{{ item.payload }}</span>
+            </template>
+            <template #item.workOrderId="{ item }">
+              <span class="mono">{{ item.workOrderId }}</span>
+            </template>
+            <template #no-data>
+              <div class="no-data">İş emri kaydı bulunamadı.</div>
+            </template>
+          </v-data-table>
         </div>
       </v-window-item>
 
@@ -102,20 +133,30 @@
             style="max-width: 950px"
           />
 
-          <ag-grid-vue
-            class="ag-theme-alpine"
-            style="height: 600px; width: 100%"
-            :columnDefs="alertColumnDefs"
-            :rowData="alertData"
-            :quickFilterText="alertFilter"
-            rowGroupPanelShow="always"
-            animateRows="true"
-            groupSelectsChildren="true"
-            :localeText="localeText"
-            :defaultColDef="defaultColDef"
-            pagination
-            :paginationPageSize="8"
-          />
+          <v-data-table
+            :headers="alertHeaders"
+            :items="filteredAlerts"
+            class="secondary-table"
+            density="comfortable"
+            :items-per-page="8"
+            hover
+            fixed-header
+          >
+            <template #item.severity="{ item }">
+              <v-chip :color="alertSeverityColor(item.severity)" size="small" variant="tonal">
+                {{ item.severity }}
+              </v-chip>
+            </template>
+            <template #item.payload="{ item }">
+              <span class="mono">{{ item.payload }}</span>
+            </template>
+            <template #item.alertId="{ item }">
+              <span class="mono">{{ item.alertId }}</span>
+            </template>
+            <template #no-data>
+              <div class="no-data">Aktif uyarı bulunamadı.</div>
+            </template>
+          </v-data-table>
         </div>
       </v-window-item>
     </v-window>
@@ -225,10 +266,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue'
-import { AgGridVue } from 'ag-grid-vue3'
-import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community'
-ModuleRegistry.registerModules([AllCommunityModule])
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -237,60 +275,27 @@ const quickFilterText = ref('')
 const workOrderFilter = ref('')
 const alertFilter = ref('')
 
-const gridApi = ref(null)
 const selectedRows = ref([])
 const workOrderPanel = ref(false)
+const groupBy = ref([])
 
-const columnDefs = ref([
-  {
-    field: 'name',
-    headerName: 'Sayaç Kodu',
-    filter: true,
-    checkboxSelection: true,
-    headerCheckboxSelection: true,
-  },
-  { field: 'model', headerName: 'Sayaç Modeli', filter: true, enableRowGroup: true },
+const groupOptions = [
+  { title: 'Model', value: 'model' },
+  { title: 'İletişim', value: 'type' },
+  { title: 'Durum', value: 'status' },
+]
 
-  { field: 'type', headerName: 'Tip' },
+const tableHeaders = [
+  { title: 'Sayaç Kodu', key: 'name', sortable: true },
+  { title: 'Model', key: 'model', sortable: true },
+  { title: 'İletişim', key: 'type', sortable: true },
+  { title: 'Tüketim (m³)', key: 'consumptionDisplay', sortable: true },
+  { title: 'Komut İndeksi', key: 'commandIndex', sortable: true },
+  { title: 'Durum', key: 'status', sortable: true },
+]
 
-  { field: 'Consumption', headerName: 'Tüketim (m³)', filter: 'agNumberColumnFilter' },
-  { field: 'commandIndex', headerName: 'Komut İndeksi', filter: 'agNumberColumnFilter' },
-  {
-    field: 'status',
-    headerName: 'Durum',
-    filter: true,
-    cellRenderer: (params) => {
-      const color = params.value === 'Aktif' ? '#1E88E5' : '#78909C'
-      return `
-        <span style="
-          background-color:${color};
-          color:white;
-          padding:3px 8px;
-          border-radius:8px;
-          font-size:12px;">
-          ${params.value}
-        </span>`
-    },
-  },
-])
-
-const defaultColDef = {
-  filter: true,
-  sortable: true,
-  resizable: true,
-  flex: 1,
-  minWidth: 120,
-  floatingFilter: true,
-  enableValue: true,
-  enableRowGroup: true,
-}
-
-const autoGroupColumnDef = ref({
-  headerName: 'Cihaz Tipi',
-  field: 'type',
-  cellRenderer: 'agGroupCellRenderer',
-  cellRendererParams: { checkbox: true },
-})
+const tableSortBy = ref([{ key: 'name', order: 'asc' }])
+const tableGroupBy = computed(() => groupBy.value.map((key) => ({ key })))
 
 const waterMeters = ref([
   {
@@ -320,104 +325,142 @@ const waterMeters = ref([
     commandIndex: 25,
     status: 'Aktif',
     type: 'NB-IoT',
-    lat: 39.9186,
-    lng: 32.8489,
+    lat: 39.9191,
+    lng: 32.8615,
   },
   {
     name: '20004',
-    model: 'AK-411',
-    Consumption: 0.7,
-    commandIndex: 50,
+    model: 'AK-511',
+    Consumption: 0.1,
+    commandIndex: 18,
     status: 'Pasif',
     type: 'LoRa',
-    lat: 39.9241,
-    lng: 32.8522,
+    lat: 39.9212,
+    lng: 32.8577,
   },
   {
     name: '20005',
-    model: 'AK-311',
-    Consumption: 0.3,
-    commandIndex: 10,
+    model: 'AK-611',
+    Consumption: 0.9,
+    commandIndex: 28,
     status: 'Aktif',
     type: 'GPRS',
-    lat: 39.9175,
-    lng: 32.8576,
+    lat: 39.9187,
+    lng: 32.8599,
   },
   {
     name: '20006',
-    model: 'AK-211',
+    model: 'AK-711',
     Consumption: 0.4,
-    commandIndex: 60,
-    status: 'Pasif',
+    commandIndex: 26,
+    status: 'Aktif',
     type: 'NB-IoT',
-    lat: 39.9211,
-    lng: 32.8463,
+    lat: 39.9231,
+    lng: 32.8554,
   },
   {
     name: '20007',
-    model: 'AK-411',
-    Consumption: 0.6,
-    commandIndex: 25,
+    model: 'AK-811',
+    Consumption: 1.2,
+    commandIndex: 29,
     status: 'Aktif',
     type: 'LoRa',
-    lat: 39.926,
-    lng: 32.8588,
+    lat: 39.9245,
+    lng: 32.8568,
   },
   {
     name: '20008',
-    model: 'AK-311',
-    Consumption: 0.3,
-    commandIndex: 15,
+    model: 'AK-911',
+    Consumption: 0.6,
+    commandIndex: 24,
     status: 'Pasif',
     type: 'GPRS',
-    lat: 39.9233,
-    lng: 32.8447,
-  },
-  {
-    name: '20009',
-    model: 'AK-211',
-    Consumption: 2.0,
-    commandIndex: 30,
-    status: 'Aktif',
-    type: 'NB-IoT',
-    lat: 39.9199,
-    lng: 32.8625,
-  },
-  {
-    name: '20010',
-    model: 'AK-411',
-    Consumption: 0.5,
-    commandIndex: 15,
-    status: 'Pasif',
-    type: 'LoRa',
-    lat: 39.9157,
-    lng: 32.8509,
+    lat: 39.9253,
+    lng: 32.8582,
   },
 ])
 
-const workOrderColumnDefs = ref([
-  { field: 'meterId', headerName: 'Sayaç No', enableRowGroup: true },
-  { field: 'workOrderId', headerName: 'İş Emri Payload' },
-  { field: 'type', headerName: 'İş Emri Tipi', enableRowGroup: true },
-  { field: 'payload', headerName: 'Payload' },
-  {
-    field: 'status',
-    headerName: 'Durum',
-    cellRenderer: (params) => {
-      const colors = {
-        Bekliyor: '#FB8C00',
-        Gönderildi: '#42A5F5',
-        Tamamlandı: '#43A047',
-        Başarısız: '#E53935',
-      }
-      const color = colors[params.value] || '#90A4AE'
-      return `<span style="background-color:${color};color:white;padding:3px 8px;border-radius:8px;font-size:12px;">${params.value}</span>`
-    },
-  },
-  { field: 'createdDate', headerName: 'Oluşturulma' },
-  { field: 'sentDate', headerName: 'Gönderilme' },
-  { field: 'responseDate', headerName: 'Cevap' },
-])
+const meterRecords = computed(() =>
+  waterMeters.value.map((meter) => ({
+    ...meter,
+    consumptionValue: meter.Consumption,
+    consumptionDisplay: `${meter.Consumption.toLocaleString('tr-TR', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    })}`,
+  })),
+)
+
+const filteredMeters = computed(() => {
+  const term = quickFilterText.value.trim().toLowerCase()
+  if (!term) return meterRecords.value
+  return meterRecords.value.filter((meter) =>
+    `${meter.name} ${meter.model} ${meter.type} ${meter.status}`.toLowerCase().includes(term),
+  )
+})
+
+const statusChipColor = (status) => (status === 'Aktif' ? 'info' : 'blue-grey-darken-1')
+
+const selectAllRows = () => {
+  selectedRows.value = [...filteredMeters.value]
+}
+
+watch(filteredMeters, () => {
+  const allowed = new Set(filteredMeters.value.map((meter) => meter.name))
+  selectedRows.value = selectedRows.value.filter((meter) => allowed.has(meter.name))
+  if (activeTab.value === 'map') {
+    setTimeout(initMap, 150)
+  }
+})
+
+watch(activeTab, (val) => {
+  if (val === 'map') setTimeout(initMap, 150)
+})
+
+let mapInstance = null
+
+function initMap() {
+  const mapContainer = document.getElementById('water-map')
+  if (!mapContainer) return
+
+  if (mapInstance) {
+    mapInstance.remove()
+    mapInstance = null
+  }
+
+  mapInstance = L.map(mapContainer).setView([39.92, 32.86], 13)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors',
+  }).addTo(mapInstance)
+
+  const markerSource = filteredMeters.value.length ? filteredMeters.value : meterRecords.value
+  markerSource.forEach((meter) => {
+    const color = meter.status === 'Aktif' ? '#0ea5e9' : '#64748b'
+    L.circleMarker([meter.lat, meter.lng], {
+      color,
+      radius: 8,
+      fillColor: color,
+      fillOpacity: 0.85,
+      weight: 1.5,
+    })
+      .bindPopup(
+        `<b>${meter.name}</b><br>${meter.model} • ${meter.type}<br><span style="color:${color};font-weight:bold;">${meter.status}</span>`,
+      )
+      .addTo(mapInstance)
+  })
+}
+
+const workOrderHeaders = [
+  { title: 'Sayaç No', key: 'meterId', sortable: true },
+  { title: 'İş Emri ID', key: 'workOrderId', sortable: true },
+  { title: 'İş Emri Tipi', key: 'type', sortable: true },
+  { title: 'Payload', key: 'payload', sortable: true },
+  { title: 'Durum', key: 'status', sortable: true },
+  { title: 'Oluşturulma', key: 'createdDate', sortable: true },
+  { title: 'Gönderilme', key: 'sentDate', sortable: true },
+  { title: 'Cevap', key: 'responseDate', sortable: true },
+]
 
 const workOrderData = ref([
   {
@@ -502,39 +545,32 @@ const workOrderData = ref([
   },
 ])
 
-const alertColumnDefs = ref([
-  { field: 'meterId', headerName: 'Sayaç No', enableRowGroup: true },
-  { field: 'alertId', headerName: 'Uyarı Payload' },
-  { field: 'type', headerName: 'Uyarı Tipi', enableRowGroup: true },
-  {
-    field: 'severity',
-    headerName: 'Önem Derecesi',
-    cellRenderer: (params) => {
-      const colors = {
-        Düşük: '#4FC3F7',
-        Orta: '#29B6F6',
-        Yüksek: '#0288D1',
-        Kritik: '#01579B',
-      }
-      const color = colors[params.value] || '#90A4AE'
-      return `<span style="background-color:${color};color:white;padding:3px 8px;border-radius:8px;font-size:12px;">${params.value}</span>`
-    },
-  },
-  { field: 'createdDate', headerName: 'Oluşturulma' },
-  {
-    field: 'status',
-    headerName: 'Durum',
-    cellRenderer: (params) => {
-      const colors = {
-        Açık: '#E53935',
-        İzlemede: '#FB8C00',
-        Kapalı: '#43A047',
-      }
-      const color = colors[params.value] || '#90A4AE'
-      return `<span style="background-color:${color};color:white;padding:3px 8px;border-radius:8px;font-size:12px;">${params.value}</span>`
-    },
-  },
-])
+const filteredWorkOrders = computed(() => {
+  const term = workOrderFilter.value.trim().toLowerCase()
+  if (!term) return workOrderData.value
+  return workOrderData.value.filter((item) =>
+    `${item.meterId} ${item.type} ${item.workOrderId} ${item.payload} ${item.status}`.toLowerCase().includes(term),
+  )
+})
+
+const workOrderStatusColor = (status) => {
+  const colors = {
+    Bekliyor: 'warning',
+    Gönderildi: 'info',
+    Tamamlandı: 'success',
+    Başarısız: 'error',
+  }
+  return colors[status] || 'secondary'
+}
+
+const alertHeaders = [
+  { title: 'Sayaç No', key: 'meterId', sortable: true },
+  { title: 'Uyarı ID', key: 'alertId', sortable: true },
+  { title: 'Uyarı Tipi', key: 'type', sortable: true },
+  { title: 'Önem', key: 'severity', sortable: true },
+  { title: 'Tarih', key: 'createdDate', sortable: true },
+  { title: 'Durum', key: 'status', sortable: true },
+]
 
 const alertData = ref([
   {
@@ -571,22 +607,29 @@ const alertData = ref([
   },
 ])
 
-const workOrderTypes = [
-  'Sayaç Okuma',
-  'Debi Ayarla',
-  'Basınç Kontrolü',
-  'Vanayı Aç',
-  'Vanayı Kapat',
-]
-const selectedWorkOrderType = ref(null)
-const workOrderPayload = ref({
-  description: '',
-  readCommand: '',
-  flowRate: '',
-  pressureThreshold: '',
+const filteredAlerts = computed(() => {
+  const term = alertFilter.value.trim().toLowerCase()
+  if (!term) return alertData.value
+  return alertData.value.filter((item) =>
+    `${item.meterId} ${item.type} ${item.severity} ${item.status}`.toLowerCase().includes(term),
+  )
 })
 
-function sendWorkOrder() {
+const alertSeverityColor = (severity) => {
+  const colors = {
+    Düşük: 'light-blue-lighten-3',
+    Orta: 'light-blue',
+    Yüksek: 'light-blue-darken-1',
+    Kritik: 'indigo-darken-4',
+  }
+  return colors[severity] || 'secondary'
+}
+
+const workOrderTypes = ['Sayaç Okuma', 'Debi Ayarla', 'Basınç Kontrolü', 'Vanayı Aç', 'Vanayı Kapat']
+const selectedWorkOrderType = ref(null)
+const workOrderPayload = ref({ description: '', readCommand: '', flowRate: '', pressureThreshold: '' })
+
+const sendWorkOrder = () => {
   if (!selectedRows.value.length) {
     alert('Herhangi bir sayaç seçilmedi.')
     return
@@ -594,113 +637,48 @@ function sendWorkOrder() {
   workOrderPanel.value = true
 }
 
-function confirmSendWorkOrder() {
-  if (!selectedRows.value.length) {
-    alert('Lütfen en az bir sayaç seçiniz.')
-    return
-  }
-
-  if (!selectedWorkOrderType.value) {
+const confirmSendWorkOrder = () => {
+  const type = selectedWorkOrderType.value
+  if (!type) {
     alert('Lütfen bir iş emri tipi seçiniz.')
     return
   }
 
-  console.log('İş emri tipi:', selectedWorkOrderType.value)
+  console.log('İş emri tipi:', type)
   console.log('Seçili sayaçlar:', selectedRows.value)
   console.log('Girilen veriler:', workOrderPayload.value)
 
-  alert(
-    `${selectedRows.value.length} sayaç için '${selectedWorkOrderType.value}' iş emri hazırlandı (simülasyon).`,
-  )
+  alert(`${selectedRows.value.length} sayaç için '${type}' iş emri hazırlandı (örnek simülasyon).`)
 
   workOrderPanel.value = false
   selectedWorkOrderType.value = null
   workOrderPayload.value = { description: '', readCommand: '', flowRate: '', pressureThreshold: '' }
 }
 
-function onSelectionChanged(event) {
-  selectedRows.value = event.api.getSelectedRows()
-}
-
-function selectAllRows() {
-  gridApi.value?.selectAll()
-  if (gridApi.value) {
-    selectedRows.value = gridApi.value.getSelectedRows()
-  }
-}
-
-function onGridReady(params) {
-  gridApi.value = params.api
-}
-
-let mapInstance = null
-function initMap() {
-  const mapContainer = document.getElementById('water-map')
-  if (!mapContainer) return
-
-  if (mapInstance) {
-    mapInstance.remove()
-    mapInstance = null
-  }
-
-  const defaultCenter = waterMeters.value.length
-    ? [waterMeters.value[0].lat, waterMeters.value[0].lng]
-    : [39.9208, 32.8541]
-
-  mapInstance = L.map(mapContainer).setView(defaultCenter, 14)
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap contributors',
-  }).addTo(mapInstance)
-
-  waterMeters.value.forEach((meter) => {
-    const color = meter.status === 'Aktif' ? '#0288D1' : '#90A4AE'
-    L.circleMarker([meter.lat, meter.lng], {
-      color,
-      radius: 8,
-      fillColor: color,
-      fillOpacity: 0.9,
-      weight: 1.5,
-    })
-      .bindPopup(
-        `<b>${meter.name}</b><br>${meter.type} - <span style="color:${color};font-weight:bold;">${meter.status}</span><br>Tüketim: ${meter.Consumption} m³`,
-      )
-      .addTo(mapInstance)
-  })
-}
-
-watch(activeTab, (val) => {
-  if (val === 'map') setTimeout(initMap, 150)
-})
-
 const workOrderNotification = ref({ visible: false, message: '' })
 let workOrderTimer = null
 
-function showRandomWorkOrderResponse() {
-  const randomMeter = waterMeters.value[Math.floor(Math.random() * waterMeters.value.length)]
+const showRandomWorkOrderResponse = () => {
+  const pool = filteredMeters.value.length ? filteredMeters.value : meterRecords.value
+  const randomMeter = pool[Math.floor(Math.random() * pool.length)]
   if (!randomMeter) return
 
   workOrderNotification.value.message = `${randomMeter.name} su sayacından iş emri cevabı alındı!`
   workOrderNotification.value.visible = true
-
   setTimeout(() => (workOrderNotification.value.visible = false), 4000)
 }
 
 const alarmNotification = ref({ visible: false, message: '' })
 let alarmTimer = null
 
-function showRandomAlarm() {
-  const randomMeter = waterMeters.value[Math.floor(Math.random() * waterMeters.value.length)]
+const showRandomAlarm = () => {
+  const pool = filteredMeters.value.length ? filteredMeters.value : meterRecords.value
+  const randomMeter = pool[Math.floor(Math.random() * pool.length)]
   if (!randomMeter) return
 
-  const randomType = ['Kaçak tespiti', 'Basınç düşüklüğü', 'Ters akış uyarısı'][
-    Math.floor(Math.random() * 3)
-  ]
-
+  const randomType = ['Kaçak tespiti', 'Basınç düşüklüğü', 'Ters akış uyarısı'][Math.floor(Math.random() * 3)]
   alarmNotification.value.message = `🚨 ${randomMeter.name} sayacında ${randomType}!`
   alarmNotification.value.visible = true
-
   setTimeout(() => (alarmNotification.value.visible = false), 4000)
 }
 
@@ -712,7 +690,6 @@ onMounted(() => {
       loop()
     }, delay)
   }
-  loop()
 
   const alarmLoop = () => {
     const delay = 18000 + Math.random() * 22000
@@ -721,6 +698,8 @@ onMounted(() => {
       alarmLoop()
     }, delay)
   }
+
+  loop()
   alarmLoop()
 })
 
@@ -731,79 +710,65 @@ onUnmounted(() => {
     mapInstance.remove()
     mapInstance = null
   }
-  gridApi.value = null
 })
-
-const localeText = {
-  loadingOoo: 'Yükleniyor...',
-  noRowsToShow: 'Gösterilecek kayıt yok',
-  page: 'Sayfa',
-  of: '/',
-  to: '→',
-  next: 'Sonraki',
-  last: 'Son',
-  first: 'İlk',
-  previous: 'Önceki',
-  applyFilter: 'Filtreyi Uygula',
-  clearFilter: 'Filtreyi Temizle',
-  resetFilter: 'Filtreyi Sıfırla',
-  selectAll: 'Tümünü Seç',
-  searchOoo: 'Ara...',
-  blanks: '(Boş)',
-  filterOoo: 'Filtrele...',
-  equals: 'Eşittir',
-  notEqual: 'Eşit Değil',
-  empty: 'Boş',
-  lessThan: 'Küçüktür',
-  greaterThan: 'Büyüktür',
-  lessThanOrEqual: 'Küçük veya Eşit',
-  greaterThanOrEqual: 'Büyük veya Eşit',
-  inRange: 'Arasında',
-  contains: 'İçerir',
-  notContains: 'İçermez',
-  startsWith: 'İle Başlar',
-  endsWith: 'İle Biter',
-  menuFilter: 'Filtre',
-  menuSortAscending: 'Artan Sırala',
-  menuSortDescending: 'Azalan Sırala',
-  menuGroup: 'Grupla',
-  menuUngroup: 'Grubu Kaldır',
-  applyFilterButton: 'Uygula',
-  clearFilterButton: 'Temizle',
-  resetFilterButton: 'Sıfırla',
-  paginationPageSize: 'Sayfa boyutu',
-  more: 'Daha fazla',
-  totalRows: 'Toplam Satır',
-  andCondition: 'VE',
-  orCondition: 'VEYA',
-  notBlank: 'Boş Değil',
-}
 </script>
 
 <style scoped>
-.ag-theme-alpine {
-  --ag-font-size: 14px;
-  border-radius: 10px;
+.group-select {
+  min-width: 180px;
 }
 
-:global(.theme-light) .ag-theme-alpine {
-  --ag-background-color: #ffffff;
-  --ag-foreground-color: #1f2937;
-  --ag-header-background-color: #f4f6f8;
-  --ag-header-foreground-color: #1f2937;
-  --ag-row-hover-color: rgba(14, 165, 233, 0.12);
-  --ag-border-color: #e2e8f0;
-  --ag-odd-row-background-color: #f8fafc;
+.water-table,
+.secondary-table {
+  background: transparent;
+  border-radius: 16px;
 }
 
-:global(.theme-dark) .ag-theme-alpine {
-  --ag-background-color: #101a2c;
-  --ag-foreground-color: #e2e8f0;
-  --ag-header-background-color: #1e293b;
-  --ag-header-foreground-color: #e2e8f0;
-  --ag-row-hover-color: rgba(45, 212, 191, 0.18);
-  --ag-border-color: #1f2937;
-  --ag-odd-row-background-color: rgba(148, 163, 184, 0.08);
+.water-table :deep(table),
+.secondary-table :deep(table) {
+  background: transparent;
+}
+
+.water-table :deep(thead tr),
+.secondary-table :deep(thead tr) {
+  background: rgba(15, 23, 42, 0.85);
+}
+
+.water-table :deep(th),
+.secondary-table :deep(th) {
+  color: rgba(226, 232, 240, 0.85);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.4px;
+}
+
+.water-table :deep(td),
+.secondary-table :deep(td) {
+  color: rgba(241, 245, 249, 0.92);
+  font-size: 14px;
+}
+
+.water-table :deep(tbody tr:hover),
+.secondary-table :deep(tbody tr:hover) {
+  background: rgba(14, 165, 233, 0.12);
+}
+
+.secondary-table {
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  box-shadow: 0 14px 26px rgba(15, 23, 42, 0.24);
+}
+
+.mono {
+  font-family: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+  letter-spacing: 0.3px;
+}
+
+.no-data {
+  padding: 24px;
+  text-align: center;
+  color: rgba(148, 163, 184, 0.9);
 }
 
 .slide-fade-enter-active {

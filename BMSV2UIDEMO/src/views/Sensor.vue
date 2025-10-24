@@ -192,6 +192,18 @@
               clearable
             />
             <div class="toolbar-actions">
+              <v-select
+                v-model="selectedGroupBy"
+                :items="groupByOptions"
+                class="group-select"
+                density="comfortable"
+                hide-details
+                label="Grupla"
+                multiple
+                chips
+                clearable
+                variant="outlined"
+              />
               <v-btn variant="text" @click="selectAllRows">Tümünü seç</v-btn>
               <v-btn
                 color="primary"
@@ -225,21 +237,47 @@
           </div>
 
           <div v-if="viewMode === 'table'" class="grid-wrapper">
-            <ag-grid-vue
-              class="ag-theme-alpine-dark sensor-grid"
-              :columnDefs="columnDefs"
-              :rowData="filteredSensors"
-              :quickFilterText="searchTerm"
-              :defaultColDef="defaultColDef"
-              :gridOptions="gridOptions"
-              :rowSelection="'multiple'"
-              :animateRows="true"
-              :pagination="true"
-              :paginationPageSize="10"
-              suppressMovableColumns
-              @grid-ready="onGridReady"
-              @selection-changed="onSelectionChanged"
-            />
+            <v-data-table
+              v-model:selected="selectedRows"
+              :headers="tableHeaders"
+              :items="filteredSensors"
+              :group-by="tableGroupBy"
+              :sort-by="tableSortBy"
+              :items-per-page="10"
+              class="sensor-data-table"
+              density="comfortable"
+              item-value="sensorId"
+              return-object
+              show-select
+              hover
+              fixed-header
+            >
+              <template #item.sensorId="{ item }">
+                <div class="cell-primary">
+                  <span class="cell-id">{{ item.sensorId }}</span>
+                  <span class="cell-zone">{{ item.zone }}</span>
+                </div>
+              </template>
+              <template #item.status="{ item }">
+                <v-chip :color="statusChipColor(item.status)" size="small" variant="tonal">
+                  {{ item.status }}
+                </v-chip>
+              </template>
+              <template #item.freshnessBucket="{ item }">
+                <v-chip :color="item.freshnessChip" size="small" variant="tonal">
+                  {{ item.freshnessBadge }}
+                </v-chip>
+              </template>
+              <template #item.lastPacketDisplay="{ item }">
+                <div class="cell-secondary">
+                  <span>{{ item.lastPacketDisplay }}</span>
+                  <small>{{ item.location }}</small>
+                </div>
+              </template>
+              <template #no-data>
+                <div class="no-data">Filtrelere uyan sayaç bulunamadı.</div>
+              </template>
+            </v-data-table>
           </div>
 
           <div v-else class="card-grid">
@@ -380,19 +418,11 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { AgGridVue } from 'ag-grid-vue3'
-import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import DataFreshnessIndicator from '@/components/common/DataFreshnessIndicator.vue'
 import { meterSnapshots, organizationProfile, referenceNow } from '@/data/mockMeters'
 import { formatAbsolute, formatClock, formatRelativeAgo, hoursBetween, toDate } from '@/utils/time'
-// import 'ag-grid-community/styles/ag-grid.css'
-// import 'ag-grid-community/styles/ag-theme-alpine.css'
-// import 'ag-grid-community/styles/ag-theme-alpine-dark.css'
-
-ModuleRegistry.registerModules([AllCommunityModule])
-
 const organization = organizationProfile
 const now = ref(new Date(referenceNow))
 const route = useRoute()
@@ -407,9 +437,39 @@ const selectedFreshness = ref([])
 const selectedComm = ref([])
 const selectedTypes = ref([])
 const selectedZones = ref([])
+const selectedGroupBy = ref([])
 const searchTerm = ref('')
 
 const rawSensors = ref(meterSnapshots)
+
+const groupByOptions = [
+  { title: 'Bölgeler', value: 'zone' },
+  { title: 'Durum', value: 'status' },
+  { title: 'İletişim', value: 'commMethod' },
+  { title: 'Sayaç tipi', value: 'typeLabel' },
+]
+
+const tableHeaders = [
+  { title: 'Sayaç', key: 'sensorId', sortable: true },
+  { title: 'Tip', key: 'typeLabel', sortable: true },
+  { title: 'İletişim', key: 'commMethod', sortable: true },
+  { title: 'Durum', key: 'status', sortable: true },
+  { title: 'Veri tazeliği', key: 'freshnessBucket', sortable: true },
+  { title: 'Son veri', key: 'lastPacketDisplay', sortable: false },
+  { title: 'Okuma', key: 'lastReading', sortable: true },
+  { title: 'Batarya', key: 'battery', sortable: true },
+  { title: 'Sinyal', key: 'signal', sortable: true },
+]
+
+const tableSortBy = ref([{ key: 'sensorId', order: 'asc' }])
+
+const tableGroupBy = computed(() => selectedGroupBy.value.map((value) => ({ key: value })))
+
+const statusChipColor = (status) => {
+  if (status === 'Aktif') return 'success'
+  if (status === 'Beklemede') return 'amber-darken-2'
+  return 'red-darken-2'
+}
 
 const classifyStatus = (lastCommunication) => {
   const hours = hoursBetween(lastCommunication, now.value)
@@ -536,55 +596,6 @@ const lastPacket = computed(() =>
 const lastPacketLabel = computed(() => formatAbsolute(lastPacket.value))
 const lastPacketAgo = computed(() => formatRelativeAgo(lastPacket.value, now.value))
 
-const columnDefs = ref([
-  { field: 'sensorId', headerName: 'Sayaç', pinned: 'left', checkboxSelection: true, width: 150 },
-  { field: 'typeLabel', headerName: 'Tip', enableRowGroup: true, width: 120 },
-  { field: 'zone', headerName: 'Bölge', enableRowGroup: true, width: 160 },
-  { field: 'commMethod', headerName: 'İletişim', enableRowGroup: true, width: 120 },
-  {
-    field: 'lastPacketLabel',
-    headerName: 'Son veri',
-    minWidth: 200,
-    valueGetter: (params) => `${params.data.lastPacketLabel} • ${params.data.lastPacketAgo}`,
-  },
-  {
-    field: 'freshnessBadge',
-    headerName: 'Veri tazeliği',
-    width: 160,
-    cellRenderer: (params) => {
-      if (!params.value) return ''
-      const colors = {
-        Takvimde: 'rgba(34,197,94,0.18)',
-        Beklemede: 'rgba(251,191,36,0.18)',
-        Pasif: 'rgba(248,113,113,0.18)',
-      }
-      const color = colors[params.value] || 'rgba(59,130,246,0.18)'
-      return `<span style="display:inline-flex;align-items:center;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:600;background:${color};color:#f8fafc;">${params.value}</span>`
-    },
-  },
-  { field: 'lastReading', headerName: 'Okuma', width: 130 },
-  { field: 'battery', headerName: 'Batarya', width: 110 },
-  { field: 'signal', headerName: 'Sinyal', width: 140 },
-  { field: 'window', headerName: 'Pencere', width: 140 },
-])
-
-const defaultColDef = {
-  resizable: true,
-  sortable: true,
-  filter: true,
-  floatingFilter: true,
-  minWidth: 120,
-  flex: 1,
-}
-
-const gridOptions = {
-  rowClassRules: {
-    'row-delayed': (params) => params.data?.freshnessLevel === 'delayed',
-    'row-missed': (params) => params.data?.freshnessLevel === 'missed',
-  },
-}
-
-const gridApi = ref(null)
 const selectedRows = ref([])
 const viewMode = ref('table')
 
@@ -604,18 +615,11 @@ const resetFilters = () => {
   selectedComm.value = []
   selectedTypes.value = []
   selectedZones.value = []
+  selectedGroupBy.value = []
 }
 
 const selectAllRows = () => {
-  gridApi.value?.selectAll()
-}
-
-const onSelectionChanged = (event) => {
-  selectedRows.value = event.api.getSelectedRows()
-}
-
-const onGridReady = (params) => {
-  gridApi.value = params.api
+  selectedRows.value = [...filteredSensors.value]
 }
 
 const openWorkOrder = () => {
@@ -678,9 +682,8 @@ const updateMarkers = () => {
 
 watch(filteredSensors, () => {
   updateMarkers()
-  if (viewMode.value === 'table' && gridApi.value) {
-    gridApi.value.setGridOption('rowData', filteredSensors.value)
-  }
+  const availableIds = new Set(filteredSensors.value.map((sensor) => sensor.sensorId))
+  selectedRows.value = selectedRows.value.filter((row) => availableIds.has(row.sensorId))
 })
 
 onMounted(() => {
@@ -689,7 +692,6 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  gridApi.value = null
   if (mapState.instance) {
     mapState.instance.remove()
     mapState.instance = null
@@ -939,6 +941,10 @@ onBeforeUnmount(() => {
   gap: 12px;
 }
 
+.group-select {
+  min-width: 220px;
+}
+
 .list-meta {
   display: flex;
   flex-wrap: wrap;
@@ -956,9 +962,69 @@ onBeforeUnmount(() => {
   background: rgba(15, 23, 42, 0.65);
 }
 
-.sensor-grid {
-  width: 100%;
-  min-height: 520px;
+.sensor-data-table {
+  --v-table-header-height: 52px;
+  background: transparent;
+}
+
+.sensor-data-table :deep(table) {
+  background: transparent;
+}
+
+.sensor-data-table :deep(thead tr) {
+  background: rgba(15, 23, 42, 0.85);
+}
+
+.sensor-data-table :deep(th) {
+  color: rgba(226, 232, 240, 0.85);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.6px;
+}
+
+.sensor-data-table :deep(td) {
+  color: rgba(241, 245, 249, 0.92);
+  font-size: 14px;
+}
+
+.sensor-data-table :deep(tbody tr:hover) {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.cell-primary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cell-id {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.cell-zone {
+  font-size: 12px;
+  color: rgba(148, 163, 184, 0.75);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.cell-secondary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cell-secondary small {
+  font-size: 12px;
+  color: rgba(148, 163, 184, 0.78);
+}
+
+.no-data {
+  padding: 24px;
+  text-align: center;
+  color: rgba(148, 163, 184, 0.9);
 }
 
 .card-grid {
