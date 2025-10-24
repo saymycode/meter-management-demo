@@ -33,22 +33,48 @@
               </div>
             </div>
             <div class="intro-actions">
-              <v-btn color="primary" prepend-icon="mdi-format-list-bulleted" variant="flat">Sensör listesine git</v-btn>
+              <v-btn
+                color="primary"
+                prepend-icon="mdi-format-list-bulleted"
+                variant="flat"
+                :to="{ name: 'sensor' }"
+              >
+                Sensör listesine git
+              </v-btn>
               <v-btn color="primary" prepend-icon="mdi-file-download" variant="text">Günlük özet indir</v-btn>
             </div>
           </div>
           <div class="intro-right">
             <div class="cadence-card">
-              <h2 class="cadence-title">Günlük iletim pencereleri</h2>
-              <span class="cadence-subtitle">Beklenen üç toplu iletim; tamamlananlar gri, gecikenler kehribar tonunda gösterilir.</span>
-              <ul class="cadence-timeline">
-                <li v-for="window in scheduleTimeline" :key="window.key" :class="['timeline-item', window.status]">
-                  <div class="timeline-dot" />
-                  <div class="timeline-time">{{ window.time }}</div>
-                  <div class="timeline-status">{{ window.statusLabel }}</div>
-                  <div class="timeline-note">{{ window.note }}</div>
-                </li>
-              </ul>
+              <div class="cadence-header">
+                <div>
+                  <h2 class="cadence-title">Günlük iletim pencereleri</h2>
+                  <span class="cadence-subtitle">08:00, 12:00 ve 24:00 partileri; durum çipleri gecikmeleri net biçimde gösterir.</span>
+                </div>
+                <v-chip class="cadence-chip" prepend-icon="mdi-calendar-clock" size="small" variant="flat">
+                  Sıradaki: {{ nextWindowLabel }}
+                </v-chip>
+              </div>
+              <v-table class="cadence-table" density="compact">
+                <thead>
+                  <tr>
+                    <th>Saat</th>
+                    <th>Durum</th>
+                    <th>Not</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="window in scheduleTimeline" :key="window.key">
+                    <td class="cadence-time">{{ window.time }}</td>
+                    <td class="cadence-status">
+                      <v-chip :color="scheduleStatusColor(window.status)" size="small" variant="tonal">
+                        {{ window.statusLabel }}
+                      </v-chip>
+                    </td>
+                    <td class="cadence-note">{{ window.note }}</td>
+                  </tr>
+                </tbody>
+              </v-table>
             </div>
           </div>
         </v-card>
@@ -345,6 +371,12 @@ const scheduleTimeline = computed(() => {
     }
   })
 })
+
+const scheduleStatusColor = (status) => {
+  if (status === 'completed') return 'success'
+  if (status === 'delayed') return 'amber-darken-2'
+  return 'primary'
+}
 
 const nextWindow = computed(() => {
   const now = freshBatchNow.value
@@ -672,14 +704,14 @@ const operationNotes = [
 }
 
 .intro-right {
-  flex: 0 1 320px;
+  flex: 0 1 360px;
   display: flex;
   justify-content: center;
 }
 
 .cadence-card {
   width: 100%;
-  max-width: 320px;
+  max-width: 360px;
   background: var(--surface-card);
   border-radius: 22px;
   border: 1px solid var(--border-soft);
@@ -687,6 +719,18 @@ const operationNotes = [
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.cadence-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cadence-chip {
+  align-self: flex-start;
+  font-weight: 600;
+  letter-spacing: 0.2px;
 }
 
 .cadence-title {
@@ -702,59 +746,52 @@ const operationNotes = [
   line-height: 1.5;
 }
 
-.cadence-timeline {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+.cadence-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
 }
 
-.timeline-item {
-  display: grid;
-  grid-template-columns: 16px 1fr;
-  gap: 12px;
-  align-items: center;
+.cadence-table th,
+.cadence-table td {
+  padding: 8px 0;
+  font-size: 13px;
+  color: var(--muted-text);
+  border-bottom: 1px solid var(--border-soft);
 }
 
-.timeline-dot {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: rgba(148, 163, 184, 0.4);
-  border: 3px solid rgba(148, 163, 184, 0.45);
+.cadence-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--heading-color);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
 }
 
-.timeline-item.completed .timeline-dot {
-  background: rgba(34, 197, 94, 0.45);
-  border-color: rgba(34, 197, 94, 0.6);
+.cadence-table tr:last-child th,
+.cadence-table tr:last-child td {
+  border-bottom: none;
 }
 
-.timeline-item.delayed .timeline-dot {
-  background: rgba(245, 158, 11, 0.45);
-  border-color: rgba(245, 158, 11, 0.6);
-}
-
-.timeline-item.upcoming .timeline-dot {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: rgba(59, 130, 246, 0.35);
-}
-
-.timeline-time {
+.cadence-time {
   font-weight: 700;
   color: var(--heading-color);
 }
 
-.timeline-status {
-  font-size: 13px;
+.cadence-status {
+  width: 120px;
+}
+
+.cadence-note {
   color: var(--muted-text);
 }
 
-.timeline-note {
-  grid-column: 2 / 3;
-  font-size: 12px;
-  color: var(--muted-text);
+@media (min-width: 520px) {
+  .cadence-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
 }
 
 .metric-card {

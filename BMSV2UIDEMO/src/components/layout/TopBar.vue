@@ -24,11 +24,12 @@
     <div class="topbar-actions">
       <v-btn
         class="icon-btn theme-toggle"
-        :icon="themeIcon"
         variant="text"
         :aria-label="isDark ? 'Açık temaya geç' : 'Koyu temaya geç'"
         @click="toggleTheme"
-      />
+      >
+        <v-icon size="22">{{ themeIcon }}</v-icon>
+      </v-btn>
 
       <v-btn class="ghost-btn" prepend-icon="mdi-calendar-clock" variant="text"> </v-btn>
 

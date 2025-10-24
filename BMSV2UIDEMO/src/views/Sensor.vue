@@ -102,18 +102,35 @@
         </v-card>
 
         <v-card class="schedule-card" elevation="0">
-          <h2>İletim pencereleri</h2>
-          <p>Beklenen parti saatleri ve mevcut durum.</p>
-          <ul class="schedule-timeline">
-            <li v-for="slot in scheduleTimeline" :key="slot.key" :class="['timeline-item', slot.status]">
-              <div class="timeline-dot" />
-              <div class="timeline-body">
-                <span class="timeline-time">{{ slot.time }}</span>
-                <span class="timeline-status">{{ slot.statusLabel }}</span>
-                <span class="timeline-note">{{ slot.note }}</span>
-              </div>
-            </li>
-          </ul>
+          <div class="schedule-header">
+            <div>
+              <h2>İletim pencereleri</h2>
+              <p>Beklenen parti saatleri ve mevcut durum.</p>
+            </div>
+            <v-chip class="schedule-chip" prepend-icon="mdi-calendar-clock" size="small" variant="flat">
+              Sıradaki: {{ nextWindowLabel }}
+            </v-chip>
+          </div>
+          <v-table class="schedule-table" density="compact">
+            <thead>
+              <tr>
+                <th>Saat</th>
+                <th>Durum</th>
+                <th>Not</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="slot in scheduleTimeline" :key="slot.key">
+                <td class="schedule-time">{{ slot.time }}</td>
+                <td class="schedule-status">
+                  <v-chip :color="scheduleStatusColor(slot.status)" size="small" variant="tonal">
+                    {{ slot.statusLabel }}
+                  </v-chip>
+                </td>
+                <td class="schedule-note">{{ slot.note }}</td>
+              </tr>
+            </tbody>
+          </v-table>
         </v-card>
       </v-col>
 
@@ -376,7 +393,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
 import 'ag-grid-enterprise'
 import { ModuleRegistry } from 'ag-grid-community'
@@ -446,8 +463,8 @@ const getWindowDate = (base, hour) => {
   return result
 }
 
-const scheduleTimeline = computed(() => {
-  return scheduleWindows.map((hour) => {
+const scheduleTimeline = computed(() =>
+  scheduleWindows.map((hour) => {
     const now = nowRef.value
     const windowDate = getWindowDate(now, hour)
     const lastBatch = lastBatchReceived.value
@@ -473,7 +490,13 @@ const scheduleTimeline = computed(() => {
       note
     }
   })
-})
+)
+
+const scheduleStatusColor = (status) => {
+  if (status === 'completed') return 'success'
+  if (status === 'delayed') return 'amber-darken-2'
+  return 'primary'
+}
 
 const nextWindow = computed(() => {
   const now = nowRef.value
@@ -505,7 +528,7 @@ const selectedComm = ref([])
 const selectedZones = ref([])
 const searchTerm = ref('')
 
-const minutesAgo = (minutes) => new Date(nowRef.value.getTime() - minutes * 60000).toISOString()
+const minutesAgoIso = (minutes) => new Date(nowRef.value.getTime() - minutes * 60000).toISOString()
 
 const sensors = ref([
   {
@@ -514,89 +537,89 @@ const sensors = ref([
     location: 'Atatürk Bulvarı 112',
     commMethod: 'LoRa',
     lastReading: '132.4 m³',
-    lastPacketAt: minutesAgo(110),
+    lastPacketAt: minutesAgoIso(110),
     window: '12:00',
     status: 'Aktif',
     battery: '%86',
     signal: '-78 dBm',
     freshnessMinutes: 110,
-    lat: 39.9208,
-    lng: 32.8541
+    lat: 39.9106,
+    lng: 32.8537
   },
   {
     sensorId: 'ASK-2409',
-    zone: 'Keçiören Kuzey',
-    location: 'Fatih Cd. 45',
-    commMethod: 'LoRa',
-    lastReading: '98.2 m³',
-    lastPacketAt: minutesAgo(220),
+    zone: 'Yenimahalle Batı',
+    location: 'İvedik OSB 8. Cd',
+    commMethod: 'GPRS',
+    lastReading: '94.2 m³',
+    lastPacketAt: minutesAgoIso(260),
     window: '12:00',
     status: 'Gecikmeli',
-    battery: '%74',
-    signal: '-83 dBm',
-    freshnessMinutes: 220,
-    lat: 39.9882,
-    lng: 32.8661
+    battery: '%72',
+    signal: '-92 dBm',
+    freshnessMinutes: 260,
+    lat: 39.9822,
+    lng: 32.7579
   },
   {
     sensorId: 'ASK-2412',
-    zone: 'Mamak Konut',
-    location: 'Esertepe Mh. 14',
-    commMethod: 'GPRS',
-    lastReading: '65.7 m³',
-    lastPacketAt: minutesAgo(360),
-    window: '08:00',
-    status: 'Offline',
-    battery: '%52',
-    signal: '—',
-    freshnessMinutes: 360,
-    lat: 39.9339,
-    lng: 32.908
+    zone: 'Keçiören Kuzey',
+    location: 'Şehit Kubilay Cd. 64',
+    commMethod: 'LoRa',
+    lastReading: '118.7 m³',
+    lastPacketAt: minutesAgoIso(70),
+    window: '12:00',
+    status: 'Aktif',
+    battery: '%88',
+    signal: '-74 dBm',
+    freshnessMinutes: 70,
+    lat: 40.0017,
+    lng: 32.8703
   },
   {
     sensorId: 'ASK-2420',
-    zone: 'Yenimahalle Sanayi',
-    location: 'İvedik OSB 5. Cadde',
+    zone: 'Sincan Sanayi',
+    location: '1. Organize Cd. 11',
     commMethod: 'LoRa',
-    lastReading: '154.9 m³',
-    lastPacketAt: minutesAgo(95),
-    window: '12:00',
-    status: 'Aktif',
-    battery: '%89',
-    signal: '-74 dBm',
-    freshnessMinutes: 95,
-    lat: 39.9822,
-    lng: 32.7316
+    lastReading: '164.1 m³',
+    lastPacketAt: minutesAgoIso(410),
+    window: '00:00',
+    status: 'Gecikmeli',
+    battery: '%58',
+    signal: '-96 dBm',
+    freshnessMinutes: 410,
+    lat: 39.9681,
+    lng: 32.5638
   },
   {
     sensorId: 'ASK-2435',
-    zone: 'Sincan Endüstri',
-    location: 'Organize Sanayi 9. Sk',
+    zone: 'Etimesgut Merkez',
+    location: 'İstasyon Cd. 23',
     commMethod: 'GPRS',
-    lastReading: '201.3 m³',
-    lastPacketAt: minutesAgo(420),
-    window: '08:00',
-    status: 'Offline',
-    battery: '%48',
-    signal: '—',
-    freshnessMinutes: 420,
-    lat: 39.968,
-    lng: 32.6487
+    lastReading: '101.8 m³',
+    lastPacketAt: minutesAgoIso(35),
+    window: '12:00',
+    status: 'Aktif',
+    battery: '%79',
+    signal: '-83 dBm',
+    freshnessMinutes: 35,
+    lat: 39.9471,
+    lng: 32.6367
   },
   {
     sensorId: 'ASK-2442',
-    zone: 'Altındağ Merkez',
-    location: 'Hacı Bayram Mh. 18',
+    zone: 'Altındağ Tarihi',
+    location: 'Ulus Meydanı',
     commMethod: 'LoRa',
-    lastReading: '84.1 m³',
-    lastPacketAt: minutesAgo(160),
-    window: '12:00',
-    status: 'Gecikmeli',
-    battery: '%66',
-    signal: '-87 dBm',
-    freshnessMinutes: 160,
-    lat: 39.9472,
-    lng: 32.8627
+    lastReading: '76.5 m³',
+    lastPacketAt: minutesAgoIso(560),
+    window: '08:00',
+    status: 'Offline',
+    battery: '%38',
+    signal: '—',
+    freshnessMinutes: 560,
+    lat: 39.9407,
+    lng: 32.8596
   },
   {
     sensorId: 'ASK-2450',
@@ -604,7 +627,7 @@ const sensors = ref([
     location: 'Tunus Cd. 72',
     commMethod: 'LoRa',
     lastReading: '72.3 m³',
-    lastPacketAt: minutesAgo(70),
+    lastPacketAt: minutesAgoIso(70),
     window: '12:00',
     status: 'Aktif',
     battery: '%91',
@@ -619,7 +642,7 @@ const sensors = ref([
     location: 'Boğaziçi Mh. 41',
     commMethod: 'GPRS',
     lastReading: '52.9 m³',
-    lastPacketAt: minutesAgo(510),
+    lastPacketAt: minutesAgoIso(510),
     window: '00:00',
     status: 'Offline',
     battery: '%44',
@@ -634,7 +657,7 @@ const sensors = ref([
     location: 'Osmangazi Mh. 9',
     commMethod: 'LoRa',
     lastReading: '104.2 m³',
-    lastPacketAt: minutesAgo(125),
+    lastPacketAt: minutesAgoIso(125),
     window: '12:00',
     status: 'Aktif',
     battery: '%83',
@@ -648,7 +671,7 @@ const sensors = ref([
 const zoneOptions = computed(() => {
   const set = new Set()
   sensors.value.forEach((sensor) => set.add(sensor.zone))
-  return Array.from(set)
+  return Array.from(set).sort((a, b) => a.localeCompare(b, 'tr'))
 })
 
 const resolveFreshness = (minutes) => {
@@ -682,8 +705,8 @@ const resolveFreshness = (minutes) => {
   }
 }
 
-const decoratedSensors = computed(() => {
-  return sensors.value.map((sensor) => {
+const decoratedSensors = computed(() =>
+  sensors.value.map((sensor) => {
     const lastPacketDate = new Date(sensor.lastPacketAt)
     const freshness = resolveFreshness(sensor.freshnessMinutes)
     return {
@@ -700,7 +723,7 @@ const decoratedSensors = computed(() => {
       freshnessDescription: freshness.description
     }
   })
-})
+)
 
 const filteredSensors = computed(() => {
   const term = searchTerm.value.trim().toLowerCase()
@@ -782,33 +805,6 @@ const columnDefs = ref([
   { field: 'signal', headerName: 'Sinyal', width: 120 },
   { field: 'window', headerName: 'Planlanan pencere', width: 160 }
 ])
-
-const defaultColDef = {
-  resizable: true,
-  sortable: true,
-  flex: 1,
-  minWidth: 120,
-  filter: true,
-  enableRowGroup: true,
-  floatingFilter: true
-}
-
-const gridOptions = {
-  rowClassRules: {
-    'sensor-row-delayed': (params) => params.data?.freshnessLevel === 'delayed',
-    'sensor-row-missed': (params) => params.data?.freshnessLevel === 'missed'
-  },
-  suppressRowClickSelection: false
-}
-
-const gridRef = ref(null)
-const selectedRows = ref([])
-const viewMode = ref('table')
-
-const workOrderPanel = ref(false)
-const workOrderTypes = ['Kalibrasyon', 'Firmware Güncelleme', 'Sensör Sıfırlama']
-const selectedWorkOrderType = ref(null)
-const workOrderPayload = ref({ description: '', calibrationCode: '', firmwareVersion: '', resetReason: '' })
 
 const defaultColDef = {
   resizable: true,
@@ -997,7 +993,6 @@ const confirmSendWorkOrder = () => {
 
   alert(`${selectedRows.value.length} sayaç için '${selectedWorkOrderType.value}' iş emri hazırlandı (örnek simülasyon).`)
 
-const confirmSendWorkOrder = () => {
   workOrderPanel.value = false
   selectedWorkOrderType.value = null
   workOrderPayload.value = { description: '', calibrationCode: '', firmwareVersion: '', resetReason: '' }
@@ -1013,23 +1008,7 @@ const resetFilters = () => {
 
 let mapInstance = null
 let mapMarkers = []
-
-const initMap = () => {
-  const mapContainer = document.getElementById('sensor-map')
-  if (!mapContainer) return
-
-  if (!mapInstance) {
-    mapInstance = L.map(mapContainer).setView([39.9334, 32.8597], 11)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(mapInstance)
-  }
-})
-</script>
-
-  renderMarkers()
-}
+let updateTimer = null
 
 const renderMarkers = () => {
   if (!mapInstance) return
@@ -1060,12 +1039,42 @@ const renderMarkers = () => {
   })
 }
 
+const initMap = () => {
+  const mapContainer = document.getElementById('sensor-map')
+  if (!mapContainer) return
+
+  if (!mapInstance) {
+    mapInstance = L.map(mapContainer).setView([39.9334, 32.8597], 11)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(mapInstance)
+  }
+
+  renderMarkers()
+}
+
 watch(filteredSensors, () => {
   renderMarkers()
 })
 
 onMounted(() => {
   initMap()
+  updateTimer = setInterval(() => {
+    nowRef.value = new Date()
+  }, 60000)
+})
+
+onBeforeUnmount(() => {
+  if (updateTimer) {
+    clearInterval(updateTimer)
+    updateTimer = null
+  }
+  if (mapInstance) {
+    mapInstance.remove()
+    mapInstance = null
+  }
+  mapMarkers = []
 })
 </script>
 
@@ -1222,77 +1231,76 @@ onMounted(() => {
   gap: 12px;
 }
 
-.schedule-card h2 {
+.schedule-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.schedule-header h2 {
   margin: 0;
   font-size: 17px;
   font-weight: 700;
   color: var(--heading-color);
 }
 
-.schedule-card p {
+.schedule-header p {
   margin: 0;
   font-size: 13px;
   color: var(--muted-text);
 }
 
-.schedule-timeline {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.schedule-chip {
+  align-self: flex-start;
+  font-weight: 600;
 }
 
-.timeline-item {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
+.schedule-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
 }
 
-.timeline-dot {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: rgba(148, 163, 184, 0.35);
-  border: 3px solid rgba(148, 163, 184, 0.45);
-  margin-top: 3px;
+.schedule-table th,
+.schedule-table td {
+  padding: 8px 0;
+  font-size: 13px;
+  color: var(--muted-text);
+  border-bottom: 1px solid var(--border-soft);
 }
 
-.timeline-item.completed .timeline-dot {
-  background: rgba(34, 197, 94, 0.45);
-  border-color: rgba(34, 197, 94, 0.6);
+.schedule-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--heading-color);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
 }
 
-.timeline-item.delayed .timeline-dot {
-  background: rgba(245, 158, 11, 0.45);
-  border-color: rgba(245, 158, 11, 0.6);
+.schedule-table tr:last-child th,
+.schedule-table tr:last-child td {
+  border-bottom: none;
 }
 
-.timeline-item.upcoming .timeline-dot {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: rgba(59, 130, 246, 0.35);
-}
-
-.timeline-body {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.timeline-time {
+.schedule-time {
   font-weight: 700;
   color: var(--heading-color);
 }
 
-.timeline-status {
-  font-size: 13px;
+.schedule-status {
+  width: 120px;
+}
+
+.schedule-note {
   color: var(--muted-text);
 }
 
-.timeline-note {
-  font-size: 12px;
-  color: var(--muted-text);
+@media (min-width: 520px) {
+  .schedule-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
 }
 
 .list-column {
