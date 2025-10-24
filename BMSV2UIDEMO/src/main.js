@@ -100,8 +100,4 @@ const vuetify = createVuetify({
   },
 })
 // EN ÜSTE (main.js ya da bu Vue dosyası)
-import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community'
-
-ModuleRegistry.registerModules([AllCommunityModule])
-
 createApp(App).use(router).use(createPinia()).use(vuetify).mount('#app')

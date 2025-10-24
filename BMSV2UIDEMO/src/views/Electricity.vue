@@ -156,22 +156,36 @@
                 />
 
                 <div class="grid-wrapper">
-                  <ag-grid-vue
-                    class="ag-theme-alpine grid-full"
-                    :columnDefs="columnDefs"
-                    :rowData="displayRows"
-                    :quickFilterText="quickFilterText"
-                    :animateRows="true"
-                    rowSelection="multiple"
-                    :rowClassRules="rowClassRules"
-                    :localeText="localeText"
-                    :defaultColDef="defaultColDef"
-                    pagination
-                    :paginationPageSize="6"
-                    domLayout="normal"
-                    @grid-ready="onGridReady"
-                    @selection-changed="onSelectionChanged"
-                  />
+                  <v-data-table
+                    v-model:selected="selectedRows"
+                    :headers="tableHeaders"
+                    :items="tableItems"
+                    :group-by="tableGroupBy"
+                    :sort-by="tableSortBy"
+                    :items-per-page="6"
+                    class="grid-table"
+                    density="comfortable"
+                    item-value="name"
+                    return-object
+                    show-select
+                    hover
+                    fixed-header
+                  >
+                    <template #item.status="{ item }">
+                      <v-chip :color="statusChipColor(item.status)" size="small" variant="tonal">
+                        {{ item.status }}
+                      </v-chip>
+                    </template>
+                    <template #item.consumption="{ item }">
+                      <span class="mono">{{ item.consumption }}</span>
+                    </template>
+                    <template #item.commandIndex="{ item }">
+                      <span class="mono">{{ item.commandIndex }}</span>
+                    </template>
+                    <template #no-data>
+                      <div class="no-data">Filtrelere uyan sayaç bulunamadı.</div>
+                    </template>
+                  </v-data-table>
                 </div>
               </v-card>
             </v-col>
@@ -202,18 +216,30 @@
             style="max-width: 950px"
           />
 
-          <ag-grid-vue
-            class="ag-theme-alpine"
-            style="height: 600px; width: 100%"
-            :columnDefs="workOrderColumnDefs"
-            :rowData="workOrderData"
-            :quickFilterText="workOrderFilter"
-            animateRows="true"
-            :localeText="localeText"
-            :defaultColDef="defaultColDef"
-            pagination
-            :paginationPageSize="8"
-          />
+          <v-data-table
+            :headers="workOrderHeaders"
+            :items="filteredWorkOrders"
+            class="secondary-table"
+            density="comfortable"
+            :items-per-page="8"
+            hover
+            fixed-header
+          >
+            <template #item.status="{ item }">
+              <v-chip :color="workOrderStatusColor(item.status)" size="small" variant="tonal">
+                {{ item.status }}
+              </v-chip>
+            </template>
+            <template #item.data="{ item }">
+              <span class="mono">{{ item.data }}</span>
+            </template>
+            <template #item.workOrderId="{ item }">
+              <span class="mono">{{ item.workOrderId }}</span>
+            </template>
+            <template #no-data>
+              <div class="no-data">Kayıt bulunamadı.</div>
+            </template>
+          </v-data-table>
         </div>
       </v-window-item>
       <v-window-item value="alerts">
@@ -230,18 +256,24 @@
             style="max-width: 950px"
           />
 
-          <ag-grid-vue
-            class="ag-theme-alpine"
-            style="height: 600px; width: 100%"
-            :columnDefs="alertColumnDefs"
-            :rowData="alertData"
-            :quickFilterText="alertFilter"
-            animateRows="true"
-            :localeText="localeText"
-            :defaultColDef="defaultColDef"
-            pagination
-            :paginationPageSize="8"
-          />
+          <v-data-table
+            :headers="alertHeaders"
+            :items="filteredAlerts"
+            class="secondary-table"
+            density="comfortable"
+            :items-per-page="8"
+            hover
+            fixed-header
+          >
+            <template #item.severity="{ item }">
+              <v-chip :color="alertSeverityColor(item.severity)" size="small" variant="tonal">
+                {{ item.severity }}
+              </v-chip>
+            </template>
+            <template #no-data>
+              <div class="no-data">Aktif alarm bulunamadı.</div>
+            </template>
+          </v-data-table>
         </div>
       </v-window-item>
     </v-window>
@@ -354,19 +386,15 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { AgGridVue } from 'ag-grid-vue3'
-import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community'
-ModuleRegistry.registerModules([AllCommunityModule])
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
-// ---- Reaktif değişkenler ----
 const activeTab = ref('products')
 const quickFilterText = ref('')
-const gridApi = ref(null)
 const selectedRows = ref([])
 const workOrderFilter = ref('')
+const alertFilter = ref('')
 const selectedStatuses = ref([])
 const selectedComm = ref([])
 const selectedModels = ref([])
@@ -389,144 +417,18 @@ const groupOptions = [
 
 const collator = new Intl.Collator('tr-TR')
 
-// ---- Kolon tanımları ----
-const columnDefs = ref([
-  {
-    field: 'name',
-    headerName: 'Sayaç No',
-    filter: 'agTextColumnFilter',
-    checkboxSelection: (params) => !params.data?.isGroup,
-    headerCheckboxSelection: true,
-    cellRenderer: (params) => {
-      if (params.data?.isGroup) {
-        return `
-          <div class="group-cell">
-            <strong>${params.data.groupLabel}</strong>
-            <span>${params.data.count} sayaç</span>
-            <small>Aktif: ${params.data.activeCount} · Pasif: ${params.data.inactiveCount}</small>
-          </div>
-        `
-      }
-      return params.value
-    },
-  },
-  {
-    field: 'model',
-    headerName: 'Sayaç Modeli',
-    filter: 'agTextColumnFilter',
-    valueGetter: (params) => (params.data?.isGroup ? '' : (params.data?.model ?? '')),
-  },
-  {
-    field: 'type',
-    headerName: 'İletişim Tipi',
-    valueGetter: (params) => (params.data?.isGroup ? '' : (params.data?.type ?? '')),
-  },
-  {
-    field: 'consumption',
-    headerName: 'Tüketim',
-    filter: true,
-    valueGetter: (params) => (params.data?.isGroup ? '' : (params.data?.consumption ?? '')),
-  },
-  {
-    field: 'commandIndex',
-    headerName: 'Versiyon',
-    filter: 'agNumberColumnFilter',
-    valueGetter: (params) => (params.data?.isGroup ? '' : (params.data?.commandIndex ?? '')),
-  },
-  {
-    field: 'status',
-    headerName: 'Durum',
-    valueGetter: (params) => (params.data?.isGroup ? '' : (params.data?.status ?? '')),
-    cellRenderer: (params) => {
-      if (params.data?.isGroup) return ''
-      const color = params.value === 'Aktif' ? '#4CAF50' : '#F44336'
-      return `
-        <span style="
-          background-color:${color};
-          color:white;
-          padding:3px 8px;
-          border-radius:8px;
-          font-size:12px;">
-          ${params.value}
-        </span>`
-    },
-  },
-])
-const alertFilter = ref('')
+const tableHeaders = [
+  { title: 'Sayaç No', key: 'name', sortable: true },
+  { title: 'Model', key: 'model', sortable: true },
+  { title: 'İletişim', key: 'type', sortable: true },
+  { title: 'Tüketim', key: 'consumption', sortable: true },
+  { title: 'Versiyon', key: 'commandIndex', sortable: true },
+  { title: 'Durum', key: 'status', sortable: true },
+]
 
-const alertData = ref([
-  {
-    alertId: 'AABBCCDDEEFC',
-    deviceName: '10001',
-    type: 'Üst Kapak Açıldı',
-    severity: 'Kritik',
-    createdDate: '2025-10-23 09:45',
-    status: 'Açık',
-  },
-  {
-    alertId: 'AABBCCDDEEFF',
-    deviceName: '10005',
-    type: 'Düşük Voltaj',
-    severity: 'Orta',
-    createdDate: '2025-10-23 11:20',
-    status: 'İzlemede',
-  },
-  {
-    alertId: 'AABBCCDDEEFD',
-    deviceName: '10007',
-    type: 'İletişim Hatası',
-    severity: 'Yüksek',
-    createdDate: '2025-10-23 12:00',
-    status: 'Kapalı',
-  },
-])
+const tableSortBy = ref([{ key: 'name', order: 'asc' }])
+const tableGroupBy = computed(() => (groupBy.value === 'none' ? [] : [{ key: groupBy.value }]))
 
-const alertColumnDefs = ref([
-  { field: 'deviceName', headerName: 'Sayaç No' },
-  { field: 'alertId', headerName: 'Payload' },
-  { field: 'type', headerName: 'Uyarı Tipi' },
-  {
-    field: 'severity',
-    headerName: 'Önem Derecesi',
-    cellRenderer: (params) => {
-      const colors = {
-        Düşük: '#8BC34A',
-        Orta: '#FFC107',
-        Yüksek: '#FF5722',
-        Kritik: '#F44336',
-      }
-      const color = colors[params.value] || '#9E9E9E'
-      return `<span style="background-color:${color};color:white;padding:3px 8px;border-radius:8px;font-size:12px;">${params.value}</span>`
-    },
-  },
-  { field: 'createdDate', headerName: 'Tarih' },
-  {
-    field: 'status',
-    headerName: 'Durum',
-    cellRenderer: (params) => {
-      const colors = {
-        Açık: '#E53935',
-        İzlemede: '#FFC107',
-        Kapalı: '#4CAF50',
-      }
-      const color = colors[params.value] || '#9E9E9E'
-      return `<span style="background-color:${color};color:white;padding:3px 8px;border-radius:8px;font-size:12px;">${params.value}</span>`
-    },
-  },
-])
-
-// ---- Varsayılan kolon ayarları ----
-const defaultColDef = {
-  filter: true,
-  sortable: true,
-  resizable: true,
-  flex: 1,
-  minWidth: 120,
-  floatingFilter: true,
-  suppressMenuHide: false,
-}
-
-// ---- Sayaç verileri ----
 const tools = ref([
   {
     name: '10001',
@@ -644,6 +546,7 @@ const parseConsumption = (value) => {
 }
 
 const filteredTools = computed(() => {
+  const term = quickFilterText.value.trim().toLowerCase()
   return tools.value.filter((tool) => {
     if (selectedStatuses.value.length && !selectedStatuses.value.includes(tool.status)) return false
     if (selectedComm.value.length && !selectedComm.value.includes(tool.type)) return false
@@ -657,57 +560,10 @@ const filteredTools = computed(() => {
       })
       if (!matchesRange) return false
     }
-    return true
+    if (!term) return true
+    const haystack = `${tool.name} ${tool.model} ${tool.type} ${tool.status}`.toLowerCase()
+    return haystack.includes(term)
   })
-})
-
-function formatGroupLabel(key) {
-  if (groupBy.value === 'status') {
-    return `Durum: ${key}`
-  }
-  if (groupBy.value === 'type') {
-    return `İletişim: ${key}`
-  }
-  if (groupBy.value === 'model') {
-    return `Model: ${key}`
-  }
-  return key
-}
-
-const displayRows = computed(() => {
-  if (groupBy.value === 'none') return filteredTools.value
-
-  const groups = new Map()
-  filteredTools.value.forEach((tool) => {
-    const key = tool[groupBy.value] ?? 'Diğer'
-    if (!groups.has(key)) {
-      groups.set(key, [])
-    }
-    groups.get(key).push(tool)
-  })
-
-  const sortFn = (a, b) => collator.compare(a, b)
-  const result = []
-
-  Array.from(groups.entries())
-    .sort((a, b) => sortFn(a[0], b[0]))
-    .forEach(([key, items]) => {
-      const activeCount = items.filter((item) => item.status === 'Aktif').length
-      const inactiveCount = items.length - activeCount
-      result.push({
-        isGroup: true,
-        groupLabel: formatGroupLabel(key),
-        rawGroupKey: key,
-        count: items.length,
-        activeCount,
-        inactiveCount,
-        name: formatGroupLabel(key),
-      })
-      const sortedItems = [...items].sort((a, b) => collator.compare(a.name, b.name))
-      result.push(...sortedItems)
-    })
-
-  return result
 })
 
 const filteredStats = computed(() => {
@@ -719,21 +575,80 @@ const filteredStats = computed(() => {
   return stats
 })
 
-const rowClassRules = {
-  'group-row': (params) => params.data?.isGroup,
-}
+const statusChipColor = (status) => (status === 'Aktif' ? 'success' : 'error')
 
-function resetFilters() {
+const tableItems = filteredTools
+
+const resetFilters = () => {
   selectedStatuses.value = []
   selectedComm.value = []
   selectedModels.value = []
   selectedConsumption.value = []
   groupBy.value = 'status'
   quickFilterText.value = ''
-  gridApi.value?.setQuickFilter('')
 }
 
-// ---- İş Emri Geçmişi ----
+const selectAllRows = () => {
+  selectedRows.value = [...tableItems.value]
+}
+
+watch(filteredTools, () => {
+  const allowed = new Set(tableItems.value.map((tool) => tool.name))
+  selectedRows.value = selectedRows.value.filter((row) => allowed.has(row.name))
+  if (activeTab.value === 'map') {
+    setTimeout(initMap, 150)
+  }
+})
+
+watch(activeTab, (val) => {
+  if (val === 'map') setTimeout(initMap, 150)
+})
+
+let mapInstance = null
+
+function initMap() {
+  const mapContainer = document.getElementById('map')
+  if (!mapContainer) return
+
+  if (mapInstance) {
+    mapInstance.remove()
+    mapInstance = null
+  }
+
+  mapInstance = L.map(mapContainer).setView([38.4849, 27.0891], 15)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors',
+  }).addTo(mapInstance)
+
+  const markerSource = filteredTools.value.length ? filteredTools.value : tools.value
+  markerSource.forEach((tool) => {
+    const color = tool.status === 'Aktif' ? '#4CAF50' : '#F44336'
+    L.circleMarker([tool.lat, tool.lng], {
+      color,
+      radius: 8,
+      fillColor: color,
+      fillOpacity: 0.9,
+      weight: 1.5,
+    })
+      .bindPopup(
+        `<b>${tool.name}</b><br>${tool.type} - <span style="color:${color};font-weight:bold;">${tool.status}</span>`,
+      )
+      .addTo(mapInstance)
+  })
+}
+
+const workOrderHeaders = [
+  { title: 'Sayaç No', key: 'name', sortable: true },
+  { title: 'İş Emri Tipi', key: 'type', sortable: true },
+  { title: 'İş Emri Datası', key: 'workOrderId', sortable: true },
+  { title: 'Data', key: 'data', sortable: true },
+  { title: 'Durum', key: 'status', sortable: true },
+  { title: 'Oluşturulma', key: 'createdDate', sortable: true },
+  { title: 'Gönderim', key: 'sentDate', sortable: true },
+  { title: 'Cevap', key: 'responseDate', sortable: true },
+]
+
 const workOrderData = ref([
   {
     name: '10001',
@@ -760,50 +675,50 @@ const workOrderData = ref([
     workOrderId: '01020304',
     type: 'Röle Kapat',
     data: '01020304AAABAC',
-    status: 'Bekliyor',
-    createdDate: '2025-10-22 11:00',
-    sentDate: '-',
-    responseDate: '-',
+    status: 'Gönderildi',
+    createdDate: '2025-10-22 08:40',
+    sentDate: '2025-10-22 08:41',
+    responseDate: '2025-10-22 08:45',
   },
   {
     name: '10003',
     workOrderId: '01020304',
-    type: 'Röle Aç',
+    type: 'Tüketim Oku',
     data: '090807FFFEFD',
-    status: 'Başarısız',
-    createdDate: '2025-10-20 08:10',
-    sentDate: '2025-10-20 08:12',
-    responseDate: '2025-10-20 08:15',
+    status: 'Bekliyor',
+    createdDate: '2025-10-23 14:30',
+    sentDate: '-',
+    responseDate: '-',
   },
   {
     name: '10004',
     workOrderId: '01020304',
-    type: 'Tüketim Oku',
+    type: 'Röle Aç',
     data: '01020304AAABAC',
-    status: 'Tamamlandı',
-    createdDate: '2025-10-22 14:40',
-    sentDate: '2025-10-22 14:42',
-    responseDate: '2025-10-22 14:50',
+    status: 'Başarısız',
+    createdDate: '2025-10-21 16:45',
+    sentDate: '2025-10-21 16:46',
+    responseDate: '2025-10-21 16:50',
   },
   {
     name: '10005',
     workOrderId: '01020304',
-    type: 'Röle Kapat',
+    type: 'Limit Güncelle',
     data: '090807FFFEFD',
-    status: 'Gönderildi',
-    createdDate: '2025-10-21 15:00',
-    sentDate: '2025-10-21 15:01',
-    responseDate: '-',
+    status: 'Tamamlandı',
+    createdDate: '2025-10-22 11:00',
+    sentDate: '2025-10-22 11:02',
+    responseDate: '2025-10-22 11:10',
   },
   {
     name: '10006',
     workOrderId: '01020304',
-    type: 'Röle Aç',
+    type: 'Röle Kapat',
     data: '01020304AAABAC',
     status: 'Tamamlandı',
-    createdDate: '2025-10-20 09:25',
-    sentDate: '2025-10-20 09:27',
-    responseDate: '2025-10-20 09:30',
+    createdDate: '2025-10-21 13:15',
+    sentDate: '2025-10-21 13:17',
+    responseDate: '2025-10-21 13:21',
   },
   {
     name: '10007',
@@ -847,42 +762,30 @@ const workOrderData = ref([
   },
 ])
 
-const workOrderColumnDefs = ref([
-  { field: 'name', headerName: 'Sayaç No', filter: 'agTextColumnFilter' },
-  {
-    field: 'type',
-    headerName: 'İş Emri Tipi',
-    filter: 'agTextColumnFilter',
-  },
-  { field: 'workOrderId', headerName: 'İş Emri Datası', cellStyle: { fontFamily: 'monospace' } },
-  { field: 'data', headerName: 'Data', cellStyle: { fontFamily: 'monospace' } },
-  {
-    field: 'status',
-    headerName: 'Durum',
-    cellRenderer: (params) => {
-      const colors = {
-        Gönderildi: '#1976D2',
-        Tamamlandı: '#4CAF50',
-        Başarısız: '#F44336',
-        Bekliyor: '#FFC107',
-      }
-      const color = colors[params.value] || '#9E9E9E'
-      return `<span style="background-color:${color};color:white;padding:3px 8px;border-radius:8px;font-size:12px;">${params.value}</span>`
-    },
-  },
-  { field: 'createdDate', headerName: 'Oluşturulma Tarihi' },
-  { field: 'sentDate', headerName: 'Gönderilme Tarihi' },
-  { field: 'responseDate', headerName: 'Cevap Tarihi' },
-])
-// Sağdan kayan panel kontrolü
+const filteredWorkOrders = computed(() => {
+  const term = workOrderFilter.value.trim().toLowerCase()
+  if (!term) return workOrderData.value
+  return workOrderData.value.filter((item) =>
+    `${item.name} ${item.type} ${item.workOrderId} ${item.data} ${item.status}`.toLowerCase().includes(term),
+  )
+})
+
+const workOrderStatusColor = (status) => {
+  const colors = {
+    Gönderildi: 'info',
+    Tamamlandı: 'success',
+    Başarısız: 'error',
+    Bekliyor: 'warning',
+  }
+  return colors[status] || 'secondary'
+}
+
 const workOrderPanel = ref(false)
 const selectedWorkOrderType = ref(null)
 const workOrderPayload = ref({ description: '', readCommand: '', limit: '', resetCode: '' })
-
 const workOrderTypes = ['Sayaç Okuma', 'Limit Güncelleme', 'Resetleme']
 
-// “İş Emri Gönder” butonuna tıklanınca açılacak
-function sendWorkOrder() {
+const sendWorkOrder = () => {
   if (!selectedRows.value.length) {
     alert('Herhangi bir cihaz seçilmedi.')
     return
@@ -890,250 +793,136 @@ function sendWorkOrder() {
   workOrderPanel.value = true
 }
 
-// Panelde “Gönder” butonuna tıklanınca
-function confirmSendWorkOrder() {
-  const selected = selectedRows.value
+const confirmSendWorkOrder = () => {
   const type = selectedWorkOrderType.value
-
   if (!type) {
     alert('Lütfen bir iş emri tipi seçiniz.')
     return
   }
 
   console.log('İş emri tipi:', type)
-  console.log('Seçili sayaçlar:', selected)
+  console.log('Seçili sayaçlar:', selectedRows.value)
   console.log('Girilen veriler:', workOrderPayload.value)
 
-  alert(`${selected.length} cihaz için '${type}' iş emri hazırlandı (örnek simülasyon).`)
+  alert(`${selectedRows.value.length} cihaz için '${type}' iş emri hazırlandı (örnek simülasyon).`)
 
-  // Reset
   workOrderPanel.value = false
   selectedWorkOrderType.value = null
   workOrderPayload.value = { description: '', readCommand: '', limit: '', resetCode: '' }
 }
 
-// ---- Grid Eventleri ----
-function onSelectionChanged(event) {
-  selectedRows.value = event.api.getSelectedRows().filter((row) => !row.isGroup)
-}
-function selectAllRows() {
-  if (!gridApi.value) return
-  gridApi.value.forEachNode((node) => {
-    if (node.data?.isGroup) {
-      node.setSelected(false)
-    } else {
-      node.setSelected(true)
-    }
-  })
-  selectedRows.value = gridApi.value.getSelectedRows().filter((row) => !row.isGroup)
-}
-function onGridReady(params) {
-  gridApi.value = params.api
-  params.api.sizeColumnsToFit() // sadece kolonları boyutlandır
-}
+const alertHeaders = [
+  { title: 'Sayaç No', key: 'deviceName', sortable: true },
+  { title: 'Payload', key: 'alertId', sortable: true },
+  { title: 'Uyarı Tipi', key: 'type', sortable: true },
+  { title: 'Önem', key: 'severity', sortable: true },
+  { title: 'Tarih', key: 'createdDate', sortable: true },
+  { title: 'Durum', key: 'status', sortable: true },
+]
 
-watch(filteredTools, () => {
-  if (gridApi.value) {
-    const selectedIds = new Set(selectedRows.value.map((row) => row.name))
-    nextTick(() => {
-      gridApi.value.forEachNode((node) => {
-        if (!node.data || node.data.isGroup) return
-        node.setSelected(selectedIds.has(node.data.name))
-      })
-      selectedRows.value = gridApi.value.getSelectedRows().filter((row) => !row.isGroup)
-    })
-  }
+const alertData = ref([
+  {
+    alertId: 'AABBCCDDEEFC',
+    deviceName: '10001',
+    type: 'Üst Kapak Açıldı',
+    severity: 'Kritik',
+    createdDate: '2025-10-23 09:45',
+    status: 'Açık',
+  },
+  {
+    alertId: 'AABBCCDDEEFF',
+    deviceName: '10005',
+    type: 'Düşük Voltaj',
+    severity: 'Orta',
+    createdDate: '2025-10-23 11:20',
+    status: 'İzlemede',
+  },
+  {
+    alertId: 'AABBCCDDEEFD',
+    deviceName: '10007',
+    type: 'İletişim Hatası',
+    severity: 'Yüksek',
+    createdDate: '2025-10-23 12:00',
+    status: 'Kapalı',
+  },
+])
 
-  if (activeTab.value === 'map') {
-    setTimeout(initMap, 150)
-  }
+const filteredAlerts = computed(() => {
+  const term = alertFilter.value.trim().toLowerCase()
+  if (!term) return alertData.value
+  return alertData.value.filter((item) =>
+    `${item.deviceName} ${item.type} ${item.severity} ${item.status}`.toLowerCase().includes(term),
+  )
 })
 
-watch(groupBy, () => {
-  if (!gridApi.value) return
-  const selectedIds = new Set(selectedRows.value.map((row) => row.name))
-  nextTick(() => {
-    gridApi.value.forEachNode((node) => {
-      if (!node.data || node.data.isGroup) return
-      node.setSelected(selectedIds.has(node.data.name))
-    })
-    selectedRows.value = gridApi.value.getSelectedRows().filter((row) => !row.isGroup)
-  })
-})
-
-// ---- Harita Başlatma ----
-let mapInstance = null
-
-function initMap() {
-  const mapContainer = document.getElementById('map')
-  if (!mapContainer) return
-
-  if (mapInstance) {
-    mapInstance.remove()
-    mapInstance = null
+const alertSeverityColor = (severity) => {
+  const colors = {
+    Düşük: 'success',
+    Orta: 'warning',
+    Yüksek: 'orange-darken-2',
+    Kritik: 'error',
   }
-
-  mapContainer.innerHTML = ''
-
-  mapInstance = L.map(mapContainer).setView([38.4849, 27.0891], 15)
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap contributors',
-  }).addTo(mapInstance)
-
-  const markerSource = filteredTools.value.length ? filteredTools.value : tools.value
-
-  markerSource.forEach((tool) => {
-    const color = tool.status === 'Aktif' ? '#4CAF50' : '#F44336'
-    L.circleMarker([tool.lat, tool.lng], {
-      color,
-      radius: 8,
-      fillColor: color,
-      fillOpacity: 0.9,
-      weight: 1.5,
-    })
-      .bindPopup(
-        `<b>${tool.name}</b><br>${tool.type} - <span style="color:${color};font-weight:bold;">${tool.status}</span>`,
-      )
-      .addTo(mapInstance)
-  })
+  return colors[severity] || 'secondary'
 }
-
-// ---- Harita Tabı Aktif Olunca Başlat ----
-watch(activeTab, (val) => {
-  if (val === 'map') setTimeout(initMap, 150)
-})
 
 const workOrderNotification = ref({ visible: false, message: '' })
+const alarmNotification = ref({ visible: false, message: '' })
 let workOrderTimer = null
+let alarmTimer = null
 
-function showRandomWorkOrderResponse() {
+const showRandomWorkOrderResponse = () => {
   const pool = filteredTools.value.length ? filteredTools.value : tools.value
   const randomTool = pool[Math.floor(Math.random() * pool.length)]
   if (!randomTool) return
 
   workOrderNotification.value.message = `${randomTool.name} sayacından iş emri cevabı geldi! ⚙️`
   workOrderNotification.value.visible = true
-
   setTimeout(() => (workOrderNotification.value.visible = false), 4000)
 }
 
-onMounted(() => {
-  const loop = () => {
-    const delay = 5000 + Math.random() * 10000
-    workOrderTimer = setTimeout(() => {
-      showRandomWorkOrderResponse()
-      loop()
-    }, delay)
-  }
-  loop()
-})
-const alarmNotification = ref({ visible: false, message: '' })
-let alarmTimer = null
-
-function showRandomAlarm() {
+const showRandomAlarm = () => {
   const pool = filteredTools.value.length ? filteredTools.value : tools.value
   const randomTool = pool[Math.floor(Math.random() * pool.length)]
   if (!randomTool) return
 
   const randomType = ['Üst Kapak Uyarısı', 'Müdahele', 'Düşük Akım'][Math.floor(Math.random() * 3)]
-
   alarmNotification.value.message = `🚨 ${randomTool.name} sayacında ${randomType}!`
   alarmNotification.value.visible = true
-
   setTimeout(() => (alarmNotification.value.visible = false), 4000)
 }
 
 onMounted(() => {
-  const alarmLoop = () => {
-    const delay = 15000 + Math.random() * 20000 // 15–35 saniyede bir uyarı
-    alarmTimer = setTimeout(() => {
-      showRandomAlarm()
-      alarmLoop()
+  const loopWorkOrder = () => {
+    const delay = 5000 + Math.random() * 10000
+    workOrderTimer = setTimeout(() => {
+      showRandomWorkOrderResponse()
+      loopWorkOrder()
     }, delay)
   }
-  alarmLoop()
+
+  const loopAlarm = () => {
+    const delay = 15000 + Math.random() * 20000
+    alarmTimer = setTimeout(() => {
+      showRandomAlarm()
+      loopAlarm()
+    }, delay)
+  }
+
+  loopWorkOrder()
+  loopAlarm()
 })
 
 onUnmounted(() => {
-  clearTimeout(alarmTimer)
-  clearTimeout(workOrderTimer)
-  gridApi.value = null
-  columnApi.value = null
+  if (workOrderTimer) clearTimeout(workOrderTimer)
+  if (alarmTimer) clearTimeout(alarmTimer)
   if (mapInstance) {
     mapInstance.remove()
     mapInstance = null
   }
 })
-
-const localeText = {
-  // Genel
-  loadingOoo: 'Yükleniyor...',
-  noRowsToShow: 'Gösterilecek kayıt yok',
-  page: 'Sayfa',
-  of: '/',
-  to: '→',
-  next: 'Sonraki',
-  last: 'Son',
-  first: 'İlk',
-  previous: 'Önceki',
-  applyFilter: 'Filtreyi Uygula',
-  clearFilter: 'Filtreyi Temizle',
-  resetFilter: 'Filtreyi Sıfırla',
-  selectAll: 'Tümünü Seç',
-  searchOoo: 'Ara...',
-  blanks: '(Boş)',
-
-  // Filtre menüsü
-  filterOoo: 'Filtrele...',
-  equals: 'Eşittir',
-  notEqual: 'Eşit Değil',
-  empty: 'Boş',
-
-  lessThan: 'Küçüktür',
-  greaterThan: 'Büyüktür',
-  lessThanOrEqual: 'Küçük veya Eşit',
-  greaterThanOrEqual: 'Büyük veya Eşit',
-  inRange: 'Arasında',
-
-  contains: 'İçerir',
-  notContains: 'İçermez',
-  startsWith: 'İle Başlar',
-  endsWith: 'İle Biter',
-
-  // Menü
-  menuFilter: 'Filtre',
-  menuSortAscending: 'Artan Sırala',
-  menuSortDescending: 'Azalan Sırala',
-  menuGroup: 'Grupla',
-  menuUngroup: 'Grubu Kaldır',
-
-  // Filtre tuşları
-  applyFilterButton: 'Uygula',
-  clearFilterButton: 'Temizle',
-  resetFilterButton: 'Sıfırla',
-
-  // Sayfalandırma
-  paginationPageSize: 'Sayfa boyutu',
-  more: 'Daha fazla',
-
-  // Durum çubuğu
-  totalRows: 'Toplam Satır',
-
-  // Diğer
-  andCondition: 'VE',
-  orCondition: 'VEYA',
-  notBlank: 'Boş Değil',
-}
 </script>
 
 <style scoped>
-/* AG Grid genel tema */
-.ag-theme-alpine {
-  --ag-font-size: 14px;
-  border-radius: 10px;
-}
-
 /* Yerleşim */
 .products-layout {
   display: flex !important;
@@ -1141,14 +930,6 @@ const localeText = {
   gap: 18px;
 }
 
-/* Update the products-layout styles */
-.products-layout {
-  display: flex !important;
-  align-items: stretch !important;
-  gap: 18px;
-}
-
-/* Update responsive styles */
 @media (max-width: 1280px) {
   .products-layout {
     gap: 12px;
@@ -1280,37 +1061,61 @@ const localeText = {
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 18px 32px rgba(15, 23, 42, 0.28);
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.15);
 }
 
-.grid-full {
-  height: 100%;
-  width: 100%;
+.grid-table,
+.secondary-table {
+  background: transparent;
 }
 
-/* Grup satırları (AG Grid) */
-:deep(.ag-row.group-row) {
-  background: rgba(59, 130, 246, 0.08) !important;
+.grid-table :deep(table),
+.secondary-table :deep(table) {
+  background: transparent;
 }
 
-:deep(.ag-row.group-row .ag-cell) {
+.grid-table :deep(thead tr),
+.secondary-table :deep(thead tr) {
+  background: rgba(15, 23, 42, 0.85);
+}
+
+.grid-table :deep(th),
+.secondary-table :deep(th) {
+  color: rgba(226, 232, 240, 0.85);
   font-weight: 600;
-  color: #f8fafc;
-}
-
-:deep(.group-cell) {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-:deep(.group-cell span) {
+  text-transform: uppercase;
   font-size: 12px;
-  color: #cbd5f5;
+  letter-spacing: 0.5px;
 }
 
-:deep(.group-cell small) {
-  font-size: 11px;
-  color: #94a3b8;
+.grid-table :deep(td),
+.secondary-table :deep(td) {
+  color: rgba(241, 245, 249, 0.92);
+  font-size: 14px;
+}
+
+.grid-table :deep(tbody tr:hover),
+.secondary-table :deep(tbody tr:hover) {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.secondary-table {
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  box-shadow: 0 14px 24px rgba(15, 23, 42, 0.25);
+}
+
+.mono {
+  font-family: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+  letter-spacing: 0.3px;
+}
+
+.no-data {
+  padding: 24px;
+  text-align: center;
+  color: rgba(148, 163, 184, 0.9);
 }
 
 /* Bildirim animasyonları */
@@ -1397,27 +1202,6 @@ const localeText = {
   50% {
     transform: translateY(-2px);
   }
-}
-
-/* Tema uyumu */
-:global(.theme-light) .ag-theme-alpine {
-  --ag-background-color: #ffffff;
-  --ag-foreground-color: #1f2937;
-  --ag-header-background-color: #f4f6f8;
-  --ag-header-foreground-color: #1f2937;
-  --ag-row-hover-color: rgba(14, 165, 233, 0.12);
-  --ag-border-color: #e2e8f0;
-  --ag-odd-row-background-color: #f8fafc;
-}
-
-:global(.theme-dark) .ag-theme-alpine {
-  --ag-background-color: #101a2c;
-  --ag-foreground-color: #e2e8f0;
-  --ag-header-background-color: #1e293b;
-  --ag-header-foreground-color: #e2e8f0;
-  --ag-row-hover-color: rgba(45, 212, 191, 0.18);
-  --ag-border-color: #1f2937;
-  --ag-odd-row-background-color: rgba(148, 163, 184, 0.08);
 }
 
 /* Responsive */
