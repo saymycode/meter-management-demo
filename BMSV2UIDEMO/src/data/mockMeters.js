@@ -1,11 +1,11 @@
 export const organizationProfile = {
   id: 'aski',
-  name: 'ASKİ Su ve Elektrik Operasyon Merkezi',
+  name: 'ASKİ Yönetim Merkezi',
   scope: 'ASKİ',
   region: 'Ankara',
   description:
     'ASKİ sayaçları LoRa ve GPRS ağları üzerinden gün içinde rastgele saatlerde veri gönderir. Tüm paneller kurum kapsamında filtrelenir ve başka bir organizasyonun verisi bu ekranda yer almaz.',
-  tagline: 'Günlük pencere tabanlı sayaç izlemesi'
+  tagline: 'Günlük pencere tabanlı sayaç izlemesi',
 }
 
 export const referenceNow = '2025-01-14T10:30:00+03:00'
@@ -20,7 +20,7 @@ export const meterSnapshots = [
     consumption: {
       last24h: 48.2,
       previous24h: 44.5,
-      history: [11.4, 9.8, 10.7, 8.9, 7.4]
+      history: [11.4, 9.8, 10.7, 8.9, 7.4],
     },
     zone: 'Çankaya DMA-3',
     lastReading: '48.2 m³',
@@ -28,7 +28,7 @@ export const meterSnapshots = [
     signal: '-78 dBm',
     window: 'Dinamik 24s',
     lat: 39.9106,
-    lng: 32.8537
+    lng: 32.8537,
   },
   {
     id: 'ASKI-W-10077',
@@ -39,7 +39,7 @@ export const meterSnapshots = [
     consumption: {
       last24h: 38.6,
       previous24h: 37.9,
-      history: [8.1, 7.4, 6.8, 7.6, 8.7]
+      history: [8.1, 7.4, 6.8, 7.6, 8.7],
     },
     zone: 'Yenimahalle Batı',
     lastReading: '38.6 m³',
@@ -47,7 +47,7 @@ export const meterSnapshots = [
     signal: '-84 dBm',
     window: 'Dinamik 24s',
     lat: 39.9681,
-    lng: 32.7579
+    lng: 32.7579,
   },
   {
     id: 'ASKI-W-10103',
@@ -58,7 +58,7 @@ export const meterSnapshots = [
     consumption: {
       last24h: 24.1,
       previous24h: 29.3,
-      history: [6.8, 6.1, 5.4, 4.0, 1.8]
+      history: [6.8, 6.1, 5.4, 4.0, 1.8],
     },
     zone: 'Sincan Sanayi',
     lastReading: '24.1 m³',
@@ -66,7 +66,7 @@ export const meterSnapshots = [
     signal: '-95 dBm',
     window: 'Dinamik 24s',
     lat: 39.9099,
-    lng: 32.4898
+    lng: 32.4898,
   },
   {
     id: 'ASKI-W-10244',
@@ -77,7 +77,7 @@ export const meterSnapshots = [
     consumption: {
       last24h: 9.7,
       previous24h: 18.4,
-      history: [3.5, 2.4, 1.8, 1.2, 0.8]
+      history: [3.5, 2.4, 1.8, 1.2, 0.8],
     },
     zone: 'Mamak Doğu',
     lastReading: '9.7 m³',
@@ -85,7 +85,7 @@ export const meterSnapshots = [
     signal: '-102 dBm',
     window: 'Dinamik 24s',
     lat: 39.9334,
-    lng: 32.9113
+    lng: 32.9113,
   },
   {
     id: 'ASKI-E-22017',
@@ -96,7 +96,7 @@ export const meterSnapshots = [
     consumption: {
       last24h: 612.0,
       previous24h: 588.3,
-      history: [142, 148, 151, 152, 145]
+      history: [142, 148, 151, 152, 145],
     },
     zone: 'Etimesgut Enerji',
     lastReading: '612 kWh',
@@ -104,7 +104,7 @@ export const meterSnapshots = [
     signal: 'RSRP -96 dBm',
     window: 'Dinamik 24s',
     lat: 39.9471,
-    lng: 32.6367
+    lng: 32.6367,
   },
   {
     id: 'ASKI-E-22064',
@@ -115,7 +115,7 @@ export const meterSnapshots = [
     consumption: {
       last24h: 452.4,
       previous24h: 463.1,
-      history: [118, 120, 112, 101, 91]
+      history: [118, 120, 112, 101, 91],
     },
     zone: 'Polatlı Şebeke',
     lastReading: '452 kWh',
@@ -123,7 +123,7 @@ export const meterSnapshots = [
     signal: 'RSRP -102 dBm',
     window: 'Dinamik 24s',
     lat: 39.584,
-    lng: 32.1413
+    lng: 32.1413,
   },
   {
     id: 'ASKI-E-22102',
@@ -134,7 +134,7 @@ export const meterSnapshots = [
     consumption: {
       last24h: 734.2,
       previous24h: 702.5,
-      history: [168, 172, 152, 125, 117]
+      history: [168, 172, 152, 125, 117],
     },
     zone: 'Altındağ Sanayi',
     lastReading: '734 kWh',
@@ -142,7 +142,7 @@ export const meterSnapshots = [
     signal: '-88 dBm',
     window: 'Dinamik 24s',
     lat: 39.9541,
-    lng: 32.8748
+    lng: 32.8748,
   },
   {
     id: 'ASKI-W-10312',
@@ -153,7 +153,7 @@ export const meterSnapshots = [
     consumption: {
       last24h: 18.4,
       previous24h: 21.0,
-      history: [5.4, 4.1, 3.3, 2.8, 2.1]
+      history: [5.4, 4.1, 3.3, 2.8, 2.1],
     },
     zone: 'Keçiören Kuzey',
     lastReading: '18.4 m³',
@@ -161,7 +161,7 @@ export const meterSnapshots = [
     signal: '-94 dBm',
     window: 'Dinamik 24s',
     lat: 40.0017,
-    lng: 32.8703
+    lng: 32.8703,
   },
   {
     id: 'ASKI-W-10365',
@@ -172,7 +172,7 @@ export const meterSnapshots = [
     consumption: {
       last24h: 33.8,
       previous24h: 31.4,
-      history: [7.2, 6.5, 6.0, 6.8, 7.3]
+      history: [7.2, 6.5, 6.0, 6.8, 7.3],
     },
     zone: 'Beypazarı Hat',
     lastReading: '33.8 m³',
@@ -180,7 +180,7 @@ export const meterSnapshots = [
     signal: '-90 dBm',
     window: 'Dinamik 24s',
     lat: 40.1652,
-    lng: 31.9199
+    lng: 31.9199,
   },
   {
     id: 'ASKI-E-22214',
@@ -191,7 +191,7 @@ export const meterSnapshots = [
     consumption: {
       last24h: 812.6,
       previous24h: 798.2,
-      history: [198, 184, 162, 140, 128]
+      history: [198, 184, 162, 140, 128],
     },
     zone: 'Ostim Enerji',
     lastReading: '812 kWh',
@@ -199,7 +199,7 @@ export const meterSnapshots = [
     signal: '-86 dBm',
     window: 'Dinamik 24s',
     lat: 39.974,
-    lng: 32.7685
+    lng: 32.7685,
   },
   {
     id: 'ASKI-E-22308',
@@ -210,7 +210,7 @@ export const meterSnapshots = [
     consumption: {
       last24h: 112.8,
       previous24h: 201.4,
-      history: [44, 33, 19, 11, 6]
+      history: [44, 33, 19, 11, 6],
     },
     zone: 'Kazan Besleme',
     lastReading: '112 kWh',
@@ -218,7 +218,7 @@ export const meterSnapshots = [
     signal: 'RSRP -110 dBm',
     window: 'Dinamik 24s',
     lat: 40.1964,
-    lng: 32.6839
+    lng: 32.6839,
   },
   {
     id: 'ASKI-W-10408',
@@ -229,7 +229,7 @@ export const meterSnapshots = [
     consumption: {
       last24h: 27.5,
       previous24h: 25.2,
-      history: [6.2, 5.9, 5.3, 5.0, 5.1]
+      history: [6.2, 5.9, 5.3, 5.0, 5.1],
     },
     zone: 'Gölbaşı Güney',
     lastReading: '27.5 m³',
@@ -237,8 +237,8 @@ export const meterSnapshots = [
     signal: '-82 dBm',
     window: 'Dinamik 24s',
     lat: 39.7682,
-    lng: 32.8026
-  }
+    lng: 32.8026,
+  },
 ]
 
 export const hourlyActivity = [
@@ -265,5 +265,5 @@ export const hourlyActivity = [
   { hour: '20', count: 17 },
   { hour: '21', count: 14 },
   { hour: '22', count: 12 },
-  { hour: '23', count: 9 }
+  { hour: '23', count: 9 },
 ]

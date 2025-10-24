@@ -19,17 +19,17 @@
           :now="now"
           :pending-threshold-hours="24"
           :inactive-threshold-hours="48"
-          window-hint="Sayaçlar gün içinde rastgele saatlerde paket gönderir; 24 saatlik pencere taranır."
+          window-hint="Sisteme gönderilmiş olan son veriler bu ekranda gösterilir."
         />
         <div class="hero-window">
           <div>
-            <span class="window-label">Son alınan paket</span>
-            <span class="window-value">{{ lastPacketLabel }}</span>
+            <span class="window-label">Son alınan paket Sayaç Bilgileri</span>
+            <span class="window-value">00373-15042025</span>
+            <span class="window-hint">AK-311 ECO LORA</span>
           </div>
           <div>
-            <span class="window-label">Yaklaşan pencere</span>
-            <span class="window-value">{{ nextWindowLabel }}</span>
-            <span class="window-hint">{{ nextWindowHint }}</span>
+            <span class="window-label">Son alınan paket</span>
+            <span class="window-value">{{ lastPacketLabel }}</span>
           </div>
         </div>
       </div>
@@ -40,11 +40,18 @@
         <v-card class="dashboard-card" elevation="0">
           <div class="card-header">
             <div>
-              <h2>Metre durum dağılımı</h2>
-              <span class="card-subtitle">24 saatlik pencere üzerinden hesaplanan aktiflik durumları</span>
+              <h2>Sayaç durum dağılımı</h2>
+              <span class="card-subtitle">Sayaçların aktifliği</span>
             </div>
           </div>
           <div class="donut-group">
+            <DonutSummary
+              title="Sayaç türü"
+              subtitle="Sayaç tipi oranı"
+              :labels="productTypeLabels"
+              :values="productTypeValues"
+              :colors="productTypeColors"
+            />
             <DonutSummary
               title="Durum dağılımı"
               subtitle="Aktif • Beklemede • Pasif"
@@ -80,7 +87,10 @@
                 <span class="consumption-label">{{ item.label }}</span>
                 <span class="consumption-value">{{ item.value }}</span>
                 <div class="consumption-trend" :class="item.positive ? 'positive' : 'negative'">
-                  <v-icon :icon="item.positive ? 'mdi-arrow-trending-up' : 'mdi-arrow-trending-down'" size="16" />
+                  <v-icon
+                    :icon="item.positive ? 'mdi-arrow-trending-up' : 'mdi-arrow-trending-down'"
+                    size="16"
+                  />
                   <span>{{ item.change }}</span>
                   <span class="consumption-hint">{{ item.hint }}</span>
                 </div>
@@ -89,8 +99,7 @@
                 :model-value="item.sparkline"
                 :smooth="8"
                 :line-width="3"
-                color="rgba(56,189,248,0.5)"
-                gradient="rgba(56,189,248,0.15)"
+                :gradient="['rgba(56,189,248,0.15)', 'rgba(56,189,248,0.5)']"
                 class="consumption-sparkline"
                 auto-draw
               />
@@ -103,8 +112,10 @@
         <v-card class="dashboard-card" elevation="0">
           <div class="card-header">
             <div>
-              <h2>İletişim aktivitesi</h2>
-              <span class="card-subtitle">Son 24 saat içerisinde saatlik alınan paket adedi</span>
+              <h2>Su sayacı iletişim aktivitesi</h2>
+              <span class="card-subtitle"
+                >Son 24 saat içerisinde su sayaçlarından alınan paket adedi</span
+              >
             </div>
             <v-chip prepend-icon="mdi-clock-time-four-outline" size="small" variant="flat">
               Son paket: {{ lastPacketClock }}
@@ -131,12 +142,22 @@
               <h2>Geciken sayaç uyarıları</h2>
               <span class="card-subtitle">48 saati aşan sayaçlar kırmızı ile vurgulanır</span>
             </div>
-            <v-chip color="red-darken-2" prepend-icon="mdi-alert-decagram" size="small" variant="flat">
+            <v-chip
+              color="red-darken-2"
+              prepend-icon="mdi-alert-decagram"
+              size="small"
+              variant="flat"
+            >
               {{ alerts.length }} kritik
             </v-chip>
           </div>
           <v-list class="alert-list" density="compact">
-            <v-list-item v-for="alert in alerts" :key="alert.id" class="alert-item" @click="goToSensors(alert.filter)">
+            <v-list-item
+              v-for="alert in alerts"
+              :key="alert.id"
+              class="alert-item"
+              @click="goToSensors(alert.filter)"
+            >
               <template #prepend>
                 <v-avatar :color="alert.badgeColor" size="36" variant="tonal">
                   <v-icon :icon="alert.icon" />
@@ -145,7 +166,9 @@
               <v-list-item-title>{{ alert.title }}</v-list-item-title>
               <v-list-item-subtitle>{{ alert.subtitle }}</v-list-item-subtitle>
               <template #append>
-                <v-chip color="red-darken-2" size="small" variant="outlined">{{ alert.delay }}</v-chip>
+                <v-chip color="red-darken-2" size="small" variant="outlined">{{
+                  alert.delay
+                }}</v-chip>
               </template>
             </v-list-item>
             <v-list-item v-if="alerts.length === 0">
@@ -186,7 +209,9 @@
           <div class="card-header">
             <div>
               <h2>Organizasyon kapsamı</h2>
-              <span class="card-subtitle">ASKİ hesabına bağlı tüm sayaçlar bu panelde gruplanır</span>
+              <span class="card-subtitle"
+                >ASKİ hesabına bağlı tüm sayaçlar bu panelde gruplanır</span
+              >
             </div>
           </div>
           <div class="scope-panel">
@@ -196,15 +221,22 @@
             </div>
             <div class="scope-item">
               <span class="scope-label">LoRa</span>
-              <span class="scope-value">{{ communicationCounts.LoRa.toLocaleString('tr-TR') }}</span>
+              <span class="scope-value">{{
+                communicationCounts.LoRa.toLocaleString('tr-TR')
+              }}</span>
             </div>
             <div class="scope-item">
               <span class="scope-label">GPRS</span>
-              <span class="scope-value">{{ communicationCounts.GPRS.toLocaleString('tr-TR') }}</span>
+              <span class="scope-value">{{
+                communicationCounts.GPRS.toLocaleString('tr-TR')
+              }}</span>
             </div>
             <div class="scope-note">
               <v-icon icon="mdi-shield-lock-outline" size="18" />
-              <span>Bu dashboard yalnızca {{ organization.scope }} organizasyonundan gelen veriyle çalışır.</span>
+              <span
+                >Bu dashboard yalnızca {{ organization.scope }} organizasyonundan gelen veriyle
+                çalışır.</span
+              >
             </div>
           </div>
         </v-card>
@@ -219,7 +251,12 @@ import { useRouter } from 'vue-router'
 import DataFreshnessIndicator from '@/components/common/DataFreshnessIndicator.vue'
 import DonutSummary from '@/components/dashboard/DonutSummary.vue'
 import HourlyActivityChart from '@/components/dashboard/HourlyActivityChart.vue'
-import { hourlyActivity, meterSnapshots, organizationProfile, referenceNow } from '@/data/mockMeters'
+import {
+  hourlyActivity,
+  meterSnapshots,
+  organizationProfile,
+  referenceNow,
+} from '@/data/mockMeters'
 import { formatAbsolute, formatClock, formatRelativeAgo, hoursBetween, toDate } from '@/utils/time'
 
 const router = useRouter()
@@ -239,8 +276,8 @@ const classifyStatus = (meter) => {
 const meterWithStatus = computed(() =>
   meters.value.map((meter) => ({
     ...meter,
-    status: classifyStatus(meter)
-  }))
+    status: classifyStatus(meter),
+  })),
 )
 
 const statusOrder = ['active', 'pending', 'inactive']
@@ -253,7 +290,7 @@ const statusCounts = computed(() => {
       acc[meter.status] += 1
       return acc
     },
-    { active: 0, pending: 0, inactive: 0 }
+    { active: 0, pending: 0, inactive: 0 },
   )
 })
 
@@ -265,13 +302,51 @@ const communicationCounts = computed(() => {
       acc[meter.communication] = (acc[meter.communication] ?? 0) + 1
       return acc
     },
-    { LoRa: 0, GPRS: 0 }
+    { LoRa: 0, GPRS: 0 },
   )
+})
+const productTypeLabels = ['Su Sayacı', 'Elektrik Sayacı', 'Gaz Sayacı', 'Modem']
+
+const productTypeColors = [
+  'rgba(56, 189, 248, 0.75)', // Su
+  'rgba(250, 204, 21, 0.75)', // Elektrik
+  'rgba(248, 113, 113, 0.75)', // Gaz
+  'rgba(148, 163, 184, 0.75)', // Modem
+]
+const typeMap = {
+  water: 'Su Sayacı',
+  electric: 'Elektrik Sayacı',
+  gas: 'Gaz Sayacı',
+  modem: 'Modem',
+}
+
+const productTypeCounts = computed(() => {
+  // tüm türlere 1 ver
+  const acc = {
+    'Su Sayacı': 1,
+    'Elektrik Sayacı': 1,
+    'Gaz Sayacı': 1,
+    Modem: 1,
+  }
+
+  // sayaçları say
+  meterWithStatus.value.forEach((meter) => {
+    const key = typeMap[meter.type] || 'Modem'
+    acc[key] = (acc[key] ?? 1) + 1
+  })
+
+  return acc
 })
 
 const communicationLabels = ['LoRa', 'GPRS']
 const communicationColors = ['rgba(16, 185, 129, 0.75)', 'rgba(59, 130, 246, 0.75)']
-const communicationValues = computed(() => communicationLabels.map((label) => communicationCounts.value[label] ?? 0))
+const communicationValues = computed(() =>
+  communicationLabels.map((label) => communicationCounts.value[label] ?? 0),
+)
+
+const productTypeValues = computed(() =>
+  productTypeLabels.map((label) => productTypeCounts.value[label] ?? 1),
+)
 
 const totalMeters = computed(() => meterWithStatus.value.length)
 
@@ -279,18 +354,18 @@ const heroMetrics = computed(() => [
   {
     label: 'Aktif sayaç',
     value: statusCounts.value.active.toLocaleString('tr-TR'),
-    hint: `%${((statusCounts.value.active / totalMeters.value) * 100).toFixed(1)}`
+    hint: `%${((statusCounts.value.active / totalMeters.value) * 100).toFixed(1)}`,
   },
   {
-    label: 'Beklemede',
+    label: 'Veri Beklenen Sayaç',
     value: statusCounts.value.pending.toLocaleString('tr-TR'),
-    hint: '%24-48 saat'
+    hint: '%16.6',
   },
   {
-    label: '48+ saat',
+    label: 'Pasif sayaç',
     value: statusCounts.value.inactive.toLocaleString('tr-TR'),
-    hint: 'Gecikmeli sayaç'
-  }
+    hint: '%0',
+  },
 ])
 
 const aggregateConsumption = (type, key) =>
@@ -309,7 +384,7 @@ const consumptionSummary = computed(() => {
     const change = ((current - previous) / previous) * 100
     return {
       text: `${change >= 0 ? '+' : ''}${change.toFixed(1)}%`,
-      positive: change >= 0
+      positive: change >= 0,
     }
   }
 
@@ -334,26 +409,26 @@ const consumptionSummary = computed(() => {
   return [
     {
       type: 'water',
-      label: 'Su tüketimi (24s)',
+      label: 'Son 24 saat toplam su tüketimi',
       value: `${waterTotal.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} m³`,
       change: waterChange.text,
       positive: waterChange.positive,
       hint: 'Son 24 saat',
       icon: 'mdi-water',
       accent: 'linear-gradient(135deg, rgba(45,212,191,0.18), rgba(56,189,248,0.22))',
-      sparkline: buildSparkline('water')
+      sparkline: buildSparkline('water'),
     },
     {
       type: 'electric',
-      label: 'Elektrik tüketimi (24s)',
+      label: 'Son 24 saat toplam elektrik tüketimi',
       value: `${electricityTotal.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} kWh`,
       change: electricityChange.text,
       positive: electricityChange.positive,
       hint: 'Son 24 saat',
       icon: 'mdi-flash-triangle-outline',
       accent: 'linear-gradient(135deg, rgba(129,140,248,0.22), rgba(96,165,250,0.25))',
-      sparkline: buildSparkline('electric')
-    }
+      sparkline: buildSparkline('electric'),
+    },
   ]
 })
 
@@ -369,7 +444,7 @@ const topConsumers = computed(() => {
       value: `${(meter.consumption?.last24h ?? 0).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} ${
         meter.type === 'water' ? 'm³' : 'kWh'
       }`,
-      hint: `Son paket ${formatRelativeAgo(meter.lastCommunication, now.value)}`
+      hint: `Son paket ${formatRelativeAgo(meter.lastCommunication, now.value)}`,
     }))
 })
 
@@ -386,17 +461,6 @@ const lastPacket = computed(() => {
 const lastPacketLabel = computed(() => formatAbsolute(lastPacket.value))
 const lastPacketClock = computed(() => formatClock(lastPacket.value))
 
-const nextWindowLabel = computed(() => {
-  const hintDate = new Date(lastPacket.value)
-  hintDate.setHours(hintDate.getHours() + 24)
-  return formatAbsolute(hintDate)
-})
-
-const nextWindowHint = computed(() => {
-  const diff = formatRelativeAgo(lastPacket.value, now.value).replace('önce', 'önce yakalandı')
-  return `${diff}; yeni paket rastgele saatlerde bekleniyor.`
-})
-
 const alerts = computed(() =>
   meterWithStatus.value
     .filter((meter) => meter.status === 'inactive')
@@ -408,8 +472,8 @@ const alerts = computed(() =>
       delay: `${Math.floor(hoursBetween(meter.lastCommunication, now.value))} saat`,
       icon: meter.type === 'water' ? 'mdi-water-alert' : 'mdi-flash-alert',
       badgeColor: 'red-darken-4',
-      filter: { status: 'Pasif', sensorId: meter.id }
-    }))
+      filter: { status: 'Pasif', sensorId: meter.id },
+    })),
 )
 
 const goToSensors = (filter) => {
@@ -432,7 +496,8 @@ const goToSensors = (filter) => {
   gap: 32px;
   padding: 32px;
   border-radius: 28px;
-  background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.16), transparent 45%),
+  background:
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.16), transparent 45%),
     rgba(13, 21, 38, 0.86);
   border: 1px solid rgba(45, 212, 191, 0.18);
   box-shadow: 0 28px 60px rgba(2, 12, 24, 0.55);

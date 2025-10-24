@@ -23,28 +23,28 @@ import { formatAbsolute, formatRelativeAgo, hoursBetween } from '@/utils/time'
 const props = defineProps({
   lastUpdate: {
     type: [String, Date],
-    required: true
+    required: true,
   },
   now: {
     type: [String, Date],
-    default: () => new Date()
+    default: () => new Date(),
   },
   pendingThresholdHours: {
     type: Number,
-    default: 24
+    default: 24,
   },
   inactiveThresholdHours: {
     type: Number,
-    default: 48
+    default: 48,
   },
   title: {
     type: String,
-    default: 'Veri tazeliği'
+    default: 'Veri tazeliği',
   },
   windowHint: {
     type: String,
-    default: 'Sayaçlar 24 saatlik pencere içinde rastgele veri gönderir.'
-  }
+    default: 'Sayaçlar 24 saatlik pencere içinde rastgele veri gönderir.',
+  },
 })
 
 const hoursSinceUpdate = computed(() => Math.max(0, hoursBetween(props.lastUpdate, props.now)))
@@ -66,7 +66,9 @@ const stateMeta = computed(() => {
 })
 
 const lastUpdateLabel = computed(() => formatAbsolute(props.lastUpdate))
-const relativeHint = computed(() => `Son paket ${formatRelativeAgo(props.lastUpdate, props.now)} alındı`)
+const relativeHint = computed(
+  () => `Son paket ${formatRelativeAgo(props.lastUpdate, props.now)} alındı`,
+)
 </script>
 
 <style scoped>
@@ -78,7 +80,9 @@ const relativeHint = computed(() => `Son paket ${formatRelativeAgo(props.lastUpd
   border-radius: 18px;
   background: rgba(15, 23, 42, 0.55);
   border: 1px solid rgba(148, 163, 184, 0.22);
-  transition: border 0.3s ease, background 0.3s ease;
+  transition:
+    border 0.3s ease,
+    background 0.3s ease;
 }
 
 .freshness-indicator.fresh {
