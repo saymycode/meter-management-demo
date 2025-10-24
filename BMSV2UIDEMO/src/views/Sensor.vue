@@ -1,3 +1,4 @@
+<!-- eslint-disable vue/valid-v-slot -->
 <template>
   <v-container fluid class="sensor-dashboard" tag="section">
     <section class="sensor-header">

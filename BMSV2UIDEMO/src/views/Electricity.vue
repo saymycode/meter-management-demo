@@ -1,1151 +1,861 @@
+<!-- eslint-disable vue/valid-v-slot -->
 <template>
-  <v-container fluid>
-    <!-- Sekmeler -->
-    <v-tabs v-model="activeTab" bg-color="primary" dark>
-      <v-tab value="products">Ürünler</v-tab>
-      <v-tab value="map">Harita</v-tab>
-      <v-tab value="workorders">İş Emri Geçmişi</v-tab>
-      <v-tab value="alerts">Uyarılar & Alarmlar</v-tab>
-    </v-tabs>
+  <v-container fluid class="meter-dashboard" tag="section">
+    <section class="meter-header">
+      <div class="header-left">
+        <div class="header-chip">{{ organization.scope }} • Elektrik sayaçları</div>
+        <h1>Elektrik dağıtım kontrol merkezi</h1>
+        <p>
+          Kurum kapsamındaki elektrik sayaçları LoRa ve GPRS ağları üzerinden gün içinde farklı
+          zamanlarda veri gönderir. Bu ekran sensör sayfasıyla aynı düzeni kullanarak yüksek ve orta
+          gerilim noktalarındaki tüketimi tek bakışta görmenizi sağlar.
+        </p>
+        <div class="header-meta">
+          <DataFreshnessIndicator
+            :last-update="lastPacket"
+            :now="now"
+            :pending-threshold-hours="24"
+            :inactive-threshold-hours="48"
+            title="Son elektrik verisi"
+            window-hint="Sayaçlar 24 saatlik pencere içerisinde rastgele paket gönderir."
+          />
+          <div class="meta-grid">
+            <div class="meta-item" v-for="metric in headerMetrics" :key="metric.label">
+              <span class="meta-label">{{ metric.label }}</span>
+              <span class="meta-value">{{ metric.value }}</span>
+              <span class="meta-hint">{{ metric.hint }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="summary-item">
+          <span class="summary-label">Toplam sayaç</span>
+          <span class="summary-value">{{ totalSensors.toLocaleString('tr-TR') }}</span>
+        </div>
+        <div class="summary-split">
+          <div>
+            <span class="summary-label">LoRa</span>
+            <span class="summary-value">{{ communicationBreakdown.LoRa.toLocaleString('tr-TR') }}</span>
+          </div>
+          <div>
+            <span class="summary-label">GPRS</span>
+            <span class="summary-value">{{ communicationBreakdown.GPRS.toLocaleString('tr-TR') }}</span>
+          </div>
+        </div>
+        <div class="summary-note">
+          <span class="summary-bullet">•</span>
+          <span>Reaktif alarmlar gecikmeli gelebilir; tıpkı sensör ekranında olduğu gibi bekleyin.</span>
+        </div>
+      </div>
+    </section>
 
-    <v-window v-model="activeTab" class="mt-4">
-      <!-- ÜRÜNLER TABI -->
-      <v-window-item value="products">
-        <v-container fluid class="product-tab" style="padding: 0">
-          <v-row class="products-layout" no-gutters align="stretch">
-            <!-- Sol: Filtre + Gruplama -->
-            <v-col cols="12" md="2" class="side-column">
-              <div class="side-wrapper">
-                <v-card class="filter-card" elevation="0">
-                  <div class="filter-header">
-                    <h2>Filtreler</h2>
-                    <v-btn density="comfortable" variant="text" @click="resetFilters"
-                      >Temizle</v-btn
-                    >
-                  </div>
+    <v-row class="meter-content" no-gutters>
+      <v-col cols="12" md="3" class="filter-column">
+        <v-card class="filter-card" elevation="0">
+          <div class="filter-header">
+            <h2>Filtreler</h2>
+            <v-btn density="comfortable" variant="text" @click="resetFilters">Temizle</v-btn>
+          </div>
+          <div class="filter-group">
+            <span class="filter-title">Durum</span>
+            <v-chip-group v-model="selectedStatuses" column multiple>
+              <v-chip
+                v-for="status in statusOptions"
+                :key="status"
+                :value="status"
+                class="filter-chip"
+                color="primary"
+                filter
+                variant="tonal"
+              >
+                {{ status }}
+              </v-chip>
+            </v-chip-group>
+          </div>
+          <div class="filter-group">
+            <span class="filter-title">Veri tazeliği</span>
+            <v-chip-group v-model="selectedFreshness" column multiple>
+              <v-chip
+                v-for="option in freshnessOptions"
+                :key="option"
+                :value="option"
+                class="filter-chip"
+                color="teal"
+                filter
+                variant="tonal"
+              >
+                {{ option }}
+              </v-chip>
+            </v-chip-group>
+          </div>
+          <div class="filter-group">
+            <span class="filter-title">İletişim</span>
+            <v-chip-group v-model="selectedComm" column multiple>
+              <v-chip
+                v-for="comm in communicationOptions"
+                :key="comm"
+                :value="comm"
+                class="filter-chip"
+                color="blue"
+                filter
+                variant="tonal"
+              >
+                {{ comm }}
+              </v-chip>
+            </v-chip-group>
+          </div>
+          <div class="filter-group">
+            <span class="filter-title">Bölgeler</span>
+            <v-chip-group v-model="selectedZones" column multiple>
+              <v-chip
+                v-for="zone in zoneOptions"
+                :key="zone"
+                :value="zone"
+                class="filter-chip"
+                color="purple"
+                filter
+                variant="tonal"
+              >
+                {{ zone }}
+              </v-chip>
+            </v-chip-group>
+          </div>
+        </v-card>
 
-                  <div class="filter-group">
-                    <span class="filter-title">Durum</span>
-                    <v-chip-group v-model="selectedStatuses" column multiple>
-                      <v-chip
-                        v-for="status in statusOptions"
-                        :key="status"
-                        :value="status"
-                        class="filter-chip"
-                        color="primary"
-                        variant="tonal"
-                        filter
-                      >
-                        {{ status }}
-                      </v-chip>
-                    </v-chip-group>
-                  </div>
+        <v-card class="plan-card" elevation="0">
+          <div class="plan-header">
+            <h2>Enerji yönetim notları</h2>
+            <span>Su ve sensör panelleriyle aynı arayüz dili korunur.</span>
+          </div>
+          <v-list density="compact" class="plan-list">
+            <v-list-item>
+              <v-list-item-title>• Koyu kartlar ve neon vurgular sensör düzeniyle aynıdır.</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-title>• Tazelik çipleri tablo ve kartta aynı renk kodlarını kullanır.</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-title>• Başlık tipografisi ve boşluklar sensör ekranıyla eşleşir.</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-title>• Hover gölgeleri ve animasyon süreleri 160ms olarak kalır.</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-card>
+      </v-col>
 
-                  <div class="filter-group">
-                    <span class="filter-title">İletişim</span>
-                    <v-chip-group v-model="selectedComm" column multiple>
-                      <v-chip
-                        v-for="comm in communicationOptions"
-                        :key="comm"
-                        :value="comm"
-                        class="filter-chip"
-                        color="teal"
-                        variant="tonal"
-                        filter
-                      >
-                        {{ comm }}
-                      </v-chip>
-                    </v-chip-group>
-                  </div>
+      <v-col cols="12" md="9" class="list-column">
+        <v-card class="list-card" elevation="0">
+          <div class="list-toolbar">
+            <v-text-field
+              v-model="searchTerm"
+              class="toolbar-search"
+              density="comfortable"
+              hide-details
+              label="Sayaç, bölge veya adres ara"
+              variant="outlined"
+              clearable
+            />
+            <div class="toolbar-actions">
+              <v-select
+                v-model="selectedGroupBy"
+                :items="groupByOptions"
+                class="group-select"
+                density="comfortable"
+                hide-details
+                label="Grupla"
+                multiple
+                chips
+                clearable
+                variant="outlined"
+              />
+              <v-btn variant="text" @click="selectAllRows">Tümünü seç</v-btn>
+              <v-btn
+                color="primary"
+                variant="flat"
+                :disabled="selectedRows.length === 0"
+                @click="openWorkOrder"
+              >
+                İş emri planla
+              </v-btn>
+              <v-btn-toggle v-model="viewMode" class="view-toggle" density="comfortable" mandatory>
+                <v-btn value="table">Tablo</v-btn>
+                <v-btn value="cards">Kart</v-btn>
+              </v-btn-toggle>
+            </div>
+          </div>
 
-                  <div class="filter-group">
-                    <span class="filter-title">Sayaç modeli</span>
-                    <v-chip-group v-model="selectedModels" column multiple>
-                      <v-chip
-                        v-for="model in modelOptions"
-                        :key="model"
-                        :value="model"
-                        class="filter-chip"
-                        color="purple"
-                        variant="tonal"
-                        filter
-                      >
-                        {{ model }}
-                      </v-chip>
-                    </v-chip-group>
-                  </div>
+          <div class="list-meta">
+            <v-chip class="meta-chip" color="primary" variant="tonal"
+              >Toplam: {{ filteredStats.total }}</v-chip
+            >
+            <v-chip class="meta-chip" color="success" variant="tonal"
+              >Aktif: {{ filteredStats.active }}</v-chip
+            >
+            <v-chip class="meta-chip" color="amber-darken-2" variant="tonal"
+              >Beklemede: {{ filteredStats.pending }}</v-chip
+            >
+            <v-chip class="meta-chip" color="red-darken-2" variant="tonal"
+              >Pasif: {{ filteredStats.inactive }}</v-chip
+            >
+          </div>
 
-                  <div class="filter-group">
-                    <span class="filter-title">Tüketim aralığı</span>
-                    <v-chip-group v-model="selectedConsumption" column multiple>
-                      <v-chip
-                        v-for="range in consumptionOptions"
-                        :key="range.value"
-                        :value="range.value"
-                        class="filter-chip"
-                        color="amber"
-                        variant="tonal"
-                        filter
-                      >
-                        {{ range.label }}
-                      </v-chip>
-                    </v-chip-group>
-                  </div>
-                </v-card>
+          <div v-if="viewMode === 'table'" class="grid-wrapper">
+            <v-data-table
+              v-model:selected="selectedRows"
+              :headers="tableHeaders"
+              :items="filteredSensors"
+              :group-by="tableGroupBy"
+              :sort-by="tableSortBy"
+              :items-per-page="10"
+              class="sensor-data-table"
+              density="comfortable"
+              item-value="sensorId"
+              return-object
+              show-select
+              hover
+              fixed-header
+            >
+              <template #item.sensorId="{ item }">
+                <div class="cell-primary">
+                  <span class="cell-id">{{ item.sensorId }}</span>
+                  <span class="cell-zone">{{ item.zone }}</span>
+                </div>
+              </template>
+              <template #item.status="{ item }">
+                <v-chip :color="statusChipColor(item.status)" size="small" variant="tonal">
+                  {{ item.status }}
+                </v-chip>
+              </template>
+              <template #item.freshnessBucket="{ item }">
+                <v-chip :color="item.freshnessChip" size="small" variant="tonal">
+                  {{ item.freshnessBucket }}
+                </v-chip>
+              </template>
+              <template #item.lastPacketDisplay="{ item }">
+                <div class="cell-secondary">
+                  <span>{{ item.lastPacketDisplay }}</span>
+                  <small>{{ item.location }}</small>
+                </div>
+              </template>
+              <template #item.consumptionDeltaLabel="{ item }">
+                <span :class="['mono', item.consumptionDelta >= 0 ? 'delta-positive' : 'delta-negative']">
+                  {{ item.consumptionDeltaLabel }}
+                </span>
+              </template>
+              <template #no-data>
+                <div class="no-data">Filtrelere uyan sayaç bulunamadı.</div>
+              </template>
+            </v-data-table>
+          </div>
 
-                <v-card class="group-card" elevation="0">
-                  <div class="group-header">
-                    <h2>Gruplama</h2>
-                    <p>Tabloyu bir alana göre gruplayarak kümelenmiş görünümü inceleyin.</p>
-                  </div>
-                  <v-chip-group v-model="groupBy" column>
-                    <v-chip
-                      v-for="option in groupOptions"
-                      :key="option.value"
-                      :value="option.value"
-                      class="filter-chip"
-                      color="deep-purple"
-                      variant="tonal"
-                    >
-                      {{ option.label }}
+          <div v-else class="card-grid">
+            <v-row dense>
+              <v-col v-for="sensor in filteredSensors" :key="sensor.sensorId" cols="12" sm="6">
+                <div class="sensor-card" :class="sensor.freshnessLevel">
+                  <div class="sensor-card-header">
+                    <div>
+                      <span class="sensor-id">{{ sensor.sensorId }}</span>
+                      <span class="sensor-zone">{{ sensor.zone }}</span>
+                    </div>
+                    <v-chip :color="sensor.freshnessChip" size="small" variant="tonal">
+                      {{ sensor.freshnessBadge }}
                     </v-chip>
-                  </v-chip-group>
-                </v-card>
-              </div>
-            </v-col>
-
-            <!-- Orta: Kart tabanlı pano -->
-            <v-col cols="12" md="8" class="board-column">
-              <v-card class="board-card" elevation="0">
-                <div class="board-header">
-                  <div class="board-title">
-                    <h2>Filtrelenmiş sayaç panoraması</h2>
-                    <span class="card-subtitle"
-                      >Detaylara kart tabanlı panodan erişin, hızlı aksiyon alın.</span
-                    >
                   </div>
-                  <div class="board-actions">
-                    <v-btn variant="text" @click="selectAllRows">Tümünü Seç</v-btn>
-                    <v-btn
-                      variant="text"
-                      color="secondary"
-                      :disabled="selectedRows.length === 0"
-                      @click="clearSelection"
-                    >
-                      Seçimi Temizle
-                    </v-btn>
-                    <v-btn
-                      color="primary"
-                      variant="flat"
-                      prepend-icon="assignment"
-                      :disabled="selectedRows.length === 0"
-                      @click="sendWorkOrder"
-                    >
-                      İş Emri Gönder
-                    </v-btn>
-                  </div>
-                </div>
-
-                <div class="board-glance">
-                  <div class="glance-item">
-                    <span class="glance-label">Toplam</span>
-                    <strong>{{ filteredStats.total }}</strong>
-                  </div>
-                  <div class="glance-item">
-                    <span class="glance-label">Seçili</span>
-                    <strong>{{ selectedRows.length }}</strong>
-                  </div>
-                  <div class="glance-item">
-                    <span class="glance-label">Aktif</span>
-                    <strong>{{ filteredStats.active }}</strong>
-                  </div>
-                  <div class="glance-item">
-                    <span class="glance-label">Pasif</span>
-                    <strong>{{ filteredStats.inactive }}</strong>
-                  </div>
-                  <div class="glance-item">
-                    <span class="glance-label">Ortalama tüketim</span>
-                    <strong>{{ boardSummary.avgConsumption }}</strong>
-                  </div>
-                </div>
-
-                <v-text-field
-                  v-model="quickFilterText"
-                  class="mb-6"
-                  density="comfortable"
-                  hide-details
-                  label="Sayaç, model veya tip ara"
-                  prepend-inner-icon="search"
-                  variant="outlined"
-                  clearable
-                />
-
-                <div class="board-content">
-                  <div
-                    v-for="group in groupedMeters"
-                    :key="group.key"
-                    class="board-lane"
-                  >
-                    <div class="lane-header">
-                      <div>
-                        <span class="lane-title">{{ group.title }}</span>
-                        <span class="lane-subtitle">{{ group.subtitle }}</span>
-                      </div>
-                      <v-chip class="lane-chip" variant="tonal" color="primary">
-                        {{ group.items.length }} sayaç
-                      </v-chip>
+                  <div class="sensor-card-body">
+                    <div class="sensor-row">
+                      <span class="sensor-label">İletişim</span>
+                      <span class="sensor-value">{{ sensor.commMethod }}</span>
                     </div>
-                    <div class="lane-body">
-                      <v-card
-                        v-for="meter in group.items"
-                        :key="meter.name"
-                        class="meter-tile"
-                        rounded="lg"
-                        elevation="0"
-                      >
-                        <div class="tile-header">
-                          <div class="tile-title">
-                            <span class="tile-code">{{ meter.name }}</span>
-                            <span class="tile-model">{{ meter.model }}</span>
-                          </div>
-                          <v-chip
-                            :class="['status-chip', meter.status === 'Aktif' ? 'is-active' : 'is-passive']"
-                            size="small"
-                            variant="flat"
-                          >
-                            {{ meter.status }}
-                          </v-chip>
-                        </div>
-
-                        <div class="tile-meta">
-                          <div class="meta-item">
-                            <span class="meta-label">İletişim</span>
-                            <span class="meta-value">{{ meter.type }}</span>
-                          </div>
-                          <div class="meta-item">
-                            <span class="meta-label">Tüketim</span>
-                            <span class="meta-value mono">{{ meter.consumption }}</span>
-                          </div>
-                          <div class="meta-item">
-                            <span class="meta-label">Versiyon</span>
-                            <span class="meta-value mono">{{ meter.commandIndex }}</span>
-                          </div>
-                        </div>
-
-                        <div class="tile-actions">
-                          <v-btn
-                            :color="isMeterSelected(meter) ? 'primary' : 'secondary'"
-                            :variant="isMeterSelected(meter) ? 'flat' : 'tonal'"
-                            prepend-icon="
-                              isMeterSelected(meter)
-                                ? 'check_circle'
-                                : 'radio_button_unchecked'
-                            "
-                            size="small"
-                            @click.stop="toggleMeterSelection(meter)"
-                          >
-                            {{ isMeterSelected(meter) ? 'Seçili' : 'Seç' }}
-                          </v-btn>
-                          <v-btn
-                            variant="text"
-                            color="info"
-                            prepend-icon="travel_explore"
-                            size="small"
-                            @click.stop="focusOnMap(meter)"
-                          >
-                            Haritada Göster
-                          </v-btn>
-                        </div>
-                      </v-card>
+                    <div class="sensor-row">
+                      <span class="sensor-label">Son veri</span>
+                      <span class="sensor-value">{{ sensor.lastPacketDisplay }}</span>
+                    </div>
+                    <div class="sensor-row">
+                      <span class="sensor-label">Konum</span>
+                      <span class="sensor-value">{{ sensor.location }}</span>
+                    </div>
+                    <div class="sensor-row">
+                      <span class="sensor-label">24s tüketim</span>
+                      <span class="sensor-value">{{ sensor.consumptionLabel }}</span>
+                    </div>
+                    <div class="sensor-row">
+                      <span class="sensor-label">Önceki 24s</span>
+                      <span class="sensor-value">{{ sensor.previousConsumptionLabel }}</span>
+                    </div>
+                    <div class="sensor-row">
+                      <span class="sensor-label">Değişim</span>
+                      <span class="sensor-value">{{ sensor.consumptionDeltaLabel }}</span>
                     </div>
                   </div>
-                  <div v-if="!groupedMeters.length" class="no-data">Filtrelere uyan sayaç bulunamadı.</div>
+                  <v-sparkline
+                    :model-value="sensor.sparkline"
+                    :smooth="12"
+                    :line-width="3"
+                    auto-draw
+                    class="sensor-sparkline"
+                    color="rgba(248,113,113,0.6)"
+                  />
                 </div>
-              </v-card>
-            </v-col>
-
-            <!-- Sağ: Filtre + Gruplama -->
-            <v-col cols="12" md="2" class="side-column"> </v-col>
-          </v-row>
-        </v-container>
-      </v-window-item>
-
-      <!-- HARİTA TABI -->
-      <v-window-item value="map">
-        <div id="map" style="height: 600px; width: 100%; border-radius: 10px"></div>
-      </v-window-item>
-
-      <!-- İŞ EMRİ GEÇMİŞİ TABI -->
-      <v-window-item value="workorders">
-        <div>
-          <v-text-field
-            v-model="workOrderFilter"
-            label="Genel Arama"
-            prepend-inner-icon="search"
-            variant="outlined"
-            hide-details
-            density="comfortable"
-            clearable
-            class="mb-3"
-            style="max-width: 950px"
-          />
-
-          <div class="list-board">
-            <v-card
-              v-for="order in filteredWorkOrders"
-              :key="order.workOrderId"
-              class="info-card"
-              elevation="0"
-            >
-              <div class="info-header">
-                <div>
-                  <span class="info-title">{{ order.workOrderId }}</span>
-                  <span class="info-subtitle">{{ order.name }} • {{ order.type }}</span>
-                </div>
-                <v-chip :color="workOrderStatusColor(order.status)" size="small" variant="tonal">
-                  {{ order.status }}
-                </v-chip>
-              </div>
-              <div class="info-body">
-                <div class="info-meta">
-                  <span class="meta-label">Data</span>
-                  <span class="meta-value mono">{{ order.data }}</span>
-                </div>
-                <div class="info-meta">
-                  <span class="meta-label">Oluşturulma</span>
-                  <span class="meta-value">{{ order.createdDate }}</span>
-                </div>
-                <div class="info-meta">
-                  <span class="meta-label">Gönderim</span>
-                  <span class="meta-value">{{ order.sentDate }}</span>
-                </div>
-                <div class="info-meta">
-                  <span class="meta-label">Cevap</span>
-                  <span class="meta-value">{{ order.responseDate }}</span>
-                </div>
-              </div>
-            </v-card>
-            <div v-if="!filteredWorkOrders.length" class="no-data">Kayıt bulunamadı.</div>
+              </v-col>
+            </v-row>
           </div>
-        </div>
-      </v-window-item>
-      <v-window-item value="alerts">
-        <div>
-          <v-text-field
-            v-model="alertFilter"
-            label="Genel Arama"
-            prepend-inner-icon="notifications_active"
-            variant="outlined"
-            hide-details
-            density="comfortable"
-            clearable
-            class="mb-3"
-            style="max-width: 950px"
-          />
+        </v-card>
 
-          <div class="list-board">
-            <v-card
-              v-for="alert in filteredAlerts"
-              :key="alert.alertId"
-              class="info-card"
-              elevation="0"
-            >
-              <div class="info-header">
-                <div>
-                  <span class="info-title">{{ alert.alertId }}</span>
-                  <span class="info-subtitle">{{ alert.deviceName }} • {{ alert.type }}</span>
-                </div>
-                <v-chip :color="alertSeverityColor(alert.severity)" size="small" variant="tonal">
-                  {{ alert.severity }}
-                </v-chip>
-              </div>
-              <div class="info-body">
-                <div class="info-meta">
-                  <span class="meta-label">Durum</span>
-                  <span class="meta-value">{{ alert.status }}</span>
-                </div>
-                <div class="info-meta">
-                  <span class="meta-label">Tarih</span>
-                  <span class="meta-value">{{ alert.createdDate }}</span>
-                </div>
-              </div>
-            </v-card>
-            <div v-if="!filteredAlerts.length" class="no-data">Aktif alarm bulunamadı.</div>
+        <v-card class="map-card" elevation="0">
+          <div class="map-header">
+            <div>
+              <h2>Konum görünümü</h2>
+              <span class="map-subtitle">Son paket: {{ lastPacketLabel }} • {{ lastPacketAgo }}</span>
+            </div>
+            <v-chip size="small" variant="tonal">ASKİ kapsama alanı</v-chip>
           </div>
-        </div>
-      </v-window-item>
-    </v-window>
+          <div id="electric-map" class="map-container" />
+          <div class="map-legend">
+            <div class="legend-item"><span class="legend-dot active" /> Aktif</div>
+            <div class="legend-item"><span class="legend-dot pending" /> Beklemede</div>
+            <div class="legend-item"><span class="legend-dot inactive" /> Pasif</div>
+          </div>
+        </v-card>
+      </v-col>
+    </v-row>
   </v-container>
 
-  <!-- İş Emri Gönderim Modali -->
-  <!-- İş Emri Paneli -->
   <v-navigation-drawer
     v-model="workOrderPanel"
     location="right"
-    width="400"
+    width="420"
     temporary
     scrim="false"
     elevation="10"
   >
     <v-card flat>
-      <v-card-title class="text-h6 d-flex align-center justify-space-between">
-        <span>İş Emri Gönder</span>
-        <v-btn icon="close" variant="text" @click="workOrderPanel = false" />
+      <v-card-title class="drawer-title">
+        <span>İş emri planla</span>
+        <v-btn variant="text" @click="workOrderPanel = false">Kapat</v-btn>
       </v-card-title>
-
       <v-divider />
-
       <v-card-text>
-        <div class="text-subtitle-2 mb-3 text-grey-darken-1">
-          Seçili Sayaçlar: <strong>{{ selectedRows.length }}</strong>
+        <div class="drawer-summary">
+          Seçili sayaç sayısı: <strong>{{ selectedRows.length }}</strong>
         </div>
-
         <v-select
           v-model="selectedWorkOrderType"
           :items="workOrderTypes"
-          label="İş Emri Tipi"
+          label="İş emri tipi"
           variant="outlined"
           density="comfortable"
           class="mb-3"
         />
-
-        <!-- Dinamik Alanlar -->
-        <template v-if="selectedWorkOrderType === 'Sayaç Okuma'">
-          <v-text-field
-            v-model="workOrderPayload.readCommand"
-            label="Okuma Komutu"
-            variant="outlined"
-            density="comfortable"
-            class="mb-3"
-          />
-        </template>
-
-        <template v-else-if="selectedWorkOrderType === 'Limit Güncelleme'">
-          <v-text-field
-            v-model="workOrderPayload.limit"
-            label="Yeni Limit (kWh)"
-            type="number"
-            variant="outlined"
-            density="comfortable"
-            class="mb-3"
-          />
-        </template>
-
-        <template v-else-if="selectedWorkOrderType === 'Resetleme'">
-          <v-text-field
-            v-model="workOrderPayload.resetCode"
-            label="Reset Kodu"
-            variant="outlined"
-            density="comfortable"
-            class="mb-3"
-          />
-        </template>
-
         <v-textarea
           v-model="workOrderPayload.description"
           label="Açıklama"
           variant="outlined"
-          rows="2"
-          class="mt-2"
+          rows="3"
         />
       </v-card-text>
-
       <v-divider />
-
       <v-card-actions class="justify-end">
-        <v-btn color="grey" variant="text" @click="workOrderPanel = false">İptal</v-btn>
-        <v-btn color="primary" variant="flat" @click="confirmSendWorkOrder">Gönder</v-btn>
+        <v-btn variant="text" @click="workOrderPanel = false">İptal</v-btn>
+        <v-btn color="primary" variant="flat" @click="confirmWorkOrder">Gönder</v-btn>
       </v-card-actions>
     </v-card>
   </v-navigation-drawer>
-  <!-- İş Emri Bildirim Toast -->
-  <!-- 🔔 İş Emri Cevap Bildirimi -->
+
   <transition name="slide-fade">
     <div v-if="workOrderNotification.visible" class="fancy-toast">
-      <div class="toast-icon">
-        <v-icon size="28" color="white">bolt</v-icon>
-      </div>
-      <div class="toast-text">
-        ⚡ <strong>{{ workOrderNotification.message }}</strong>
-      </div>
-    </div>
-  </transition>
-  <!-- 🔥 Kırmızı Alarm Bildirimi -->
-  <transition name="slide-fade">
-    <div v-if="alarmNotification.visible" class="alarm-toast">
-      <div class="toast-icon">
-        <v-icon size="28" color="white">new_releases</v-icon>
-      </div>
-      <div class="toast-text">
-        <strong>{{ alarmNotification.message }}</strong>
-      </div>
+      <div class="toast-text">⚡ <strong>{{ workOrderNotification.message }}</strong></div>
     </div>
   </transition>
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import DataFreshnessIndicator from '@/components/common/DataFreshnessIndicator.vue'
+import { meterSnapshots, organizationProfile, referenceNow } from '@/data/mockMeters'
+import { formatAbsolute, formatClock, formatRelativeAgo, hoursBetween, toDate } from '@/utils/time'
 
-const activeTab = ref('products')
-const quickFilterText = ref('')
-const selectedRows = ref([])
-const workOrderFilter = ref('')
-const alertFilter = ref('')
+const organization = organizationProfile
+const now = ref(new Date(referenceNow))
+
+const statusOptions = ['Aktif', 'Beklemede', 'Pasif']
+const freshnessOptions = ['< 24 saat', '24-48 saat', '48+ saat']
+const communicationOptions = ['LoRa', 'GPRS']
+
 const selectedStatuses = ref([])
+const selectedFreshness = ref([])
 const selectedComm = ref([])
-const selectedModels = ref([])
-const selectedConsumption = ref([])
-const groupBy = ref('none')
+const selectedZones = ref([])
+const selectedGroupBy = ref([])
+const searchTerm = ref('')
+const selectedRows = ref([])
+const viewMode = ref('table')
 
-const statusOptions = ['Aktif', 'Pasif']
-const consumptionOptions = [
-  { label: '0-20 kWh', value: '0-20', min: 0, max: 20 },
-  { label: '21-30 kWh', value: '21-30', min: 21, max: 30 },
-  { label: '31+ kWh', value: '31+', min: 31, max: Infinity },
+const workOrderPanel = ref(false)
+const workOrderTypes = ['Okuma Yenile', 'Kesme Talimatı', 'Yeniden Enerjilendir']
+const selectedWorkOrderType = ref(workOrderTypes[0])
+const workOrderPayload = ref({ description: '' })
+const workOrderNotification = ref({ visible: false, message: '' })
+
+const rawSensors = ref(meterSnapshots.filter((meter) => meter.type === 'electric'))
+
+const groupByOptions = [
+  { title: 'Bölgeler', value: 'zone' },
+  { title: 'Durum', value: 'status' },
+  { title: 'İletişim', value: 'commMethod' },
 ]
 
-const groupOptions = [
-  { label: 'Duruma göre', value: 'status' },
-  { label: 'İletişim tipine göre', value: 'type' },
-  { label: 'Modele göre', value: 'model' },
-  { label: 'Gruplama yok', value: 'none' },
+const zoneOptions = computed(() =>
+  Array.from(new Set(rawSensors.value.map((meter) => meter.zone))).sort(),
+)
+
+const tableHeaders = [
+  { title: 'Sayaç', key: 'sensorId', sortable: true },
+  { title: 'Trafo/Bölge', key: 'zone', sortable: true },
+  { title: 'İletişim', key: 'commMethod', sortable: true },
+  { title: 'Durum', key: 'status', sortable: true },
+  { title: 'Veri tazeliği', key: 'freshnessBucket', sortable: true },
+  { title: 'Son veri', key: 'lastPacketDisplay', sortable: false },
+  { title: '24s tüketim', key: 'consumptionLabel', sortable: true },
+  { title: 'Değişim', key: 'consumptionDeltaLabel', sortable: true },
 ]
 
-const collator = new Intl.Collator('tr-TR')
+const tableSortBy = ref([{ key: 'sensorId', order: 'asc' }])
 
-const tools = ref([
-  {
-    name: '10001',
-    model: 'BT-13',
-    status: 'Aktif',
-    commandIndex: 44,
-    consumption: '15 (kWh)',
-    type: 'LoRa',
-    lat: 38.4843,
-    lng: 27.0891,
-  },
-  {
-    name: '10002',
-    model: 'BM-13',
-    status: 'Pasif',
-    commandIndex: 45,
-    consumption: '20 (kWh)',
-    type: 'GPRS',
-    lat: 38.4872,
-    lng: 27.0947,
-  },
-  {
-    name: '10003',
-    model: 'BTK-13',
-    status: 'Aktif',
-    commandIndex: 34,
-    consumption: '25 (kWh)',
-    type: 'NBIOT',
-    lat: 38.4826,
-    lng: 27.0839,
-  },
-  {
-    name: '10004',
-    model: 'BT-13',
-    status: 'Pasif',
-    commandIndex: 29,
-    consumption: '30 (kWh)',
-    type: 'LoRa',
-    lat: 38.4888,
-    lng: 27.0972,
-  },
-  {
-    name: '10005',
-    model: 'BM-13',
-    status: 'Aktif',
-    commandIndex: 44,
-    consumption: '15 (kWh)',
-    type: 'GPRS',
-    lat: 38.4801,
-    lng: 27.0914,
-  },
-  {
-    name: '10006',
-    model: 'BTK-13',
-    status: 'Pasif',
-    commandIndex: 39,
-    consumption: '18 (kWh)',
-    type: 'NBIOT',
-    lat: 38.4864,
-    lng: 27.0856,
-  },
-  {
-    name: '10007',
-    model: 'BT-13',
-    status: 'Aktif',
-    commandIndex: 44,
-    consumption: '22 (kWh)',
-    type: 'LoRa',
-    lat: 38.4835,
-    lng: 27.0959,
-  },
-  {
-    name: '10008',
-    model: 'BM-13',
-    status: 'Pasif',
-    commandIndex: 39,
-    consumption: '28 (kWh)',
-    type: 'GPRS',
-    lat: 38.4895,
-    lng: 27.0888,
-  },
-  {
-    name: '10009',
-    model: 'BTK-13',
-    status: 'Aktif',
-    commandIndex: 29,
-    consumption: '35 (kWh)',
-    type: 'NBIOT',
-    lat: 38.4819,
-    lng: 27.0984,
-  },
-  {
-    name: '10010',
-    model: 'BT-13',
-    status: 'Pasif',
-    commandIndex: 34,
-    consumption: '40 (kWh)',
-    type: 'LoRa',
-    lat: 38.4849,
-    lng: 27.0931,
-  },
-])
-
-const communicationOptions = computed(() =>
-  Array.from(new Set(tools.value.map((tool) => tool.type))).sort((a, b) => collator.compare(a, b)),
-)
-
-const modelOptions = computed(() =>
-  Array.from(new Set(tools.value.map((tool) => tool.model))).sort((a, b) => collator.compare(a, b)),
-)
-
-const parseConsumption = (value) => {
-  const match = value?.toString().match(/\d+/)
-  return match ? Number(match[0]) : 0
+const classifyStatus = (lastCommunication) => {
+  const hours = hoursBetween(lastCommunication, now.value)
+  if (hours <= 24) return 'Aktif'
+  if (hours <= 48) return 'Beklemede'
+  return 'Pasif'
 }
 
-const filteredTools = computed(() => {
-  const term = quickFilterText.value.trim().toLowerCase()
-  return tools.value.filter((tool) => {
-    if (selectedStatuses.value.length && !selectedStatuses.value.includes(tool.status)) return false
-    if (selectedComm.value.length && !selectedComm.value.includes(tool.type)) return false
-    if (selectedModels.value.length && !selectedModels.value.includes(tool.model)) return false
-    if (selectedConsumption.value.length) {
-      const numericConsumption = parseConsumption(tool.consumption)
-      const matchesRange = selectedConsumption.value.some((rangeValue) => {
-        const range = consumptionOptions.find((option) => option.value === rangeValue)
-        if (!range) return false
-        return numericConsumption >= range.min && numericConsumption <= range.max
-      })
-      if (!matchesRange) return false
-    }
-    if (!term) return true
-    const haystack = `${tool.name} ${tool.model} ${tool.type} ${tool.status}`.toLowerCase()
-    return haystack.includes(term)
-  })
-})
+const classifyFreshness = (lastCommunication) => {
+  const hours = hoursBetween(lastCommunication, now.value)
+  if (hours <= 24) return '< 24 saat'
+  if (hours <= 48) return '24-48 saat'
+  return '48+ saat'
+}
 
-const filteredStats = computed(() => {
-  const stats = { total: filteredTools.value.length, active: 0, inactive: 0 }
-  filteredTools.value.forEach((tool) => {
-    if (tool.status === 'Aktif') stats.active += 1
-    if (tool.status === 'Pasif') stats.inactive += 1
-  })
-  return stats
-})
+const freshnessMap = {
+  '< 24 saat': { badge: 'Güncel', chip: 'success', level: 'on-time' },
+  '24-48 saat': { badge: 'Beklemede', chip: 'amber-darken-2', level: 'delayed' },
+  '48+ saat': { badge: 'Pasif', chip: 'red-darken-2', level: 'missed' },
+}
 
-const groupedMeters = computed(() => {
-  const strategy = groupBy.value
-  const groups = new Map()
+const sensorRecords = computed(() =>
+  rawSensors.value.map((meter) => {
+    const lastPacket = toDate(meter.lastCommunication)
+    const status = classifyStatus(lastPacket)
+    const freshness = classifyFreshness(lastPacket)
+    const mapping = freshnessMap[freshness]
+    const last24h = meter.consumption?.last24h ?? 0
+    const prev24h = meter.consumption?.previous24h ?? 0
+    const delta = last24h - prev24h
 
-  const ensureGroup = (key, meta) => {
-    if (!groups.has(key)) {
-      groups.set(key, { key, title: meta.title, subtitle: meta.subtitle, items: [] })
-    }
-  }
-
-  const resolveMeta = (key) => {
-    if (strategy === 'status') {
-      const isActive = key === 'Aktif'
-      return {
-        title: isActive ? 'Aktif sayaçlar' : 'Pasif sayaçlar',
-        subtitle: isActive ? 'Canlı veri ileten noktalar' : 'Kontrol bekleyen cihazlar',
-      }
-    }
-    if (strategy === 'type') {
-      return {
-        title: `${key} iletişim`,
-        subtitle: 'Teknoloji bazlı kümelenmiş görünüm',
-      }
-    }
-    if (strategy === 'model') {
-      return {
-        title: `${key} modeli`,
-        subtitle: 'Sahada kullanılan ürün varyantı',
-      }
-    }
     return {
-      title: 'Tüm sayaçlar',
-      subtitle: 'Filtrelenmiş sonuçların tamamı',
+      sensorId: meter.id,
+      zone: meter.zone,
+      location: meter.location,
+      commMethod: meter.communication,
+      status,
+      freshnessBucket: freshness,
+      freshnessBadge: mapping.badge,
+      freshnessChip: mapping.chip,
+      freshnessLevel: mapping.level,
+      lastPacketAt: lastPacket,
+      lastPacketLabel: formatAbsolute(lastPacket),
+      lastPacketAgo: formatRelativeAgo(lastPacket, now.value),
+      lastPacketDisplay: `${formatClock(lastPacket)} • ${formatRelativeAgo(lastPacket, now.value)}`,
+      lastReading: meter.lastReading ?? '—',
+      consumptionValue: last24h,
+      consumptionLabel:
+        meter.consumption != null
+          ? `${last24h.toLocaleString('tr-TR', {
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1,
+            })} kWh`
+          : '—',
+      previousConsumptionLabel:
+        meter.consumption != null
+          ? `${prev24h.toLocaleString('tr-TR', {
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1,
+            })} kWh`
+          : '—',
+      consumptionDelta: delta,
+      consumptionDeltaLabel:
+        meter.consumption != null
+          ? `${delta >= 0 ? '+' : ''}${delta.toLocaleString('tr-TR', {
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1,
+            })} kWh`
+          : '—',
+      lat: meter.lat,
+      lng: meter.lng,
+      sparkline: meter.consumption?.history ?? [],
     }
-  }
+  }),
+)
 
-  if (!filteredTools.value.length) {
-    return []
-  }
+const totalSensors = computed(() => sensorRecords.value.length)
 
-  filteredTools.value.forEach((tool) => {
-    const key =
-      strategy === 'status'
-        ? tool.status
-        : strategy === 'type'
-          ? tool.type
-          : strategy === 'model'
-            ? tool.model
-            : 'all'
-    const meta = resolveMeta(key)
-    ensureGroup(key, meta)
-    groups.get(key).items.push(tool)
-  })
+const communicationBreakdown = computed(() =>
+  sensorRecords.value.reduce(
+    (acc, sensor) => {
+      acc[sensor.commMethod] = (acc[sensor.commMethod] ?? 0) + 1
+      return acc
+    },
+    { LoRa: 0, GPRS: 0 },
+  ),
+)
 
-  return Array.from(groups.values())
-    .sort((a, b) => collator.compare(a.title, b.title))
-    .map((group) => ({
-      ...group,
-      items: [...group.items].sort((a, b) => collator.compare(a.name, b.name)),
-    }))
-})
-
-const boardSummary = computed(() => {
-  const total = filteredTools.value.length
-  if (!total) {
-    return {
-      avgConsumption: '0 kWh',
-    }
-  }
-
-  const totalConsumption = filteredTools.value.reduce(
-    (sum, tool) => sum + parseConsumption(tool.consumption),
+const headerMetrics = computed(() => {
+  const total = sensorRecords.value.length || 1
+  const active = sensorRecords.value.filter((sensor) => sensor.status === 'Aktif').length
+  const pending = sensorRecords.value.filter((sensor) => sensor.status === 'Beklemede').length
+  const averageConsumption =
+    sensorRecords.value.reduce((sum, sensor) => sum + sensor.consumptionValue, 0) / total
+  const peak = sensorRecords.value.reduce(
+    (max, sensor) => Math.max(max, sensor.consumptionValue ?? 0),
     0,
   )
-  const average = (totalConsumption / total).toFixed(1)
 
-  return {
-    avgConsumption: `${average} kWh`,
-  }
+  return [
+    {
+      label: 'Aktif sayaç',
+      value: active.toLocaleString('tr-TR'),
+      hint: 'Son 24 saatte veri gönderen',
+    },
+    {
+      label: 'Beklemede',
+      value: pending.toLocaleString('tr-TR'),
+      hint: '24-48 saattir suskun',
+    },
+    {
+      label: 'Günlük tüketim ort.',
+      value: `${averageConsumption.toLocaleString('tr-TR', {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      })} kWh`,
+      hint: 'Son 24 saatin ortalaması',
+    },
+    {
+      label: 'En yüksek yük',
+      value: `${peak.toLocaleString('tr-TR', {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      })} kWh`,
+      hint: 'Günlük maksimum değer',
+    },
+  ]
 })
+
+const lastPacket = computed(() =>
+  sensorRecords.value.reduce(
+    (latest, sensor) => (latest && latest > sensor.lastPacketAt ? latest : sensor.lastPacketAt),
+    null,
+  ),
+)
+
+const lastPacketLabel = computed(() => (lastPacket.value ? formatAbsolute(lastPacket.value) : '—'))
+const lastPacketAgo = computed(() =>
+  lastPacket.value ? formatRelativeAgo(lastPacket.value, now.value) : 'Veri yok',
+)
+
+const tableGroupBy = computed(() => selectedGroupBy.value.map((value) => ({ key: value })))
+
+const statusChipColor = (status) => {
+  if (status === 'Aktif') return 'success'
+  if (status === 'Beklemede') return 'amber-darken-2'
+  return 'red-darken-2'
+}
+
+const filteredSensors = computed(() => {
+  const term = searchTerm.value.trim().toLowerCase()
+  return sensorRecords.value.filter((sensor) => {
+    const matchesStatus =
+      selectedStatuses.value.length === 0 || selectedStatuses.value.includes(sensor.status)
+    const matchesFreshness =
+      selectedFreshness.value.length === 0 ||
+      selectedFreshness.value.includes(sensor.freshnessBucket)
+    const matchesComm =
+      selectedComm.value.length === 0 || selectedComm.value.includes(sensor.commMethod)
+    const matchesZone =
+      selectedZones.value.length === 0 || selectedZones.value.includes(sensor.zone)
+    const matchesTerm =
+      term.length === 0 ||
+      `${sensor.sensorId} ${sensor.zone} ${sensor.location} ${sensor.commMethod}`
+        .toLowerCase()
+        .includes(term)
+
+    return matchesStatus && matchesFreshness && matchesComm && matchesZone && matchesTerm
+  })
+})
+
+const filteredStats = computed(() => ({
+  total: filteredSensors.value.length,
+  active: filteredSensors.value.filter((sensor) => sensor.status === 'Aktif').length,
+  pending: filteredSensors.value.filter((sensor) => sensor.status === 'Beklemede').length,
+  inactive: filteredSensors.value.filter((sensor) => sensor.status === 'Pasif').length,
+}))
 
 const resetFilters = () => {
   selectedStatuses.value = []
+  selectedFreshness.value = []
   selectedComm.value = []
-  selectedModels.value = []
-  selectedConsumption.value = []
-  groupBy.value = 'status'
-  quickFilterText.value = ''
+  selectedZones.value = []
+  selectedGroupBy.value = []
 }
 
 const selectAllRows = () => {
-  selectedRows.value = [...filteredTools.value]
+  selectedRows.value = [...filteredSensors.value]
 }
 
-const clearSelection = () => {
-  selectedRows.value = []
-}
-
-const isMeterSelected = (meter) => selectedRows.value.some((item) => item.name === meter.name)
-
-const toggleMeterSelection = (meter) => {
-  if (isMeterSelected(meter)) {
-    selectedRows.value = selectedRows.value.filter((item) => item.name !== meter.name)
-  } else {
-    selectedRows.value = [...selectedRows.value, meter]
-  }
-}
-
-const focusOnMap = (meter) => {
-  activeTab.value = 'map'
-  nextTick(() => {
-    setTimeout(() => {
-      if (!mapInstance) {
-        initMap()
-      }
-      if (!mapInstance) return
-
-      mapInstance.setView([meter.lat, meter.lng], 17, { animate: true })
-      L.popup({ autoClose: true })
-        .setLatLng([meter.lat, meter.lng])
-        .setContent(
-          `<strong>${meter.name}</strong><br>${meter.type} • <span style="font-weight:600;">${meter.status}</span>`,
-        )
-        .openOn(mapInstance)
-    }, 250)
-  })
-}
-
-watch(filteredTools, () => {
-  const allowed = new Set(filteredTools.value.map((tool) => tool.name))
-  selectedRows.value = selectedRows.value.filter((row) => allowed.has(row.name))
-  if (activeTab.value === 'map') {
-    setTimeout(initMap, 150)
-  }
-})
-
-watch(activeTab, (val) => {
-  if (val === 'map') setTimeout(initMap, 150)
-})
-
-let mapInstance = null
-
-function initMap() {
-  const mapContainer = document.getElementById('map')
-  if (!mapContainer) return
-
-  if (mapInstance) {
-    mapInstance.remove()
-    mapInstance = null
-  }
-
-  mapInstance = L.map(mapContainer).setView([38.4849, 27.0891], 15)
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap contributors',
-  }).addTo(mapInstance)
-
-  const markerSource = filteredTools.value.length ? filteredTools.value : tools.value
-  markerSource.forEach((tool) => {
-    const color = tool.status === 'Aktif' ? '#4CAF50' : '#F44336'
-    L.circleMarker([tool.lat, tool.lng], {
-      color,
-      radius: 8,
-      fillColor: color,
-      fillOpacity: 0.9,
-      weight: 1.5,
-    })
-      .bindPopup(
-        `<b>${tool.name}</b><br>${tool.type} - <span style="color:${color};font-weight:bold;">${tool.status}</span>`,
-      )
-      .addTo(mapInstance)
-  })
-}
-
-const workOrderData = ref([
-  {
-    name: '10001',
-    workOrderId: '01020304',
-    type: 'Röle Aç',
-    data: '01020304AAABAC',
-    status: 'Gönderildi',
-    createdDate: '2025-10-21 09:10',
-    sentDate: '2025-10-21 09:12',
-    responseDate: '2025-10-21 09:15',
-  },
-  {
-    name: '10001',
-    workOrderId: '01020304',
-    type: 'Tüketim Oku',
-    data: '090807FFFEFD',
-    status: 'Tamamlandı',
-    createdDate: '2025-10-22 10:25',
-    sentDate: '2025-10-22 10:26',
-    responseDate: '2025-10-22 10:30',
-  },
-  {
-    name: '10002',
-    workOrderId: '01020304',
-    type: 'Röle Kapat',
-    data: '01020304AAABAC',
-    status: 'Gönderildi',
-    createdDate: '2025-10-22 08:40',
-    sentDate: '2025-10-22 08:41',
-    responseDate: '2025-10-22 08:45',
-  },
-  {
-    name: '10003',
-    workOrderId: '01020304',
-    type: 'Tüketim Oku',
-    data: '090807FFFEFD',
-    status: 'Bekliyor',
-    createdDate: '2025-10-23 14:30',
-    sentDate: '-',
-    responseDate: '-',
-  },
-  {
-    name: '10004',
-    workOrderId: '01020304',
-    type: 'Röle Aç',
-    data: '01020304AAABAC',
-    status: 'Başarısız',
-    createdDate: '2025-10-21 16:45',
-    sentDate: '2025-10-21 16:46',
-    responseDate: '2025-10-21 16:50',
-  },
-  {
-    name: '10005',
-    workOrderId: '01020304',
-    type: 'Limit Güncelle',
-    data: '090807FFFEFD',
-    status: 'Tamamlandı',
-    createdDate: '2025-10-22 11:00',
-    sentDate: '2025-10-22 11:02',
-    responseDate: '2025-10-22 11:10',
-  },
-  {
-    name: '10006',
-    workOrderId: '01020304',
-    type: 'Röle Kapat',
-    data: '01020304AAABAC',
-    status: 'Tamamlandı',
-    createdDate: '2025-10-21 13:15',
-    sentDate: '2025-10-21 13:17',
-    responseDate: '2025-10-21 13:21',
-  },
-  {
-    name: '10007',
-    workOrderId: '01020304',
-    type: 'Tüketim Oku',
-    data: '090807FFFEFD',
-    status: 'Bekliyor',
-    createdDate: '2025-10-23 10:00',
-    sentDate: '-',
-    responseDate: '-',
-  },
-  {
-    name: '10008',
-    workOrderId: '01020304',
-    type: 'Röle Kapat',
-    data: '01020304AAABAC',
-    status: 'Gönderildi',
-    createdDate: '2025-10-23 10:10',
-    sentDate: '2025-10-23 10:11',
-    responseDate: '-',
-  },
-  {
-    name: '10009',
-    workOrderId: '01020304',
-    type: 'Röle Aç',
-    data: '090807FFFEFD',
-    status: 'Tamamlandı',
-    createdDate: '2025-10-21 12:10',
-    sentDate: '2025-10-21 12:12',
-    responseDate: '2025-10-21 12:20',
-  },
-  {
-    name: '10010',
-    workOrderId: '01020304',
-    type: 'Tüketim Oku',
-    data: '01020304AAABAC',
-    status: 'Başarısız',
-    createdDate: '2025-10-20 18:10',
-    sentDate: '2025-10-20 18:12',
-    responseDate: '2025-10-20 18:13',
-  },
-])
-
-const filteredWorkOrders = computed(() => {
-  const term = workOrderFilter.value.trim().toLowerCase()
-  if (!term) return workOrderData.value
-  return workOrderData.value.filter((item) =>
-    `${item.name} ${item.type} ${item.workOrderId} ${item.data} ${item.status}`.toLowerCase().includes(term),
-  )
-})
-
-const workOrderStatusColor = (status) => {
-  const colors = {
-    Gönderildi: 'info',
-    Tamamlandı: 'success',
-    Başarısız: 'error',
-    Bekliyor: 'warning',
-  }
-  return colors[status] || 'secondary'
-}
-
-const workOrderPanel = ref(false)
-const selectedWorkOrderType = ref(null)
-const workOrderPayload = ref({ description: '', readCommand: '', limit: '', resetCode: '' })
-const workOrderTypes = ['Sayaç Okuma', 'Limit Güncelleme', 'Resetleme']
-
-const sendWorkOrder = () => {
-  if (!selectedRows.value.length) {
-    alert('Herhangi bir cihaz seçilmedi.')
-    return
-  }
+const openWorkOrder = () => {
   workOrderPanel.value = true
 }
 
-const confirmSendWorkOrder = () => {
-  const type = selectedWorkOrderType.value
-  if (!type) {
-    alert('Lütfen bir iş emri tipi seçiniz.')
-    return
-  }
-
-  console.log('İş emri tipi:', type)
-  console.log('Seçili sayaçlar:', selectedRows.value)
-  console.log('Girilen veriler:', workOrderPayload.value)
-
-  alert(`${selectedRows.value.length} cihaz için '${type}' iş emri hazırlandı (örnek simülasyon).`)
-
+const confirmWorkOrder = () => {
   workOrderPanel.value = false
-  selectedWorkOrderType.value = null
-  workOrderPayload.value = { description: '', readCommand: '', limit: '', resetCode: '' }
-}
-
-const alertData = ref([
-  {
-    alertId: 'AABBCCDDEEFC',
-    deviceName: '10001',
-    type: 'Üst Kapak Açıldı',
-    severity: 'Kritik',
-    createdDate: '2025-10-23 09:45',
-    status: 'Açık',
-  },
-  {
-    alertId: 'AABBCCDDEEFF',
-    deviceName: '10005',
-    type: 'Düşük Voltaj',
-    severity: 'Orta',
-    createdDate: '2025-10-23 11:20',
-    status: 'İzlemede',
-  },
-  {
-    alertId: 'AABBCCDDEEFD',
-    deviceName: '10007',
-    type: 'İletişim Hatası',
-    severity: 'Yüksek',
-    createdDate: '2025-10-23 12:00',
-    status: 'Kapalı',
-  },
-])
-
-const filteredAlerts = computed(() => {
-  const term = alertFilter.value.trim().toLowerCase()
-  if (!term) return alertData.value
-  return alertData.value.filter((item) =>
-    `${item.deviceName} ${item.type} ${item.severity} ${item.status}`.toLowerCase().includes(term),
-  )
-})
-
-const alertSeverityColor = (severity) => {
-  const colors = {
-    Düşük: 'success',
-    Orta: 'warning',
-    Yüksek: 'orange-darken-2',
-    Kritik: 'error',
+  workOrderNotification.value = {
+    visible: true,
+    message: `${selectedRows.value.length} sayaç için ${selectedWorkOrderType.value} kuyruğa alındı`,
   }
-  return colors[severity] || 'secondary'
+  setTimeout(() => {
+    workOrderNotification.value.visible = false
+  }, 3600)
+  selectedRows.value = []
+  workOrderPayload.value.description = ''
 }
 
-const workOrderNotification = ref({ visible: false, message: '' })
-const alarmNotification = ref({ visible: false, message: '' })
-let workOrderTimer = null
-let alarmTimer = null
-
-const showRandomWorkOrderResponse = () => {
-  const pool = filteredTools.value.length ? filteredTools.value : tools.value
-  const randomTool = pool[Math.floor(Math.random() * pool.length)]
-  if (!randomTool) return
-
-  workOrderNotification.value.message = `${randomTool.name} sayacından iş emri cevabı geldi! ⚙️`
-  workOrderNotification.value.visible = true
-  setTimeout(() => (workOrderNotification.value.visible = false), 4000)
+const mapState = {
+  instance: null,
+  markers: [],
 }
 
-const showRandomAlarm = () => {
-  const pool = filteredTools.value.length ? filteredTools.value : tools.value
-  const randomTool = pool[Math.floor(Math.random() * pool.length)]
-  if (!randomTool) return
+const initMap = () => {
+  if (mapState.instance) return
+  mapState.instance = L.map('electric-map', {
+    zoomControl: false,
+    attributionControl: false,
+  }).setView([39.9334, 32.8597], 9)
 
-  const randomType = ['Üst Kapak Uyarısı', 'Müdahele', 'Düşük Akım'][Math.floor(Math.random() * 3)]
-  alarmNotification.value.message = `🚨 ${randomTool.name} sayacında ${randomType}!`
-  alarmNotification.value.visible = true
-  setTimeout(() => (alarmNotification.value.visible = false), 4000)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+  }).addTo(mapState.instance)
+
+  updateMarkers()
 }
+
+const updateMarkers = () => {
+  if (!mapState.instance) return
+  mapState.markers.forEach((marker) => marker.remove())
+  mapState.markers = filteredSensors.value.map((sensor) => {
+    const marker = L.circleMarker([sensor.lat, sensor.lng], {
+      radius: 10,
+      color: 'rgba(248,113,113,0.55)',
+      weight: 1,
+      fillColor:
+        sensor.status === 'Aktif'
+          ? 'rgba(248,113,113,0.7)'
+          : sensor.status === 'Beklemede'
+            ? 'rgba(251,191,36,0.7)'
+            : 'rgba(148,163,184,0.6)',
+      fillOpacity: 0.85,
+    }).addTo(mapState.instance)
+    marker.bindPopup(
+      `<strong>${sensor.sensorId}</strong><br/>${sensor.location}<br/>${sensor.lastPacketDisplay}`,
+    )
+    return marker
+  })
+}
+
+watch(filteredSensors, () => {
+  updateMarkers()
+  const availableIds = new Set(filteredSensors.value.map((sensor) => sensor.sensorId))
+  selectedRows.value = selectedRows.value.filter((row) => availableIds.has(row.sensorId))
+})
 
 onMounted(() => {
-  const loopWorkOrder = () => {
-    const delay = 5000 + Math.random() * 10000
-    workOrderTimer = setTimeout(() => {
-      showRandomWorkOrderResponse()
-      loopWorkOrder()
-    }, delay)
-  }
-
-  const loopAlarm = () => {
-    const delay = 15000 + Math.random() * 20000
-    alarmTimer = setTimeout(() => {
-      showRandomAlarm()
-      loopAlarm()
-    }, delay)
-  }
-
-  loopWorkOrder()
-  loopAlarm()
+  initMap()
 })
 
-onUnmounted(() => {
-  if (workOrderTimer) clearTimeout(workOrderTimer)
-  if (alarmTimer) clearTimeout(alarmTimer)
-  if (mapInstance) {
-    mapInstance.remove()
-    mapInstance = null
+onBeforeUnmount(() => {
+  if (mapState.instance) {
+    mapState.instance.remove()
+    mapState.instance = null
   }
 })
 </script>
 
 <style scoped>
-.products-layout {
-  display: flex !important;
-  align-items: stretch !important;
+.meter-dashboard {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  background: linear-gradient(180deg, rgba(10, 14, 26, 0.95) 0%, rgba(12, 19, 32, 0.82) 100%);
+}
+
+.meter-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+  padding: 28px 32px;
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at top right, rgba(251, 113, 133, 0.2), transparent 45%),
+    rgba(13, 20, 34, 0.86);
+  border: 1px solid rgba(248, 113, 113, 0.24);
+  box-shadow: 0 26px 54px rgba(2, 12, 24, 0.55);
+}
+
+.header-left {
+  flex: 1 1 420px;
+  display: flex;
+  flex-direction: column;
   gap: 18px;
 }
 
-.side-column,
-.board-column {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
+.header-chip {
+  align-self: flex-start;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(248, 113, 113, 0.16);
+  color: rgba(226, 232, 240, 0.9);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
-.side-wrapper {
-  flex: 1;
+.header-left h1 {
+  margin: 0;
+  font-size: clamp(26px, 4vw, 34px);
+  color: rgba(248, 250, 252, 0.98);
+}
+
+.header-left p {
+  margin: 0;
+  font-size: 15px;
+  color: rgba(148, 163, 184, 0.86);
+  line-height: 1.6;
+  max-width: 640px;
+}
+
+.header-meta {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.filter-card,
-.group-card,
-.board-card {
-  background: var(--surface-card);
-  border-radius: 18px;
-  padding: 20px;
-  border: 1px solid var(--border-soft);
-  color: var(--text-color);
-  box-shadow: none;
-  transition: background var(--transition-speed) ease, color var(--transition-speed) ease,
-    border-color var(--transition-speed) ease;
+.meta-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
-.board-card {
-  padding: 28px 26px;
-  gap: 24px;
+.meta-item {
+  min-width: 150px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(10, 18, 32, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.2);
   display: flex;
   flex-direction: column;
+  gap: 6px;
 }
 
-.group-card {
-  flex: 1;
+.meta-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: rgba(148, 163, 184, 0.75);
 }
 
-.filter-header,
-.group-header {
+.meta-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: rgba(248, 250, 252, 0.95);
+}
+
+.meta-hint {
+  font-size: 13px;
+  color: rgba(148, 163, 184, 0.78);
+}
+
+.header-right {
+  flex: 1 1 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(10, 18, 32, 0.7);
+  border: 1px solid rgba(248, 113, 113, 0.24);
+}
+
+.summary-item,
+.summary-split > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summary-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: rgba(148, 163, 184, 0.75);
+}
+
+.summary-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: rgba(248, 250, 252, 0.95);
+}
+
+.summary-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.summary-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(148, 163, 184, 0.78);
+}
+
+.summary-bullet {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.meter-content {
+  row-gap: 28px !important;
+}
+
+.filter-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.filter-card,
+.plan-card {
+  padding: 24px;
+  border-radius: 24px;
+  background: rgba(10, 18, 32, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 20px 40px rgba(2, 12, 24, 0.45);
+}
+
+.filter-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1153,333 +863,313 @@ onUnmounted(() => {
 }
 
 .filter-header h2,
-.group-header h2 {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--heading-color);
+.plan-header h2 {
   margin: 0;
-}
-
-.group-header p {
-  margin: 6px 0 12px;
-  font-size: 13px;
-  color: var(--muted-text);
-  line-height: 1.4;
-}
-
-.filter-title {
-  display: block;
-  margin-bottom: 12px;
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  color: var(--muted-text);
+  font-size: 18px;
+  color: rgba(248, 250, 252, 0.94);
 }
 
 .filter-group {
-  margin-bottom: 18px;
-  padding-bottom: 12px;
-  border-bottom: 1px dashed var(--border-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
 }
 
 .filter-group:last-of-type {
   border-bottom: none;
-  padding-bottom: 0;
+}
+
+.filter-title {
+  font-size: 13px;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.75);
+  letter-spacing: 0.3px;
 }
 
 .filter-chip {
-  margin-bottom: 8px;
-  border-radius: 999px;
-  font-weight: 500;
+  margin-bottom: 6px;
 }
 
-.board-header {
+.plan-header span {
+  font-size: 13px;
+  color: rgba(148, 163, 184, 0.78);
+}
+
+.plan-list {
+  padding: 0;
+  margin-top: 12px;
+}
+
+.list-column {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.list-card,
+.map-card {
+  padding: 24px;
+  border-radius: 26px;
+  background: rgba(10, 18, 32, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: 0 24px 44px rgba(2, 12, 24, 0.45);
+  display: flex;
+  flex-direction: column;
   gap: 18px;
 }
 
-.board-title h2 {
-  margin: 0;
-  font-size: 22px;
-  color: var(--heading-color);
-}
-
-.card-subtitle {
-  display: block;
-  margin-top: 6px;
-  font-size: 14px;
-  color: var(--muted-text);
-}
-
-.board-actions {
+.list-toolbar {
   display: flex;
-  align-items: center;
-  gap: 12px;
   flex-wrap: wrap;
-}
-
-.board-glance {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
-  padding: 16px;
-  border-radius: 16px;
-  background: var(--note-surface);
-  border: 1px solid var(--border-soft);
-}
-
-.glance-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  color: var(--muted-text);
-  font-size: 13px;
-}
-
-.glance-label {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--muted-text);
-}
-
-.glance-item strong {
-  font-size: 20px;
-  color: var(--heading-color);
-  font-weight: 700;
-}
-
-.board-content {
-  display: flex;
-  gap: 18px;
-  overflow-x: auto;
-  padding-bottom: 6px;
-}
-
-.list-board {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
-  margin-top: 16px;
-}
-
-.board-content::-webkit-scrollbar {
-  height: 8px;
-}
-
-.board-content::-webkit-scrollbar-thumb {
-  background: var(--border-soft);
-  border-radius: 999px;
-}
-
-.board-lane {
-  min-width: 260px;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 18px;
-  border-radius: 16px;
-  border: 1px solid var(--border-soft);
-  background: var(--surface-elevated);
-  box-shadow: var(--card-shadow);
-  transition: background var(--transition-speed) ease, border-color var(--transition-speed) ease;
-}
-
-.lane-header {
-  display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 12px;
 }
 
-.lane-title {
-  font-weight: 600;
-  color: var(--heading-color);
+.toolbar-search {
+  flex: 1 1 260px;
 }
 
-.lane-subtitle {
-  display: block;
-  font-size: 12px;
-  color: var(--muted-text);
-  margin-top: 2px;
-}
-
-.lane-chip {
-  font-weight: 600;
-}
-
-.lane-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-height: 420px;
-  overflow-y: auto;
-  padding-right: 6px;
-}
-
-.lane-body::-webkit-scrollbar {
-  width: 6px;
-}
-
-.lane-body::-webkit-scrollbar-thumb {
-  background: var(--border-soft);
-  border-radius: 999px;
-}
-
-.meter-tile {
-  background: var(--surface-card);
-  border: 1px solid var(--border-soft);
-  color: var(--text-color);
-  padding: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  transition: border-color var(--transition-speed) ease, transform var(--transition-speed) ease,
-    box-shadow var(--transition-speed) ease;
-}
-
-.meter-tile:hover {
-  border-color: var(--accent-highlight);
-  transform: translateY(-2px);
-  box-shadow: var(--card-shadow);
-}
-
-.info-card {
-  background: var(--surface-card);
-  border: 1px solid var(--border-soft);
-  border-radius: 16px;
-  padding: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  color: var(--text-color);
-  transition: border-color var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
-}
-
-.info-card:hover {
-  border-color: var(--accent-highlight);
-  box-shadow: var(--card-shadow);
-}
-
-.info-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.info-title {
-  font-weight: 700;
-  color: var(--heading-color);
-  font-size: 15px;
-}
-
-.info-subtitle {
-  display: block;
-  font-size: 13px;
-  color: var(--muted-text);
-  margin-top: 4px;
-}
-
-.info-body {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px;
-}
-
-.info-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.tile-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.tile-title {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.tile-code {
-  font-weight: 700;
-  font-size: 16px;
-  color: var(--heading-color);
-}
-
-.tile-model {
-  font-size: 13px;
-  color: var(--muted-text);
-}
-
-.status-chip {
-  font-weight: 600;
-  border-radius: 999px;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-}
-
-.status-chip.is-active {
-  background: var(--positive-pill-bg);
-  color: var(--positive-pill-color);
-}
-
-.status-chip.is-passive {
-  background: var(--negative-pill-bg);
-  color: var(--negative-pill-color);
-}
-
-.tile-meta {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.meta-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.meta-label {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: var(--muted-text);
-}
-
-.meta-value {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--heading-color);
-}
-
-.tile-actions {
+.toolbar-actions {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.list-meta {
+  display: flex;
   flex-wrap: wrap;
+  gap: 10px;
+}
+
+.meta-chip {
+  font-weight: 600;
+  text-transform: none;
+}
+
+.grid-wrapper {
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.sensor-data-table :deep(table) {
+  background: transparent;
+}
+
+.sensor-data-table :deep(thead tr) {
+  background: rgba(15, 23, 42, 0.85);
+}
+
+.sensor-data-table :deep(th) {
+  color: rgba(226, 232, 240, 0.85);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.4px;
+}
+
+.sensor-data-table :deep(td) {
+  color: rgba(241, 245, 249, 0.92);
+  font-size: 14px;
+}
+
+.sensor-data-table :deep(tbody tr:hover) {
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.cell-primary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cell-id {
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.95);
+}
+
+.cell-zone {
+  font-size: 13px;
+  color: rgba(148, 163, 184, 0.78);
+}
+
+.cell-secondary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cell-secondary small {
+  color: rgba(148, 163, 184, 0.72);
+}
+
+.card-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sensor-card {
+  padding: 18px 20px;
+  border-radius: 24px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sensor-card.on-time {
+  box-shadow: 0 18px 36px rgba(248, 113, 113, 0.18);
+}
+
+.sensor-card.delayed {
+  box-shadow: 0 18px 36px rgba(251, 191, 36, 0.14);
+}
+
+.sensor-card.missed {
+  box-shadow: 0 18px 36px rgba(148, 163, 184, 0.18);
+}
+
+.sensor-card:hover {
+  transform: translateY(-4px);
+}
+
+.sensor-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sensor-id {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(248, 250, 252, 0.96);
+}
+
+.sensor-zone {
+  display: block;
+  font-size: 13px;
+  color: rgba(148, 163, 184, 0.75);
+}
+
+.sensor-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sensor-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sensor-label {
+  font-size: 13px;
+  color: rgba(148, 163, 184, 0.75);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.sensor-value {
+  font-size: 14px;
+  color: rgba(226, 232, 240, 0.9);
+  text-align: right;
+}
+
+.sensor-sparkline {
+  height: 46px;
+}
+
+.delta-positive {
+  color: rgba(34, 197, 94, 0.85);
+}
+
+.delta-negative {
+  color: rgba(248, 113, 113, 0.85);
+}
+
+.map-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.map-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: rgba(248, 250, 252, 0.94);
+}
+
+.map-subtitle {
+  display: block;
+  font-size: 13px;
+  color: rgba(148, 163, 184, 0.78);
+}
+
+.map-container {
+  height: 320px;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.map-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: rgba(148, 163, 184, 0.78);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-dot.active {
+  background: rgba(248, 113, 113, 0.75);
+}
+
+.legend-dot.pending {
+  background: rgba(251, 191, 36, 0.75);
+}
+
+.legend-dot.inactive {
+  background: rgba(148, 163, 184, 0.75);
+}
+
+.drawer-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.drawer-summary {
+  font-size: 14px;
+  color: rgba(148, 163, 184, 0.8);
+  margin-bottom: 16px;
 }
 
 .mono {
-  font-family: 'Fira Code', 'Roboto Mono', monospace;
+  font-family: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+  letter-spacing: 0.3px;
 }
 
 .no-data {
-  padding: 28px;
+  padding: 24px;
   text-align: center;
-  border-radius: 16px;
-  background: var(--note-surface);
-  color: var(--muted-text);
+  color: rgba(148, 163, 184, 0.9);
 }
 
 .slide-fade-enter-active {
@@ -1500,116 +1190,31 @@ onUnmounted(() => {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  background: var(--toast-positive-bg);
-  color: var(--toast-positive-text);
+  background: rgba(248, 113, 113, 0.95);
+  color: white;
   padding: 16px 22px;
   border-radius: 14px;
-  box-shadow: var(--toast-positive-shadow);
+  box-shadow: 0 14px 26px rgba(248, 113, 113, 0.4);
   display: flex;
   align-items: center;
   gap: 12px;
   z-index: 9999;
   font-size: 15px;
   font-weight: 500;
-  letter-spacing: 0.3px;
-  animation: toastPulse 4s ease-in-out infinite;
-}
-
-.toast-icon {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  width: 38px;
-  height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.toast-text {
-  white-space: nowrap;
-}
-
-.alarm-toast {
-  position: fixed;
-  bottom: 110px;
-  right: 24px;
-  background: var(--toast-alarm-bg);
-  color: var(--toast-alarm-text);
-  padding: 16px 22px;
-  border-radius: 14px;
-  box-shadow: var(--toast-alarm-shadow);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  z-index: 9998;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  animation: alarmPulse 4s ease-in-out infinite;
-}
-
-@keyframes toastPulse {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-2px);
-  }
-}
-
-@keyframes alarmPulse {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-2px);
-  }
-}
-
-@media (max-width: 1280px) {
-  .products-layout {
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .side-column {
-    flex: 1;
-    min-width: 280px;
-  }
-  .board-column {
-    order: -1;
-  }
 }
 
 @media (max-width: 960px) {
-  .board-header {
-    flex-direction: column;
-    align-items: flex-start;
+  .meter-dashboard {
+    padding: 18px;
   }
-  .board-actions {
-    width: 100%;
-  }
-  .lane-body {
-    max-height: none;
-  }
-}
 
-@media (max-width: 600px) {
-  .board-content {
-    flex-direction: column;
+  .meter-header {
+    padding: 24px;
   }
-  .board-lane {
-    min-width: auto;
-  }
-  .fancy-toast,
-  .alarm-toast {
-    right: 16px;
-    left: 16px;
-  }
-  .alarm-toast {
-    bottom: 170px;
+
+  .list-card,
+  .map-card {
+    padding: 20px;
   }
 }
 </style>
-

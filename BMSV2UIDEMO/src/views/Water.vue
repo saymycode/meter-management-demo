@@ -1,741 +1,969 @@
+<!-- eslint-disable vue/valid-v-slot -->
 <template>
-  <v-container fluid>
-    <v-tabs v-model="activeTab" bg-color="primary" dark>
-      <v-tab value="products">Ürünler</v-tab>
-      <v-tab value="map">Harita</v-tab>
-      <v-tab value="workorders">İş Emri Geçmişi</v-tab>
-      <v-tab value="alerts">Uyarılar & Alarmlar</v-tab>
-    </v-tabs>
+  <v-container fluid class="meter-dashboard" tag="section">
+    <section class="meter-header">
+      <div class="header-left">
+        <div class="header-chip">{{ organization.scope }} • Su sayaçları</div>
+        <h1>Su şebekesi izleme merkezi</h1>
+        <p>
+          ASKİ'ye bağlı su sayaçları gün içinde rastgele saatlerde veri gönderir. Bu panel kurumunuza
+          ait LoRa ve GPRS su sayaçlarını aynı sensör ekranındaki gibi tek çatı altında toplar; farklı
+          organizasyonların verileri burada görünmez.
+        </p>
+        <div class="header-meta">
+          <DataFreshnessIndicator
+            :last-update="lastPacket"
+            :now="now"
+            :pending-threshold-hours="24"
+            :inactive-threshold-hours="48"
+            title="Son su verisi"
+            window-hint="Sayaçlar 24 saatlik pencere içerisinde rastgele paket gönderir."
+          />
+          <div class="meta-grid">
+            <div class="meta-item" v-for="metric in headerMetrics" :key="metric.label">
+              <span class="meta-label">{{ metric.label }}</span>
+              <span class="meta-value">{{ metric.value }}</span>
+              <span class="meta-hint">{{ metric.hint }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="summary-item">
+          <span class="summary-label">Toplam sayaç</span>
+          <span class="summary-value">{{ totalSensors.toLocaleString('tr-TR') }}</span>
+        </div>
+        <div class="summary-split">
+          <div>
+            <span class="summary-label">LoRa</span>
+            <span class="summary-value">{{ communicationBreakdown.LoRa.toLocaleString('tr-TR') }}</span>
+          </div>
+          <div>
+            <span class="summary-label">GPRS</span>
+            <span class="summary-value">{{ communicationBreakdown.GPRS.toLocaleString('tr-TR') }}</span>
+          </div>
+        </div>
+        <div class="summary-note">
+          <span class="summary-bullet">•</span>
+          <span>Su sayaçları 24 saatlik pencerede eşitlenir; anlık veri beklenmez.</span>
+        </div>
+      </div>
+    </section>
 
-    <v-window v-model="activeTab" class="mt-4">
-      <v-window-item value="products">
-        <div>
-          <div class="d-flex align-center mb-2" style="gap: 10px">
-            <v-btn color="primary" variant="outlined" @click="selectAllRows">Tümünü Seç</v-btn>
-            <v-btn
-              color="info"
-              variant="flat"
-              :disabled="selectedRows.length === 0"
-              @click="sendWorkOrder"
-            >
-              İş Emri Gönder
-            </v-btn>
+    <v-row class="meter-content" no-gutters>
+      <v-col cols="12" md="3" class="filter-column">
+        <v-card class="filter-card" elevation="0">
+          <div class="filter-header">
+            <h2>Filtreler</h2>
+            <v-btn density="comfortable" variant="text" @click="resetFilters">Temizle</v-btn>
+          </div>
+          <div class="filter-group">
+            <span class="filter-title">Durum</span>
+            <v-chip-group v-model="selectedStatuses" column multiple>
+              <v-chip
+                v-for="status in statusOptions"
+                :key="status"
+                :value="status"
+                class="filter-chip"
+                color="primary"
+                filter
+                variant="tonal"
+              >
+                {{ status }}
+              </v-chip>
+            </v-chip-group>
+          </div>
+          <div class="filter-group">
+            <span class="filter-title">Veri tazeliği</span>
+            <v-chip-group v-model="selectedFreshness" column multiple>
+              <v-chip
+                v-for="option in freshnessOptions"
+                :key="option"
+                :value="option"
+                class="filter-chip"
+                color="teal"
+                filter
+                variant="tonal"
+              >
+                {{ option }}
+              </v-chip>
+            </v-chip-group>
+          </div>
+          <div class="filter-group">
+            <span class="filter-title">İletişim</span>
+            <v-chip-group v-model="selectedComm" column multiple>
+              <v-chip
+                v-for="comm in communicationOptions"
+                :key="comm"
+                :value="comm"
+                class="filter-chip"
+                color="blue"
+                filter
+                variant="tonal"
+              >
+                {{ comm }}
+              </v-chip>
+            </v-chip-group>
+          </div>
+          <div class="filter-group">
+            <span class="filter-title">Bölgeler</span>
+            <v-chip-group v-model="selectedZones" column multiple>
+              <v-chip
+                v-for="zone in zoneOptions"
+                :key="zone"
+                :value="zone"
+                class="filter-chip"
+                color="purple"
+                filter
+                variant="tonal"
+              >
+                {{ zone }}
+              </v-chip>
+            </v-chip-group>
+          </div>
+        </v-card>
 
-            <v-select
-              v-model="groupBy"
-              :items="groupOptions"
-              class="group-select"
-              density="comfortable"
-              hide-details
-              label="Grupla"
-              multiple
-              chips
-              variant="outlined"
-            />
+        <v-card class="plan-card" elevation="0">
+          <div class="plan-header">
+            <h2>Su şebekesi prensipleri</h2>
+            <span>Sensör görünümü ile aynı görsel dili koru.</span>
+          </div>
+          <v-list density="compact" class="plan-list">
+            <v-list-item>
+              <v-list-item-title>• Koyu paneller ve neon vurgu renkleri sensör sayfasıyla aynıdır.</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-title>• Çip renkleri (yeşil/sarı/kırmızı) tablo ve kartta tekrar eder.</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-title>• Başlık ve etiket tipografisi sensör ekranıyla birebir eşleşir.</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-title>• Hover gölgeleri ve 160ms animasyon eğrileri korunur.</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-card>
+      </v-col>
 
+      <v-col cols="12" md="9" class="list-column">
+        <v-card class="list-card" elevation="0">
+          <div class="list-toolbar">
             <v-text-field
-              v-model="quickFilterText"
-              label="Genel Arama"
-              prepend-inner-icon="search"
-              variant="outlined"
-              hide-details
+              v-model="searchTerm"
+              class="toolbar-search"
               density="comfortable"
+              hide-details
+              label="Sayaç, bölge veya adres ara"
+              variant="outlined"
               clearable
             />
+            <div class="toolbar-actions">
+              <v-select
+                v-model="selectedGroupBy"
+                :items="groupByOptions"
+                class="group-select"
+                density="comfortable"
+                hide-details
+                label="Grupla"
+                multiple
+                chips
+                clearable
+                variant="outlined"
+              />
+              <v-btn variant="text" @click="selectAllRows">Tümünü seç</v-btn>
+              <v-btn
+                color="primary"
+                variant="flat"
+                :disabled="selectedRows.length === 0"
+                @click="openWorkOrder"
+              >
+                İş emri planla
+              </v-btn>
+              <v-btn-toggle v-model="viewMode" class="view-toggle" density="comfortable" mandatory>
+                <v-btn value="table">Tablo</v-btn>
+                <v-btn value="cards">Kart</v-btn>
+              </v-btn-toggle>
+            </div>
           </div>
 
-          <v-data-table
-            v-model:selected="selectedRows"
-            :headers="tableHeaders"
-            :items="filteredMeters"
-            :group-by="tableGroupBy"
-            :sort-by="tableSortBy"
-            :items-per-page="6"
-            class="water-table"
-            density="comfortable"
-            item-value="name"
-            return-object
-            show-select
-            hover
-            fixed-header
-          >
-            <template #item.status="{ item }">
-              <v-chip :color="statusChipColor(item.status)" size="small" variant="tonal">
-                {{ item.status }}
-              </v-chip>
-            </template>
-            <template #item.consumptionDisplay="{ item }">
-              <span class="mono">{{ item.consumptionDisplay }}</span>
-            </template>
-            <template #no-data>
-              <div class="no-data">Eşleşen sayaç bulunamadı.</div>
-            </template>
-          </v-data-table>
-        </div>
-      </v-window-item>
+          <div class="list-meta">
+            <v-chip class="meta-chip" color="primary" variant="tonal"
+              >Toplam: {{ filteredStats.total }}</v-chip
+            >
+            <v-chip class="meta-chip" color="success" variant="tonal"
+              >Aktif: {{ filteredStats.active }}</v-chip
+            >
+            <v-chip class="meta-chip" color="amber-darken-2" variant="tonal"
+              >Beklemede: {{ filteredStats.pending }}</v-chip
+            >
+            <v-chip class="meta-chip" color="red-darken-2" variant="tonal"
+              >Pasif: {{ filteredStats.inactive }}</v-chip
+            >
+          </div>
 
-      <v-window-item value="map">
-        <div id="water-map" style="height: 600px; width: 100%; border-radius: 10px"></div>
-      </v-window-item>
+          <div v-if="viewMode === 'table'" class="grid-wrapper">
+            <v-data-table
+              v-model:selected="selectedRows"
+              :headers="tableHeaders"
+              :items="filteredSensors"
+              :group-by="tableGroupBy"
+              :sort-by="tableSortBy"
+              :items-per-page="10"
+              class="sensor-data-table"
+              density="comfortable"
+              item-value="sensorId"
+              return-object
+              show-select
+              hover
+              fixed-header
+            >
+              <template #item.sensorId="{ item }">
+                <div class="cell-primary">
+                  <span class="cell-id">{{ item.sensorId }}</span>
+                  <span class="cell-zone">{{ item.zone }}</span>
+                </div>
+              </template>
+              <template #item.status="{ item }">
+                <v-chip :color="statusChipColor(item.status)" size="small" variant="tonal">
+                  {{ item.status }}
+                </v-chip>
+              </template>
+              <template #item.freshnessBucket="{ item }">
+                <v-chip :color="item.freshnessChip" size="small" variant="tonal">
+                  {{ item.freshnessBucket }}
+                </v-chip>
+              </template>
+              <template #item.lastPacketDisplay="{ item }">
+                <div class="cell-secondary">
+                  <span>{{ item.lastPacketDisplay }}</span>
+                  <small>{{ item.location }}</small>
+                </div>
+              </template>
+              <template #item.prepaidDisplay="{ item }">
+                <span class="mono">{{ item.prepaidDisplay }}</span>
+              </template>
+              <template #no-data>
+                <div class="no-data">Filtrelere uyan sayaç bulunamadı.</div>
+              </template>
+            </v-data-table>
+          </div>
 
-      <v-window-item value="workorders">
-        <div>
-          <v-text-field
-            v-model="workOrderFilter"
-            label="Genel Arama"
-            prepend-inner-icon="search"
-            variant="outlined"
-            hide-details
-            density="comfortable"
-            clearable
-            class="mb-3"
-            style="max-width: 950px"
-          />
+          <div v-else class="card-grid">
+            <v-row dense>
+              <v-col v-for="sensor in filteredSensors" :key="sensor.sensorId" cols="12" sm="6">
+                <div class="sensor-card" :class="sensor.freshnessLevel">
+                  <div class="sensor-card-header">
+                    <div>
+                      <span class="sensor-id">{{ sensor.sensorId }}</span>
+                      <span class="sensor-zone">{{ sensor.zone }}</span>
+                    </div>
+                    <v-chip :color="sensor.freshnessChip" size="small" variant="tonal">
+                      {{ sensor.freshnessBadge }}
+                    </v-chip>
+                  </div>
+                  <div class="sensor-card-body">
+                    <div class="sensor-row">
+                      <span class="sensor-label">İletişim</span>
+                      <span class="sensor-value">{{ sensor.commMethod }}</span>
+                    </div>
+                    <div class="sensor-row">
+                      <span class="sensor-label">Son veri</span>
+                      <span class="sensor-value">{{ sensor.lastPacketDisplay }}</span>
+                    </div>
+                    <div class="sensor-row">
+                      <span class="sensor-label">Konum</span>
+                      <span class="sensor-value">{{ sensor.location }}</span>
+                    </div>
+                    <div class="sensor-row">
+                      <span class="sensor-label">24s tüketim</span>
+                      <span class="sensor-value">{{ sensor.consumptionLabel }}</span>
+                    </div>
+                    <div class="sensor-row">
+                      <span class="sensor-label">Önceki 24s</span>
+                      <span class="sensor-value">{{ sensor.previousConsumptionLabel }}</span>
+                    </div>
+                    <div class="sensor-row">
+                      <span class="sensor-label">Kredi</span>
+                      <span class="sensor-value">{{ sensor.prepaidDisplay }}</span>
+                    </div>
+                  </div>
+                  <v-sparkline
+                    :model-value="sensor.sparkline"
+                    :smooth="12"
+                    :line-width="3"
+                    auto-draw
+                    class="sensor-sparkline"
+                    color="rgba(59,130,246,0.6)"
+                  />
+                </div>
+              </v-col>
+            </v-row>
+          </div>
+        </v-card>
 
-          <v-data-table
-            :headers="workOrderHeaders"
-            :items="filteredWorkOrders"
-            class="secondary-table"
-            density="comfortable"
-            :items-per-page="8"
-            hover
-            fixed-header
-          >
-            <template #item.status="{ item }">
-              <v-chip :color="workOrderStatusColor(item.status)" size="small" variant="tonal">
-                {{ item.status }}
-              </v-chip>
-            </template>
-            <template #item.payload="{ item }">
-              <span class="mono">{{ item.payload }}</span>
-            </template>
-            <template #item.workOrderId="{ item }">
-              <span class="mono">{{ item.workOrderId }}</span>
-            </template>
-            <template #no-data>
-              <div class="no-data">İş emri kaydı bulunamadı.</div>
-            </template>
-          </v-data-table>
-        </div>
-      </v-window-item>
-
-      <v-window-item value="alerts">
-        <div>
-          <v-text-field
-            v-model="alertFilter"
-            label="Genel Arama"
-            prepend-inner-icon="notifications_active"
-            variant="outlined"
-            hide-details
-            density="comfortable"
-            clearable
-            class="mb-3"
-            style="max-width: 950px"
-          />
-
-          <v-data-table
-            :headers="alertHeaders"
-            :items="filteredAlerts"
-            class="secondary-table"
-            density="comfortable"
-            :items-per-page="8"
-            hover
-            fixed-header
-          >
-            <template #item.severity="{ item }">
-              <v-chip :color="alertSeverityColor(item.severity)" size="small" variant="tonal">
-                {{ item.severity }}
-              </v-chip>
-            </template>
-            <template #item.payload="{ item }">
-              <span class="mono">{{ item.payload }}</span>
-            </template>
-            <template #item.alertId="{ item }">
-              <span class="mono">{{ item.alertId }}</span>
-            </template>
-            <template #no-data>
-              <div class="no-data">Aktif uyarı bulunamadı.</div>
-            </template>
-          </v-data-table>
-        </div>
-      </v-window-item>
-    </v-window>
+        <v-card class="map-card" elevation="0">
+          <div class="map-header">
+            <div>
+              <h2>Konum görünümü</h2>
+              <span class="map-subtitle">Son paket: {{ lastPacketLabel }} • {{ lastPacketAgo }}</span>
+            </div>
+            <v-chip size="small" variant="tonal">ASKİ kapsama alanı</v-chip>
+          </div>
+          <div id="water-map" class="map-container" />
+          <div class="map-legend">
+            <div class="legend-item"><span class="legend-dot active" /> Aktif</div>
+            <div class="legend-item"><span class="legend-dot pending" /> Beklemede</div>
+            <div class="legend-item"><span class="legend-dot inactive" /> Pasif</div>
+          </div>
+        </v-card>
+      </v-col>
+    </v-row>
   </v-container>
 
   <v-navigation-drawer
     v-model="workOrderPanel"
     location="right"
-    width="400"
+    width="420"
     temporary
     scrim="false"
     elevation="10"
   >
     <v-card flat>
-      <v-card-title class="text-h6 d-flex align-center justify-space-between">
-        <span>İş Emri Gönder</span>
-        <v-btn icon="close" variant="text" @click="workOrderPanel = false" />
+      <v-card-title class="drawer-title">
+        <span>İş emri planla</span>
+        <v-btn variant="text" @click="workOrderPanel = false">Kapat</v-btn>
       </v-card-title>
-
       <v-divider />
-
       <v-card-text>
-        <div class="text-subtitle-2 mb-3 text-grey-darken-1">
-          Seçili Sayaçlar: <strong>{{ selectedRows.length }}</strong>
+        <div class="drawer-summary">
+          Seçili sayaç sayısı: <strong>{{ selectedRows.length }}</strong>
         </div>
-
         <v-select
           v-model="selectedWorkOrderType"
           :items="workOrderTypes"
-          label="İş Emri Tipi"
+          label="İş emri tipi"
           variant="outlined"
           density="comfortable"
           class="mb-3"
         />
-
-        <template v-if="selectedWorkOrderType === 'Sayaç Okuma'">
-          <v-text-field
-            v-model="workOrderPayload.readCommand"
-            label="Okuma Komutu"
-            variant="outlined"
-            density="comfortable"
-            class="mb-3"
-          />
-        </template>
-
-        <template v-else-if="selectedWorkOrderType === 'Debi Ayarla'">
-          <v-text-field
-            v-model="workOrderPayload.flowRate"
-            label="Yeni Debi (m³/saat)"
-            type="number"
-            variant="outlined"
-            density="comfortable"
-            class="mb-3"
-          />
-        </template>
-
-        <template v-else-if="selectedWorkOrderType === 'Basınç Kontrolü'">
-          <v-text-field
-            v-model="workOrderPayload.pressureThreshold"
-            label="Basınç Eşiği (bar)"
-            type="number"
-            variant="outlined"
-            density="comfortable"
-            class="mb-3"
-          />
-        </template>
-
         <v-textarea
           v-model="workOrderPayload.description"
           label="Açıklama"
           variant="outlined"
-          rows="2"
-          class="mt-2"
+          rows="3"
         />
       </v-card-text>
-
       <v-divider />
-
       <v-card-actions class="justify-end">
-        <v-btn color="grey" variant="text" @click="workOrderPanel = false">İptal</v-btn>
-        <v-btn color="primary" variant="flat" @click="confirmSendWorkOrder">Gönder</v-btn>
+        <v-btn variant="text" @click="workOrderPanel = false">İptal</v-btn>
+        <v-btn color="primary" variant="flat" @click="confirmWorkOrder">Gönder</v-btn>
       </v-card-actions>
     </v-card>
   </v-navigation-drawer>
 
   <transition name="slide-fade">
     <div v-if="workOrderNotification.visible" class="fancy-toast">
-      <div class="toast-icon">
-        <v-icon size="28" color="white">water</v-icon>
-      </div>
-      <div class="toast-text">
-        💧 <strong>{{ workOrderNotification.message }}</strong>
-      </div>
-    </div>
-  </transition>
-
-  <transition name="slide-fade">
-    <div v-if="alarmNotification.visible" class="alarm-toast">
-      <div class="toast-icon">
-        <v-icon size="28" color="white">warning</v-icon>
-      </div>
-      <div class="toast-text">
-        <strong>{{ alarmNotification.message }}</strong>
-      </div>
+      <div class="toast-text">💧 <strong>{{ workOrderNotification.message }}</strong></div>
     </div>
   </transition>
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import DataFreshnessIndicator from '@/components/common/DataFreshnessIndicator.vue'
+import { meterSnapshots, organizationProfile, referenceNow } from '@/data/mockMeters'
+import { formatAbsolute, formatClock, formatRelativeAgo, hoursBetween, toDate } from '@/utils/time'
 
-const activeTab = ref('products')
-const quickFilterText = ref('')
-const workOrderFilter = ref('')
-const alertFilter = ref('')
+const organization = organizationProfile
+const now = ref(new Date(referenceNow))
 
+const statusOptions = ['Aktif', 'Beklemede', 'Pasif']
+const freshnessOptions = ['< 24 saat', '24-48 saat', '48+ saat']
+const communicationOptions = ['LoRa', 'GPRS']
+
+const selectedStatuses = ref([])
+const selectedFreshness = ref([])
+const selectedComm = ref([])
+const selectedZones = ref([])
+const selectedGroupBy = ref([])
+const searchTerm = ref('')
 const selectedRows = ref([])
+const viewMode = ref('table')
+
 const workOrderPanel = ref(false)
-const groupBy = ref([])
+const workOrderTypes = ['Sayaç Okuma', 'Vanayı Kapat', 'Debi Ayarla']
+const selectedWorkOrderType = ref(workOrderTypes[0])
+const workOrderPayload = ref({ description: '' })
+const workOrderNotification = ref({ visible: false, message: '' })
 
-const groupOptions = [
-  { title: 'Model', value: 'model' },
-  { title: 'İletişim', value: 'type' },
+const rawSensors = ref(meterSnapshots.filter((meter) => meter.type === 'water'))
+
+const groupByOptions = [
+  { title: 'Bölgeler', value: 'zone' },
   { title: 'Durum', value: 'status' },
+  { title: 'İletişim', value: 'commMethod' },
 ]
 
-const tableHeaders = [
-  { title: 'Sayaç Kodu', key: 'name', sortable: true },
-  { title: 'Model', key: 'model', sortable: true },
-  { title: 'İletişim', key: 'type', sortable: true },
-  { title: 'Tüketim (m³)', key: 'consumptionDisplay', sortable: true },
-  { title: 'Komut İndeksi', key: 'commandIndex', sortable: true },
-  { title: 'Durum', key: 'status', sortable: true },
-]
-
-const tableSortBy = ref([{ key: 'name', order: 'asc' }])
-const tableGroupBy = computed(() => groupBy.value.map((key) => ({ key })))
-
-const waterMeters = ref([
-  {
-    name: '20001',
-    model: 'AK-411',
-    Consumption: 0.5,
-    commandIndex: 30,
-    status: 'Aktif',
-    type: 'LoRa',
-    lat: 39.9208,
-    lng: 32.8541,
-  },
-  {
-    name: '20002',
-    model: 'AK-311',
-    Consumption: 0.2,
-    commandIndex: 20,
-    status: 'Pasif',
-    type: 'GPRS',
-    lat: 39.9224,
-    lng: 32.8602,
-  },
-  {
-    name: '20003',
-    model: 'AK-211',
-    Consumption: 1.5,
-    commandIndex: 25,
-    status: 'Aktif',
-    type: 'NB-IoT',
-    lat: 39.9191,
-    lng: 32.8615,
-  },
-  {
-    name: '20004',
-    model: 'AK-511',
-    Consumption: 0.1,
-    commandIndex: 18,
-    status: 'Pasif',
-    type: 'LoRa',
-    lat: 39.9212,
-    lng: 32.8577,
-  },
-  {
-    name: '20005',
-    model: 'AK-611',
-    Consumption: 0.9,
-    commandIndex: 28,
-    status: 'Aktif',
-    type: 'GPRS',
-    lat: 39.9187,
-    lng: 32.8599,
-  },
-  {
-    name: '20006',
-    model: 'AK-711',
-    Consumption: 0.4,
-    commandIndex: 26,
-    status: 'Aktif',
-    type: 'NB-IoT',
-    lat: 39.9231,
-    lng: 32.8554,
-  },
-  {
-    name: '20007',
-    model: 'AK-811',
-    Consumption: 1.2,
-    commandIndex: 29,
-    status: 'Aktif',
-    type: 'LoRa',
-    lat: 39.9245,
-    lng: 32.8568,
-  },
-  {
-    name: '20008',
-    model: 'AK-911',
-    Consumption: 0.6,
-    commandIndex: 24,
-    status: 'Pasif',
-    type: 'GPRS',
-    lat: 39.9253,
-    lng: 32.8582,
-  },
-])
-
-const meterRecords = computed(() =>
-  waterMeters.value.map((meter) => ({
-    ...meter,
-    consumptionValue: meter.Consumption,
-    consumptionDisplay: `${meter.Consumption.toLocaleString('tr-TR', {
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1,
-    })}`,
-  })),
+const zoneOptions = computed(() =>
+  Array.from(new Set(rawSensors.value.map((meter) => meter.zone))).sort(),
 )
 
-const filteredMeters = computed(() => {
-  const term = quickFilterText.value.trim().toLowerCase()
-  if (!term) return meterRecords.value
-  return meterRecords.value.filter((meter) =>
-    `${meter.name} ${meter.model} ${meter.type} ${meter.status}`.toLowerCase().includes(term),
-  )
+const tableHeaders = [
+  { title: 'Sayaç', key: 'sensorId', sortable: true },
+  { title: 'Bölge', key: 'zone', sortable: true },
+  { title: 'İletişim', key: 'commMethod', sortable: true },
+  { title: 'Durum', key: 'status', sortable: true },
+  { title: 'Veri tazeliği', key: 'freshnessBucket', sortable: true },
+  { title: 'Son veri', key: 'lastPacketDisplay', sortable: false },
+  { title: '24s tüketim', key: 'consumptionLabel', sortable: true },
+  { title: 'Kredi', key: 'prepaidDisplay', sortable: true },
+]
+
+const tableSortBy = ref([{ key: 'sensorId', order: 'asc' }])
+
+const classifyStatus = (lastCommunication) => {
+  const hours = hoursBetween(lastCommunication, now.value)
+  if (hours <= 24) return 'Aktif'
+  if (hours <= 48) return 'Beklemede'
+  return 'Pasif'
+}
+
+const classifyFreshness = (lastCommunication) => {
+  const hours = hoursBetween(lastCommunication, now.value)
+  if (hours <= 24) return '< 24 saat'
+  if (hours <= 48) return '24-48 saat'
+  return '48+ saat'
+}
+
+const freshnessMap = {
+  '< 24 saat': { badge: 'Güncel', chip: 'success', level: 'on-time' },
+  '24-48 saat': { badge: 'Beklemede', chip: 'amber-darken-2', level: 'delayed' },
+  '48+ saat': { badge: 'Pasif', chip: 'red-darken-2', level: 'missed' },
+}
+
+const sensorRecords = computed(() =>
+  rawSensors.value.map((meter) => {
+    const lastPacket = toDate(meter.lastCommunication)
+    const status = classifyStatus(lastPacket)
+    const freshness = classifyFreshness(lastPacket)
+    const mapping = freshnessMap[freshness]
+    const last24h = meter.consumption?.last24h ?? 0
+    const prev24h = meter.consumption?.previous24h ?? 0
+    const delta = last24h - prev24h
+    const credit = meter.prepaidCredit ?? null
+
+    return {
+      sensorId: meter.id,
+      zone: meter.zone,
+      location: meter.location,
+      commMethod: meter.communication,
+      status,
+      freshnessBucket: freshness,
+      freshnessBadge: mapping.badge,
+      freshnessChip: mapping.chip,
+      freshnessLevel: mapping.level,
+      lastPacketAt: lastPacket,
+      lastPacketLabel: formatAbsolute(lastPacket),
+      lastPacketAgo: formatRelativeAgo(lastPacket, now.value),
+      lastPacketDisplay: `${formatClock(lastPacket)} • ${formatRelativeAgo(lastPacket, now.value)}`,
+      lastReading: meter.lastReading ?? '—',
+      consumptionValue: last24h,
+      consumptionLabel:
+        meter.consumption != null
+          ? `${last24h.toLocaleString('tr-TR', {
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1,
+            })} m³`
+          : '—',
+      previousConsumptionLabel:
+        meter.consumption != null
+          ? `${prev24h.toLocaleString('tr-TR', {
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1,
+            })} m³`
+          : '—',
+      consumptionDelta: delta,
+      consumptionDeltaLabel:
+        meter.consumption != null
+          ? `${delta >= 0 ? '+' : ''}${delta.toLocaleString('tr-TR', {
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1,
+            })} m³`
+          : '—',
+      prepaidCredit: credit,
+      prepaidDisplay:
+        credit != null ? `₺${credit.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}` : '—',
+      lat: meter.lat,
+      lng: meter.lng,
+      sparkline: meter.consumption?.history ?? [],
+    }
+  }),
+)
+
+const totalSensors = computed(() => sensorRecords.value.length)
+
+const communicationBreakdown = computed(() =>
+  sensorRecords.value.reduce(
+    (acc, sensor) => {
+      acc[sensor.commMethod] = (acc[sensor.commMethod] ?? 0) + 1
+      return acc
+    },
+    { LoRa: 0, GPRS: 0 },
+  ),
+)
+
+const headerMetrics = computed(() => {
+  const total = sensorRecords.value.length || 1
+  const active = sensorRecords.value.filter((sensor) => sensor.status === 'Aktif').length
+  const pending = sensorRecords.value.filter((sensor) => sensor.status === 'Beklemede').length
+  const averageConsumption =
+    sensorRecords.value.reduce((sum, sensor) => sum + sensor.consumptionValue, 0) / total
+  const creditMeters = sensorRecords.value.filter((sensor) => sensor.prepaidCredit != null)
+  const avgCredit =
+    creditMeters.reduce((sum, sensor) => sum + (sensor.prepaidCredit ?? 0), 0) /
+    (creditMeters.length || 1)
+
+  return [
+    {
+      label: 'Aktif sayaç',
+      value: active.toLocaleString('tr-TR'),
+      hint: 'Son 24 saatte paket gönderen',
+    },
+    {
+      label: 'Beklemede',
+      value: pending.toLocaleString('tr-TR'),
+      hint: '24-48 saattir suskun',
+    },
+    {
+      label: 'Günlük tüketim ort.',
+      value: `${averageConsumption.toLocaleString('tr-TR', {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      })} m³`,
+      hint: 'Son 24 saatin ortalaması',
+    },
+    {
+      label: 'Kredi ortalaması',
+      value:
+        creditMeters.length > 0
+          ? `₺${avgCredit.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}`
+          : '—',
+      hint: 'Ön ödemeli sayaçlar',
+    },
+  ]
 })
 
-const statusChipColor = (status) => (status === 'Aktif' ? 'info' : 'blue-grey-darken-1')
+const lastPacket = computed(() =>
+  sensorRecords.value.reduce(
+    (latest, sensor) => (latest && latest > sensor.lastPacketAt ? latest : sensor.lastPacketAt),
+    null,
+  ),
+)
+
+const lastPacketLabel = computed(() => (lastPacket.value ? formatAbsolute(lastPacket.value) : '—'))
+const lastPacketAgo = computed(() =>
+  lastPacket.value ? formatRelativeAgo(lastPacket.value, now.value) : 'Veri yok',
+)
+
+const tableGroupBy = computed(() => selectedGroupBy.value.map((value) => ({ key: value })))
+
+const statusChipColor = (status) => {
+  if (status === 'Aktif') return 'success'
+  if (status === 'Beklemede') return 'amber-darken-2'
+  return 'red-darken-2'
+}
+
+const filteredSensors = computed(() => {
+  const term = searchTerm.value.trim().toLowerCase()
+  return sensorRecords.value.filter((sensor) => {
+    const matchesStatus =
+      selectedStatuses.value.length === 0 || selectedStatuses.value.includes(sensor.status)
+    const matchesFreshness =
+      selectedFreshness.value.length === 0 ||
+      selectedFreshness.value.includes(sensor.freshnessBucket)
+    const matchesComm =
+      selectedComm.value.length === 0 || selectedComm.value.includes(sensor.commMethod)
+    const matchesZone =
+      selectedZones.value.length === 0 || selectedZones.value.includes(sensor.zone)
+    const matchesTerm =
+      term.length === 0 ||
+      `${sensor.sensorId} ${sensor.zone} ${sensor.location} ${sensor.commMethod}`
+        .toLowerCase()
+        .includes(term)
+
+    return matchesStatus && matchesFreshness && matchesComm && matchesZone && matchesTerm
+  })
+})
+
+const filteredStats = computed(() => ({
+  total: filteredSensors.value.length,
+  active: filteredSensors.value.filter((sensor) => sensor.status === 'Aktif').length,
+  pending: filteredSensors.value.filter((sensor) => sensor.status === 'Beklemede').length,
+  inactive: filteredSensors.value.filter((sensor) => sensor.status === 'Pasif').length,
+}))
+
+const resetFilters = () => {
+  selectedStatuses.value = []
+  selectedFreshness.value = []
+  selectedComm.value = []
+  selectedZones.value = []
+  selectedGroupBy.value = []
+}
 
 const selectAllRows = () => {
-  selectedRows.value = [...filteredMeters.value]
+  selectedRows.value = [...filteredSensors.value]
 }
 
-watch(filteredMeters, () => {
-  const allowed = new Set(filteredMeters.value.map((meter) => meter.name))
-  selectedRows.value = selectedRows.value.filter((meter) => allowed.has(meter.name))
-  if (activeTab.value === 'map') {
-    setTimeout(initMap, 150)
-  }
-})
-
-watch(activeTab, (val) => {
-  if (val === 'map') setTimeout(initMap, 150)
-})
-
-let mapInstance = null
-
-function initMap() {
-  const mapContainer = document.getElementById('water-map')
-  if (!mapContainer) return
-
-  if (mapInstance) {
-    mapInstance.remove()
-    mapInstance = null
-  }
-
-  mapInstance = L.map(mapContainer).setView([39.92, 32.86], 13)
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap contributors',
-  }).addTo(mapInstance)
-
-  const markerSource = filteredMeters.value.length ? filteredMeters.value : meterRecords.value
-  markerSource.forEach((meter) => {
-    const color = meter.status === 'Aktif' ? '#0ea5e9' : '#64748b'
-    L.circleMarker([meter.lat, meter.lng], {
-      color,
-      radius: 8,
-      fillColor: color,
-      fillOpacity: 0.85,
-      weight: 1.5,
-    })
-      .bindPopup(
-        `<b>${meter.name}</b><br>${meter.model} • ${meter.type}<br><span style="color:${color};font-weight:bold;">${meter.status}</span>`,
-      )
-      .addTo(mapInstance)
-  })
-}
-
-const workOrderHeaders = [
-  { title: 'Sayaç No', key: 'meterId', sortable: true },
-  { title: 'İş Emri ID', key: 'workOrderId', sortable: true },
-  { title: 'İş Emri Tipi', key: 'type', sortable: true },
-  { title: 'Payload', key: 'payload', sortable: true },
-  { title: 'Durum', key: 'status', sortable: true },
-  { title: 'Oluşturulma', key: 'createdDate', sortable: true },
-  { title: 'Gönderilme', key: 'sentDate', sortable: true },
-  { title: 'Cevap', key: 'responseDate', sortable: true },
-]
-
-const workOrderData = ref([
-  {
-    meterId: '20001',
-    workOrderId: 'AABBCC01',
-    type: 'Sayaç Okuma',
-    payload: '00112233AA',
-    status: 'Tamamlandı',
-    createdDate: '2025-10-21 09:05',
-    sentDate: '2025-10-21 09:06',
-    responseDate: '2025-10-21 09:07',
-  },
-  {
-    meterId: '20002',
-    workOrderId: 'AABBCC02',
-    type: 'Vanayı Kapat',
-    payload: '00112233AB',
-    status: 'Gönderildi',
-    createdDate: '2025-10-21 10:40',
-    sentDate: '2025-10-21 10:41',
-    responseDate: '-',
-  },
-  {
-    meterId: '20003',
-    workOrderId: 'AABBCC03',
-    type: 'Basınç Kontrolü',
-    payload: '00112233AC',
-    status: 'Bekliyor',
-    createdDate: '2025-10-22 08:20',
-    sentDate: '-',
-    responseDate: '-',
-  },
-  {
-    meterId: '20004',
-    workOrderId: 'AABBCC04',
-    type: 'Sayaç Okuma',
-    payload: '00112233AD',
-    status: 'Başarısız',
-    createdDate: '2025-10-19 14:05',
-    sentDate: '2025-10-19 14:06',
-    responseDate: '2025-10-19 14:07',
-  },
-  {
-    meterId: '20005',
-    workOrderId: 'AABBCC05',
-    type: 'Debi Ayarla',
-    payload: '00112233AE',
-    status: 'Tamamlandı',
-    createdDate: '2025-10-23 11:55',
-    sentDate: '2025-10-23 11:56',
-    responseDate: '2025-10-23 11:58',
-  },
-  {
-    meterId: '20006',
-    workOrderId: 'AABBCC06',
-    type: 'Vanayı Aç',
-    payload: '00112233AF',
-    status: 'Gönderildi',
-    createdDate: '2025-10-22 16:10',
-    sentDate: '2025-10-22 16:11',
-    responseDate: '-',
-  },
-  {
-    meterId: '20007',
-    workOrderId: 'AABBCC07',
-    type: 'Sayaç Okuma',
-    payload: '00112233BA',
-    status: 'Tamamlandı',
-    createdDate: '2025-10-20 07:45',
-    sentDate: '2025-10-20 07:46',
-    responseDate: '2025-10-20 07:48',
-  },
-  {
-    meterId: '20008',
-    workOrderId: 'AABBCC08',
-    type: 'Basınç Kontrolü',
-    payload: '00112233BB',
-    status: 'Tamamlandı',
-    createdDate: '2025-10-18 13:25',
-    sentDate: '2025-10-18 13:26',
-    responseDate: '2025-10-18 13:29',
-  },
-])
-
-const filteredWorkOrders = computed(() => {
-  const term = workOrderFilter.value.trim().toLowerCase()
-  if (!term) return workOrderData.value
-  return workOrderData.value.filter((item) =>
-    `${item.meterId} ${item.type} ${item.workOrderId} ${item.payload} ${item.status}`.toLowerCase().includes(term),
-  )
-})
-
-const workOrderStatusColor = (status) => {
-  const colors = {
-    Bekliyor: 'warning',
-    Gönderildi: 'info',
-    Tamamlandı: 'success',
-    Başarısız: 'error',
-  }
-  return colors[status] || 'secondary'
-}
-
-const alertHeaders = [
-  { title: 'Sayaç No', key: 'meterId', sortable: true },
-  { title: 'Uyarı ID', key: 'alertId', sortable: true },
-  { title: 'Uyarı Tipi', key: 'type', sortable: true },
-  { title: 'Önem', key: 'severity', sortable: true },
-  { title: 'Tarih', key: 'createdDate', sortable: true },
-  { title: 'Durum', key: 'status', sortable: true },
-]
-
-const alertData = ref([
-  {
-    alertId: 'AABBCC20001',
-    meterId: '20001',
-    type: 'Kaçak Tespiti',
-    severity: 'Kritik',
-    createdDate: '2025-10-23 09:45',
-    status: 'Açık',
-  },
-  {
-    alertId: 'AABBCC20005',
-    meterId: '20005',
-    type: 'Basınç Düşüklüğü',
-    severity: 'Yüksek',
-    createdDate: '2025-10-23 08:30',
-    status: 'İzlemede',
-  },
-  {
-    alertId: 'AABBCC20008',
-    meterId: '20008',
-    type: 'Ters Akış',
-    severity: 'Orta',
-    createdDate: '2025-10-22 18:15',
-    status: 'Kapalı',
-  },
-  {
-    alertId: 'AABBCC20009',
-    meterId: '20009',
-    type: 'Ani Debi Artışı',
-    severity: 'Düşük',
-    createdDate: '2025-10-21 21:05',
-    status: 'Kapalı',
-  },
-])
-
-const filteredAlerts = computed(() => {
-  const term = alertFilter.value.trim().toLowerCase()
-  if (!term) return alertData.value
-  return alertData.value.filter((item) =>
-    `${item.meterId} ${item.type} ${item.severity} ${item.status}`.toLowerCase().includes(term),
-  )
-})
-
-const alertSeverityColor = (severity) => {
-  const colors = {
-    Düşük: 'light-blue-lighten-3',
-    Orta: 'light-blue',
-    Yüksek: 'light-blue-darken-1',
-    Kritik: 'indigo-darken-4',
-  }
-  return colors[severity] || 'secondary'
-}
-
-const workOrderTypes = ['Sayaç Okuma', 'Debi Ayarla', 'Basınç Kontrolü', 'Vanayı Aç', 'Vanayı Kapat']
-const selectedWorkOrderType = ref(null)
-const workOrderPayload = ref({ description: '', readCommand: '', flowRate: '', pressureThreshold: '' })
-
-const sendWorkOrder = () => {
-  if (!selectedRows.value.length) {
-    alert('Herhangi bir sayaç seçilmedi.')
-    return
-  }
+const openWorkOrder = () => {
   workOrderPanel.value = true
 }
 
-const confirmSendWorkOrder = () => {
-  const type = selectedWorkOrderType.value
-  if (!type) {
-    alert('Lütfen bir iş emri tipi seçiniz.')
-    return
-  }
-
-  console.log('İş emri tipi:', type)
-  console.log('Seçili sayaçlar:', selectedRows.value)
-  console.log('Girilen veriler:', workOrderPayload.value)
-
-  alert(`${selectedRows.value.length} sayaç için '${type}' iş emri hazırlandı (örnek simülasyon).`)
-
+const confirmWorkOrder = () => {
   workOrderPanel.value = false
-  selectedWorkOrderType.value = null
-  workOrderPayload.value = { description: '', readCommand: '', flowRate: '', pressureThreshold: '' }
-}
-
-const workOrderNotification = ref({ visible: false, message: '' })
-let workOrderTimer = null
-
-const showRandomWorkOrderResponse = () => {
-  const pool = filteredMeters.value.length ? filteredMeters.value : meterRecords.value
-  const randomMeter = pool[Math.floor(Math.random() * pool.length)]
-  if (!randomMeter) return
-
-  workOrderNotification.value.message = `${randomMeter.name} su sayacından iş emri cevabı alındı!`
-  workOrderNotification.value.visible = true
-  setTimeout(() => (workOrderNotification.value.visible = false), 4000)
-}
-
-const alarmNotification = ref({ visible: false, message: '' })
-let alarmTimer = null
-
-const showRandomAlarm = () => {
-  const pool = filteredMeters.value.length ? filteredMeters.value : meterRecords.value
-  const randomMeter = pool[Math.floor(Math.random() * pool.length)]
-  if (!randomMeter) return
-
-  const randomType = ['Kaçak tespiti', 'Basınç düşüklüğü', 'Ters akış uyarısı'][Math.floor(Math.random() * 3)]
-  alarmNotification.value.message = `🚨 ${randomMeter.name} sayacında ${randomType}!`
-  alarmNotification.value.visible = true
-  setTimeout(() => (alarmNotification.value.visible = false), 4000)
-}
-
-onMounted(() => {
-  const loop = () => {
-    const delay = 6000 + Math.random() * 9000
-    workOrderTimer = setTimeout(() => {
-      showRandomWorkOrderResponse()
-      loop()
-    }, delay)
+  workOrderNotification.value = {
+    visible: true,
+    message: `${selectedRows.value.length} sayaç için ${selectedWorkOrderType.value} kuyruğa alındı`,
   }
+  setTimeout(() => {
+    workOrderNotification.value.visible = false
+  }, 3600)
+  selectedRows.value = []
+  workOrderPayload.value.description = ''
+}
 
-  const alarmLoop = () => {
-    const delay = 18000 + Math.random() * 22000
-    alarmTimer = setTimeout(() => {
-      showRandomAlarm()
-      alarmLoop()
-    }, delay)
-  }
+const mapState = {
+  instance: null,
+  markers: [],
+}
 
-  loop()
-  alarmLoop()
+const initMap = () => {
+  if (mapState.instance) return
+  mapState.instance = L.map('water-map', {
+    zoomControl: false,
+    attributionControl: false,
+  }).setView([39.9334, 32.8597], 10)
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+  }).addTo(mapState.instance)
+
+  updateMarkers()
+}
+
+const updateMarkers = () => {
+  if (!mapState.instance) return
+  mapState.markers.forEach((marker) => marker.remove())
+  mapState.markers = filteredSensors.value.map((sensor) => {
+    const marker = L.circleMarker([sensor.lat, sensor.lng], {
+      radius: 9,
+      color: 'rgba(148,163,184,0.4)',
+      weight: 1,
+      fillColor:
+        sensor.status === 'Aktif'
+          ? 'rgba(34,197,94,0.65)'
+          : sensor.status === 'Beklemede'
+            ? 'rgba(251,191,36,0.7)'
+            : 'rgba(248,113,113,0.75)',
+      fillOpacity: 0.85,
+    }).addTo(mapState.instance)
+    marker.bindPopup(
+      `<strong>${sensor.sensorId}</strong><br/>${sensor.location}<br/>${sensor.lastPacketDisplay}`,
+    )
+    return marker
+  })
+}
+
+watch(filteredSensors, () => {
+  updateMarkers()
+  const availableIds = new Set(filteredSensors.value.map((sensor) => sensor.sensorId))
+  selectedRows.value = selectedRows.value.filter((row) => availableIds.has(row.sensorId))
 })
 
-onUnmounted(() => {
-  if (workOrderTimer) clearTimeout(workOrderTimer)
-  if (alarmTimer) clearTimeout(alarmTimer)
-  if (mapInstance) {
-    mapInstance.remove()
-    mapInstance = null
+onMounted(() => {
+  initMap()
+})
+
+onBeforeUnmount(() => {
+  if (mapState.instance) {
+    mapState.instance.remove()
+    mapState.instance = null
   }
 })
 </script>
 
 <style scoped>
-.group-select {
-  min-width: 180px;
+.meter-dashboard {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  background: linear-gradient(180deg, rgba(10, 14, 26, 0.95) 0%, rgba(12, 19, 32, 0.82) 100%);
 }
 
-.water-table,
-.secondary-table {
+.meter-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+  padding: 28px 32px;
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.2), transparent 45%),
+    rgba(13, 20, 34, 0.86);
+  border: 1px solid rgba(59, 130, 246, 0.18);
+  box-shadow: 0 26px 54px rgba(2, 12, 24, 0.55);
+}
+
+.header-left {
+  flex: 1 1 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.header-chip {
+  align-self: flex-start;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(45, 212, 191, 0.16);
+  color: rgba(226, 232, 240, 0.9);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.header-left h1 {
+  margin: 0;
+  font-size: clamp(26px, 4vw, 34px);
+  color: rgba(248, 250, 252, 0.98);
+}
+
+.header-left p {
+  margin: 0;
+  font-size: 15px;
+  color: rgba(148, 163, 184, 0.86);
+  line-height: 1.6;
+  max-width: 640px;
+}
+
+.header-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.meta-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.meta-item {
+  min-width: 150px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(10, 18, 32, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.meta-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: rgba(148, 163, 184, 0.75);
+}
+
+.meta-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: rgba(248, 250, 252, 0.95);
+}
+
+.meta-hint {
+  font-size: 13px;
+  color: rgba(148, 163, 184, 0.78);
+}
+
+.header-right {
+  flex: 1 1 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(10, 18, 32, 0.7);
+  border: 1px solid rgba(45, 212, 191, 0.16);
+}
+
+.summary-item,
+.summary-split > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summary-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: rgba(148, 163, 184, 0.75);
+}
+
+.summary-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: rgba(248, 250, 252, 0.95);
+}
+
+.summary-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.summary-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(148, 163, 184, 0.78);
+}
+
+.summary-bullet {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.meter-content {
+  row-gap: 28px !important;
+}
+
+.filter-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.filter-card,
+.plan-card {
+  padding: 24px;
+  border-radius: 24px;
+  background: rgba(10, 18, 32, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 20px 40px rgba(2, 12, 24, 0.45);
+}
+
+.filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.filter-header h2,
+.plan-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: rgba(248, 250, 252, 0.94);
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.filter-group:last-of-type {
+  border-bottom: none;
+}
+
+.filter-title {
+  font-size: 13px;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.75);
+  letter-spacing: 0.3px;
+}
+
+.filter-chip {
+  margin-bottom: 6px;
+}
+
+.plan-header span {
+  font-size: 13px;
+  color: rgba(148, 163, 184, 0.78);
+}
+
+.plan-list {
+  padding: 0;
+  margin-top: 12px;
+}
+
+.list-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.list-card,
+.map-card {
+  padding: 24px;
+  border-radius: 26px;
+  background: rgba(10, 18, 32, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: 0 24px 44px rgba(2, 12, 24, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.list-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.toolbar-search {
+  flex: 1 1 260px;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.list-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.meta-chip {
+  font-weight: 600;
+  text-transform: none;
+}
+
+.grid-wrapper {
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.sensor-data-table :deep(table) {
   background: transparent;
-  border-radius: 16px;
 }
 
-.water-table :deep(table),
-.secondary-table :deep(table) {
-  background: transparent;
-}
-
-.water-table :deep(thead tr),
-.secondary-table :deep(thead tr) {
+.sensor-data-table :deep(thead tr) {
   background: rgba(15, 23, 42, 0.85);
 }
 
-.water-table :deep(th),
-.secondary-table :deep(th) {
+.sensor-data-table :deep(th) {
   color: rgba(226, 232, 240, 0.85);
   font-weight: 600;
   text-transform: uppercase;
@@ -743,20 +971,187 @@ onUnmounted(() => {
   letter-spacing: 0.4px;
 }
 
-.water-table :deep(td),
-.secondary-table :deep(td) {
+.sensor-data-table :deep(td) {
   color: rgba(241, 245, 249, 0.92);
   font-size: 14px;
 }
 
-.water-table :deep(tbody tr:hover),
-.secondary-table :deep(tbody tr:hover) {
+.sensor-data-table :deep(tbody tr:hover) {
   background: rgba(14, 165, 233, 0.12);
 }
 
-.secondary-table {
-  border: 1px solid rgba(148, 163, 184, 0.12);
-  box-shadow: 0 14px 26px rgba(15, 23, 42, 0.24);
+.cell-primary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cell-id {
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.95);
+}
+
+.cell-zone {
+  font-size: 13px;
+  color: rgba(148, 163, 184, 0.78);
+}
+
+.cell-secondary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cell-secondary small {
+  color: rgba(148, 163, 184, 0.72);
+}
+
+.card-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sensor-card {
+  padding: 18px 20px;
+  border-radius: 24px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sensor-card.on-time {
+  box-shadow: 0 18px 36px rgba(45, 212, 191, 0.18);
+}
+
+.sensor-card.delayed {
+  box-shadow: 0 18px 36px rgba(251, 191, 36, 0.14);
+}
+
+.sensor-card.missed {
+  box-shadow: 0 18px 36px rgba(248, 113, 113, 0.18);
+}
+
+.sensor-card:hover {
+  transform: translateY(-4px);
+}
+
+.sensor-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sensor-id {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(248, 250, 252, 0.96);
+}
+
+.sensor-zone {
+  display: block;
+  font-size: 13px;
+  color: rgba(148, 163, 184, 0.75);
+}
+
+.sensor-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sensor-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sensor-label {
+  font-size: 13px;
+  color: rgba(148, 163, 184, 0.75);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.sensor-value {
+  font-size: 14px;
+  color: rgba(226, 232, 240, 0.9);
+  text-align: right;
+}
+
+.sensor-sparkline {
+  height: 46px;
+}
+
+.map-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.map-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: rgba(248, 250, 252, 0.94);
+}
+
+.map-subtitle {
+  display: block;
+  font-size: 13px;
+  color: rgba(148, 163, 184, 0.78);
+}
+
+.map-container {
+  height: 320px;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.map-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: rgba(148, 163, 184, 0.78);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-dot.active {
+  background: rgba(34, 197, 94, 0.75);
+}
+
+.legend-dot.pending {
+  background: rgba(251, 191, 36, 0.75);
+}
+
+.legend-dot.inactive {
+  background: rgba(248, 113, 113, 0.75);
+}
+
+.drawer-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.drawer-summary {
+  font-size: 14px;
+  color: rgba(148, 163, 184, 0.8);
+  margin-bottom: 16px;
 }
 
 .mono {
@@ -774,9 +1169,11 @@ onUnmounted(() => {
 .slide-fade-enter-active {
   transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
 }
+
 .slide-fade-leave-active {
   transition: all 0.4s ease;
 }
+
 .slide-fade-enter-from,
 .slide-fade-leave-to {
   opacity: 0;
@@ -787,87 +1184,31 @@ onUnmounted(() => {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  background: var(--toast-positive-bg);
-  color: var(--toast-positive-text);
+  background: rgba(14, 165, 233, 0.95);
+  color: white;
   padding: 16px 22px;
   border-radius: 14px;
-  box-shadow: var(--toast-positive-shadow);
+  box-shadow: 0 14px 26px rgba(14, 165, 233, 0.4);
   display: flex;
   align-items: center;
   gap: 12px;
   z-index: 9999;
   font-size: 15px;
   font-weight: 500;
-  letter-spacing: 0.3px;
-  animation: toastPulse 4s ease-in-out infinite;
 }
 
-@keyframes toastPulse {
-  0%,
-  100% {
-    box-shadow: var(--toast-positive-shadow);
-    transform: translateY(0);
-  }
-  50% {
-    box-shadow: var(--toast-positive-shadow);
-    transform: translateY(-2px);
-  }
-}
-
-.toast-icon {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  width: 38px;
-  height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.toast-text {
-  white-space: nowrap;
-}
-
-.alarm-toast {
-  position: fixed;
-  bottom: 110px;
-  right: 24px;
-  background: var(--toast-alarm-bg);
-  color: var(--toast-alarm-text);
-  padding: 16px 22px;
-  border-radius: 14px;
-  box-shadow: var(--toast-alarm-shadow);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  z-index: 9998;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  animation: alarmPulse 4s ease-in-out infinite;
-}
-
-@keyframes alarmPulse {
-  0%,
-  100% {
-    box-shadow: var(--toast-alarm-shadow);
-    transform: translateY(0);
-  }
-  50% {
-    box-shadow: var(--toast-alarm-shadow);
-    transform: translateY(-2px);
-  }
-}
-
-@media (max-width: 600px) {
-  .fancy-toast,
-  .alarm-toast {
-    right: 16px;
-    left: 16px;
+@media (max-width: 960px) {
+  .meter-dashboard {
+    padding: 18px;
   }
 
-  .alarm-toast {
-    bottom: 180px;
+  .meter-header {
+    padding: 24px;
+  }
+
+  .list-card,
+  .map-card {
+    padding: 20px;
   }
 }
 </style>
