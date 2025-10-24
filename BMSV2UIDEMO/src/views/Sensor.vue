@@ -1,138 +1,322 @@
 <template>
-  <v-container fluid>
-    <v-tabs v-model="activeTab" bg-color="primary" dark>
-      <v-tab value="sensors">Sensörler</v-tab>
-      <v-tab value="map">Harita</v-tab>
-      <v-tab value="workorders">İş Emri Geçmişi</v-tab>
-      <v-tab value="alerts">Uyarılar & Alarmlar</v-tab>
-    </v-tabs>
+  <v-container fluid class="sensor-shell" tag="section">
+    <div class="sensor-header">
+      <div class="sensor-heading">
+        <div class="sensor-badge">Su sayaçları</div>
+        <h1 class="sensor-title">Sayaç listesi</h1>
+        <p class="sensor-subtitle">
+          Kurumunuza ait LoRa ve GPRS sayaçları gün içinde yalnızca birkaç kez toplu veri gönderir. Bu liste son alınan partiye
+          göre güncellendi ve ortalama aralık dışına çıkan sayaçlar vurgulandı.
+        </p>
+      </div>
+      <div class="sensor-header-meta">
+        <div class="meta-card">
+          <span class="meta-label">Son veri alımı</span>
+          <span class="meta-value">{{ lastBatchLabel }}</span>
+          <span class="meta-hint">{{ lastBatchAgo }}</span>
+        </div>
+        <div class="meta-card">
+          <span class="meta-label">Son 24 saatte parti</span>
+          <span class="meta-value">{{ batchesInLastDay }}</span>
+          <span class="meta-hint">Ortalama {{ averageIntervalLabel }} aralık</span>
+        </div>
+        <div class="meta-card">
+          <span class="meta-label">Veri durumu</span>
+          <v-chip :color="freshnessChip.color" size="small" variant="tonal">{{ freshnessChip.label }}</v-chip>
+          <span class="meta-hint">{{ freshnessChip.helper }}</span>
+        </div>
+      </div>
+    </div>
 
-    <v-window v-model="activeTab" class="mt-4">
-      <v-window-item value="sensors">
-        <div>
-          <div class="d-flex align-center mb-2" style="gap: 10px">
-            <v-btn color="primary" variant="outlined" @click="selectAllRows">Tümünü Seç</v-btn>
-            <v-btn
-              color="success"
-              variant="flat"
-              :disabled="selectedRows.length === 0"
-              @click="sendWorkOrder"
-            >
-              İş Emri Gönder
-            </v-btn>
+    <v-row class="sensor-content" no-gutters>
+      <v-col cols="12" md="3" class="filter-column">
+        <v-card class="filter-card" elevation="0">
+          <div class="filter-header">
+            <h2>Filtreler</h2>
+            <v-btn color="primary" density="comfortable" variant="text" @click="resetFilters">Temizle</v-btn>
+          </div>
 
+          <div class="filter-group">
+            <span class="filter-title">Durum</span>
+            <v-chip-group v-model="selectedStatuses" column multiple>
+              <v-chip
+                v-for="status in statusOptions"
+                :key="status"
+                :value="status"
+                class="filter-chip"
+                color="primary"
+                filter
+                variant="tonal"
+              >
+                {{ status }}
+              </v-chip>
+            </v-chip-group>
+          </div>
+
+          <div class="filter-group">
+            <span class="filter-title">Veri aralığı</span>
+            <v-chip-group v-model="selectedFreshness" column multiple>
+              <v-chip
+                v-for="bucket in freshnessOptions"
+                :key="bucket"
+                :value="bucket"
+                class="filter-chip"
+                color="teal"
+                filter
+                variant="tonal"
+              >
+                {{ bucket }}
+              </v-chip>
+            </v-chip-group>
+          </div>
+
+          <div class="filter-group">
+            <span class="filter-title">İletişim yöntemi</span>
+            <v-chip-group v-model="selectedComm" column multiple>
+              <v-chip
+                v-for="method in communicationOptions"
+                :key="method"
+                :value="method"
+                class="filter-chip"
+                color="blue"
+                filter
+                variant="tonal"
+              >
+                {{ method }}
+              </v-chip>
+            </v-chip-group>
+          </div>
+
+          <div class="filter-group">
+            <span class="filter-title">Bölgeler</span>
+            <v-chip-group v-model="selectedZones" column multiple>
+              <v-chip
+                v-for="zone in zoneOptions"
+                :key="zone"
+                :value="zone"
+                class="filter-chip"
+                color="purple"
+                filter
+                variant="tonal"
+              >
+                {{ zone }}
+              </v-chip>
+            </v-chip-group>
+          </div>
+        </v-card>
+
+        <v-card class="update-card" elevation="0">
+          <h2>Son gelen partiler</h2>
+          <p>Gerçekleşen iletimler ve kapsama oranı.</p>
+          <ul class="update-list">
+            <li v-for="batch in recentBatches" :key="batch.id" class="update-item">
+              <div class="update-time">{{ batch.timeLabel }}</div>
+              <div class="update-meta">{{ batch.agoLabel }} • {{ batch.coverageLabel }}</div>
+            </li>
+          </ul>
+          <div class="update-footer">
+            <v-icon size="18" color="primary">mdi-timer-sand</v-icon>
+            <span>{{ cadenceSummary }}</span>
+          </div>
+        </v-card>
+      </v-col>
+
+      <v-col cols="12" md="9" class="list-column">
+        <v-card class="list-card" elevation="0">
+          <div class="list-toolbar">
             <v-text-field
-              v-model="quickFilterText"
-              label="Genel Arama"
+              v-model="searchTerm"
+              class="toolbar-search"
+              density="comfortable"
+              hide-details
+              label="Sayaç, bölge veya adres ara"
               prepend-inner-icon="mdi-magnify"
               variant="outlined"
-              hide-details
-              density="comfortable"
               clearable
+            />
+
+            <div class="toolbar-actions">
+              <v-btn color="primary" variant="text" @click="selectAllRows">Tümünü seç</v-btn>
+              <v-btn
+                color="primary"
+                prepend-icon="mdi-clipboard-text"
+                variant="flat"
+                :disabled="selectedRows.length === 0"
+                @click="sendWorkOrder"
+              >
+                İş emri planla
+              </v-btn>
+              <v-btn-toggle v-model="viewMode" class="view-toggle" density="comfortable" mandatory>
+                <v-btn value="table" icon="mdi-table" />
+                <v-btn value="cards" icon="mdi-view-grid-outline" />
+              </v-btn-toggle>
+            </div>
+          </div>
+
+          <div class="list-meta">
+            <v-chip class="meta-chip" color="primary" variant="tonal">Toplam: {{ filteredStats.total }}</v-chip>
+            <v-chip class="meta-chip" color="success" variant="tonal">Beklenen aralıkta: {{ filteredStats.onTime }}</v-chip>
+            <v-chip class="meta-chip" color="amber-darken-2" variant="tonal">
+              Kontrol edilmeli: {{ filteredStats.delayed }}
+            </v-chip>
+            <v-chip class="meta-chip" color="red-darken-2" variant="tonal">
+              Müdahale gerekli: {{ filteredStats.missed }}
+            </v-chip>
+          </div>
+
+          <div v-if="viewMode === 'table'" class="grid-wrapper">
+            <ag-grid-vue
+              ref="gridRef"
+              class="ag-theme-alpine sensor-grid"
+              :columnDefs="columnDefs"
+              :rowData="filteredSensors"
+              :quickFilterText="searchTerm"
+              :defaultColDef="defaultColDef"
+              :gridOptions="gridOptions"
+              :localeText="localeText"
+              animateRows
+              pagination
+              :paginationPageSize="8"
+              rowSelection="multiple"
+              @selection-changed="onSelectionChanged"
             />
           </div>
 
-          <ag-grid-vue
-            class="ag-theme-alpine"
-            style="height: 600px; width: 100%"
-            ref="gridRef"
-            :columnDefs="columnDefs"
-            :rowData="sensors"
-            :quickFilterText="quickFilterText"
-            rowGroupPanelShow="always"
-            animateRows="true"
-            groupSelectsChildren="true"
-            rowSelection="multiple"
-            :localeText="localeText"
-            :defaultColDef="defaultColDef"
-            pagination
-            :paginationPageSize="6"
-            @selection-changed="onSelectionChanged"
-          />
-        </div>
-      </v-window-item>
+          <div v-else class="card-grid">
+            <v-row dense>
+              <v-col v-for="sensor in filteredSensors" :key="sensor.sensorId" cols="12" sm="6">
+                <div class="sensor-card" :class="sensor.freshnessLevel">
+                  <div class="sensor-card-header">
+                    <div>
+                      <span class="sensor-id">{{ sensor.sensorId }}</span>
+                      <span class="sensor-zone">{{ sensor.zone }}</span>
+                    </div>
+                    <v-chip :color="sensor.freshnessChipColor" size="small" variant="tonal">
+                      {{ sensor.freshnessBadge }}
+                    </v-chip>
+                  </div>
+                  <div class="sensor-card-body">
+                    <div class="sensor-row">
+                      <span class="sensor-label">Son veri</span>
+                      <span class="sensor-value">{{ sensor.lastPacketDisplay }}</span>
+                    </div>
+                    <div class="sensor-row">
+                      <span class="sensor-label">Durum</span>
+                      <span class="sensor-value">{{ sensor.status }} • {{ sensor.commMethod }}</span>
+                    </div>
+                    <div class="sensor-row">
+                      <span class="sensor-label">Okuma</span>
+                      <span class="sensor-value">{{ sensor.lastReading }} • {{ sensor.batchLabel }}</span>
+                    </div>
+                    <div class="sensor-row">
+                      <span class="sensor-label">Batarya / Sinyal</span>
+                      <span class="sensor-value">{{ sensor.battery }} • {{ sensor.signal }}</span>
+                    </div>
+                  </div>
+                </div>
+              </v-col>
+            </v-row>
+          </div>
+        </v-card>
 
-      <v-window-item value="map">
-        <div id="sensor-map" style="height: 600px; width: 100%; border-radius: 10px"></div>
-      </v-window-item>
+        <v-card class="map-card" elevation="0">
+          <div class="map-header">
+            <div>
+              <h2>Konum görünümü</h2>
+              <span class="map-subtitle">Son parti: {{ lastBatchLabel }} • {{ lastBatchAgo }}</span>
+            </div>
+            <v-chip prepend-icon="mdi-map-marker-path" size="small" variant="tonal">DMA odaklı</v-chip>
+          </div>
+          <div id="sensor-map" class="map-container" />
+          <div class="map-legend">
+            <div class="legend-item">
+              <span class="legend-dot on-time" /> Beklenen aralıkta
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot delayed" /> Kontrol edilmeli
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot missed" /> Müdahale gerekli
+            </div>
+          </div>
+        </v-card>
 
-      <v-window-item value="workorders">
-        <div>
-          <v-text-field
-            v-model="workOrderFilter"
-            label="Genel Arama"
-            prepend-inner-icon="mdi-magnify"
-            variant="outlined"
-            hide-details
-            density="comfortable"
-            clearable
-            class="mb-3"
-            style="max-width: 950px"
-          />
+        <v-row class="log-row" no-gutters>
+          <v-col cols="12" lg="6">
+            <v-card class="log-card" elevation="0">
+              <div class="log-header">
+                <div>
+                  <h2>İş emri geçmişi</h2>
+                  <span>Son gönderilen işlemler</span>
+                </div>
+                <v-btn color="primary" size="small" variant="text">Tamamını gör</v-btn>
+              </div>
+              <v-table density="compact">
+                <thead>
+                  <tr>
+                    <th>Kod</th>
+                    <th>Sayaç</th>
+                    <th>Tip</th>
+                    <th>Durum</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="entry in workOrderData.slice(0, 6)" :key="entry.workOrderId">
+                    <td>{{ entry.workOrderId }}</td>
+                    <td>{{ entry.sensorId }}</td>
+                    <td>{{ entry.type }}</td>
+                    <td>{{ entry.status }}</td>
+                  </tr>
+                </tbody>
+              </v-table>
+            </v-card>
+          </v-col>
 
-          <ag-grid-vue
-            class="ag-theme-alpine"
-            style="height: 600px; width: 100%"
-            ref="workOrderGridRef"
-            :columnDefs="workOrderColumnDefs"
-            :rowData="workOrderData"
-            :quickFilterText="workOrderFilter"
-            rowGroupPanelShow="always"
-            animateRows="true"
-            groupSelectsChildren="true"
-            :localeText="localeText"
-            :defaultColDef="defaultColDef"
-            pagination
-            :paginationPageSize="8"
-          />
-        </div>
-      </v-window-item>
-
-      <v-window-item value="alerts">
-        <div>
-          <v-text-field
-            v-model="alertFilter"
-            label="Genel Arama"
-            prepend-inner-icon="mdi-bell-alert"
-            variant="outlined"
-            hide-details
-            density="comfortable"
-            clearable
-            class="mb-3"
-            style="max-width: 950px"
-          />
-
-          <ag-grid-vue
-            class="ag-theme-alpine"
-            style="height: 600px; width: 100%"
-            ref="alertGridRef"
-            :columnDefs="alertColumnDefs"
-            :rowData="alertData"
-            :quickFilterText="alertFilter"
-            rowGroupPanelShow="always"
-            animateRows="true"
-            groupSelectsChildren="true"
-            :localeText="localeText"
-            :defaultColDef="defaultColDef"
-            pagination
-            :paginationPageSize="8"
-          />
-        </div>
-      </v-window-item>
-    </v-window>
+          <v-col cols="12" lg="6">
+            <v-card class="log-card" elevation="0">
+              <div class="log-header">
+                <div>
+                  <h2>Alarm listesi</h2>
+                  <span>Partilere göre gruplanan açık uyarılar</span>
+                </div>
+                <v-btn color="primary" size="small" variant="text">Alarm yönetimi</v-btn>
+              </div>
+              <v-table density="compact">
+                <thead>
+                  <tr>
+                    <th>Kod</th>
+                    <th>Sayaç</th>
+                    <th>Alarm</th>
+                    <th>Seviye</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="alert in alertData.slice(0, 6)" :key="alert.alertId">
+                    <td>{{ alert.alertId }}</td>
+                    <td>{{ alert.sensorId }}</td>
+                    <td>{{ alert.type }}</td>
+                    <td>{{ alert.severity }}</td>
+                  </tr>
+                </tbody>
+              </v-table>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-col>
+    </v-row>
   </v-container>
 
   <v-navigation-drawer
     v-model="workOrderPanel"
     location="right"
-    width="400"
+    width="420"
     temporary
     scrim="false"
     elevation="10"
   >
     <v-card flat>
       <v-card-title class="text-h6 d-flex align-center justify-space-between">
-        <span>İş Emri Gönder</span>
+        <span>İş emri planla</span>
         <v-btn icon="mdi-close" variant="text" @click="workOrderPanel = false" />
       </v-card-title>
 
@@ -140,13 +324,13 @@
 
       <v-card-text>
         <div class="text-subtitle-2 mb-3 text-grey-darken-1">
-          Seçili Sensörler: <strong>{{ selectedRows.length }}</strong>
+          Seçili sayaç sayısı: <strong>{{ selectedRows.length }}</strong>
         </div>
 
         <v-select
           v-model="selectedWorkOrderType"
           :items="workOrderTypes"
-          label="İş Emri Tipi"
+          label="İş emri tipi"
           variant="outlined"
           density="comfortable"
           class="mb-3"
@@ -155,7 +339,7 @@
         <template v-if="selectedWorkOrderType === 'Kalibrasyon'">
           <v-text-field
             v-model="workOrderPayload.calibrationCode"
-            label="Kalibrasyon Kodu"
+            label="Kalibrasyon kodu"
             variant="outlined"
             density="comfortable"
             class="mb-3"
@@ -165,7 +349,7 @@
         <template v-else-if="selectedWorkOrderType === 'Firmware Güncelleme'">
           <v-text-field
             v-model="workOrderPayload.firmwareVersion"
-            label="Hedef Firmware Sürümü"
+            label="Hedef firmware sürümü"
             variant="outlined"
             density="comfortable"
             class="mb-3"
@@ -175,20 +359,14 @@
         <template v-else-if="selectedWorkOrderType === 'Sensör Sıfırlama'">
           <v-text-field
             v-model="workOrderPayload.resetReason"
-            label="Sıfırlama Nedeni"
+            label="Sıfırlama nedeni"
             variant="outlined"
             density="comfortable"
             class="mb-3"
           />
         </template>
 
-        <v-textarea
-          v-model="workOrderPayload.description"
-          label="Açıklama"
-          variant="outlined"
-          rows="2"
-          class="mt-2"
-        />
+        <v-textarea v-model="workOrderPayload.description" label="Açıklama" variant="outlined" rows="2" />
       </v-card-text>
 
       <v-divider />
@@ -199,32 +377,10 @@
       </v-card-actions>
     </v-card>
   </v-navigation-drawer>
-
-  <transition name="slide-fade">
-    <div v-if="workOrderNotification.visible" class="fancy-toast">
-      <div class="toast-icon">
-        <v-icon size="28" color="white">mdi-access-point</v-icon>
-      </div>
-      <div class="toast-text">
-        📡 <strong>{{ workOrderNotification.message }}</strong>
-      </div>
-    </div>
-  </transition>
-
-  <transition name="slide-fade">
-    <div v-if="alarmNotification.visible" class="alarm-toast">
-      <div class="toast-icon">
-        <v-icon size="28" color="white">mdi-alert-decagram</v-icon>
-      </div>
-      <div class="toast-text">
-        <strong>{{ alarmNotification.message }}</strong>
-      </div>
-    </div>
-  </transition>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
 import 'ag-grid-enterprise'
 import { ModuleRegistry } from 'ag-grid-community'
@@ -233,613 +389,1252 @@ ModuleRegistry.registerModules([AllEnterpriseModule])
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
-const activeTab = ref('sensors')
-const quickFilterText = ref('')
-const gridRef = ref(null)
-const selectedRows = ref([])
-const workOrderFilter = ref('')
-const workOrderGridRef = ref(null)
-const alertFilter = ref('')
-const alertGridRef = ref(null)
-const workOrderPanel = ref(false)
-const selectedWorkOrderType = ref(null)
-const workOrderTypes = ['Kalibrasyon', 'Firmware Güncelleme', 'Sensör Sıfırlama']
-const workOrderPayload = ref({
-  description: '',
-  calibrationCode: '',
-  firmwareVersion: '',
-  resetReason: '',
-})
+const nowRef = ref(new Date())
+const minutesAgo = (minutes) => new Date(nowRef.value.getTime() - minutes * 60000)
 
-const columnDefs = ref([
-  { field: 'sensorId', headerName: 'Sensör ID', filter: 'agTextColumnFilter', checkboxSelection: true },
-  { field: 'type', headerName: 'Sensör Tipi', enableRowGroup: true },
-  { field: 'environment', headerName: 'Ortam', enableRowGroup: true },
-  { field: 'lastReading', headerName: 'Son Okuma', filter: true },
-  { field: 'battery', headerName: 'Batarya', filter: true },
-  {
-    field: 'status',
-    headerName: 'Durum',
-    enableRowGroup: true,
-    cellRenderer: (params) => {
-      const colors = {
-        Aktif: '#4CAF50',
-        Bakımda: '#FFC107',
-        Kapalı: '#F44336',
-      }
-      const color = colors[params.value] || '#9E9E9E'
-      return `<span style="background-color:${color};color:white;padding:3px 8px;border-radius:8px;font-size:12px;">${params.value}</span>`
-    },
-  },
+const batchHistory = ref([
+  { id: 'batch-0', receivedAt: minutesAgo(75), meterCount: 15428, coverage: 0.92 },
+  { id: 'batch-1', receivedAt: minutesAgo(320), meterCount: 15206, coverage: 0.9 },
+  { id: 'batch-2', receivedAt: minutesAgo(645), meterCount: 15102, coverage: 0.88 },
+  { id: 'batch-3', receivedAt: minutesAgo(980), meterCount: 15688, coverage: 0.94 },
+  { id: 'batch-4', receivedAt: minutesAgo(1320), meterCount: 14974, coverage: 0.87 }
 ])
 
-const defaultColDef = {
-  filter: true,
-  sortable: true,
-  resizable: true,
-  flex: 1,
-  minWidth: 130,
-  floatingFilter: true,
-  enableValue: true,
-  enableRowGroup: true,
-  suppressMenuHide: false,
+const formatTime = (date) =>
+  new Intl.DateTimeFormat('tr-TR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: 'numeric',
+    month: 'long'
+  }).format(date)
+
+const formatRelative = (from, to) => {
+  const diffMinutes = Math.round((to.getTime() - from.getTime()) / 60000)
+  const absMinutes = Math.abs(diffMinutes)
+  const hours = Math.floor(absMinutes / 60)
+  const minutes = absMinutes % 60
+  const buildText = () => {
+    if (hours === 0) return `${minutes} dk`
+    if (minutes === 0) return `${hours} saat`
+    return `${hours} saat ${minutes} dk`
+  }
+  return diffMinutes >= 0 ? `${buildText()} sonra` : `${buildText()} önce`
 }
+
+const formatAgo = (date, reference) => formatRelative(date, reference).replace('sonra', 'önce')
+
+const formatDuration = (minutes) => {
+  if (!minutes || Number.isNaN(minutes)) {
+    return '-'
+  }
+  const hours = Math.floor(minutes / 60)
+  const mins = Math.round(minutes % 60)
+  if (hours === 0) return `${mins} dk`
+  if (mins === 0) return `${hours} saat`
+  return `${hours} saat ${mins} dk`
+}
+
+const lastBatchReceived = computed(() => batchHistory.value[0]?.receivedAt ?? nowRef.value)
+
+const batchIntervals = computed(() => {
+  const items = batchHistory.value
+  const result = []
+  for (let index = 0; index < items.length - 1; index += 1) {
+    const current = items[index]
+    const next = items[index + 1]
+    if (current && next) {
+      result.push(Math.abs((current.receivedAt.getTime() - next.receivedAt.getTime()) / 60000))
+    }
+  }
+  return result
+})
+
+const averageIntervalMinutes = computed(() => {
+  const intervals = batchIntervals.value
+  if (!intervals.length) {
+    return 0
+  }
+  const total = intervals.reduce((sum, value) => sum + value, 0)
+  return total / intervals.length
+})
+
+const batchesInLastDay = computed(
+  () => batchHistory.value.filter((batch) => nowRef.value.getTime() - batch.receivedAt.getTime() <= 24 * 60 * 60000).length
+)
+
+const averageIntervalLabel = computed(() => formatDuration(averageIntervalMinutes.value))
+
+const cadenceSummary = computed(() => {
+  if (!batchHistory.value.length) {
+    return 'Henüz parti alınmadı.'
+  }
+  return `Son 24 saatte ${batchesInLastDay.value} parti • Ortalama aralık ${averageIntervalLabel.value}`
+})
+
+const recentBatches = computed(() =>
+  batchHistory.value.slice(0, 4).map((batch) => ({
+    id: batch.id,
+    timeLabel: formatTime(batch.receivedAt),
+    agoLabel: formatAgo(batch.receivedAt, nowRef.value),
+    coverageLabel: `%${Math.round(batch.coverage * 100)}`
+  }))
+)
+
+const lastBatchLabel = computed(() => formatTime(lastBatchReceived.value))
+const lastBatchAgo = computed(() => formatAgo(lastBatchReceived.value, nowRef.value))
+
+const freshnessChip = computed(() => {
+  const diffMinutes = Math.max(0, (nowRef.value.getTime() - lastBatchReceived.value.getTime()) / 60000)
+  const baseline = averageIntervalMinutes.value || 240
+  const watchThreshold = baseline * 1.5
+  const actionThreshold = baseline * 2.4
+
+  if (diffMinutes <= watchThreshold) {
+    return {
+      label: 'Beklenen aralıkta',
+      color: 'success',
+      helper: `Son parti ${lastBatchAgo.value}`
+    }
+  }
+  if (diffMinutes <= actionThreshold) {
+    return {
+      label: 'Kontrol edilmeli',
+      color: 'amber-darken-2',
+      helper: `Son parti ${lastBatchAgo.value}`
+    }
+  }
+  return {
+    label: 'Müdahale gerekli',
+    color: 'red-darken-2',
+    helper: `Son parti ${lastBatchAgo.value}`
+  }
+})
+
+const statusOptions = ['Aktif', 'Gecikmeli', 'Offline']
+const freshnessOptions = ['Beklenen aralıkta', 'Kontrol edilmeli', 'Müdahale gerekli']
+const communicationOptions = ['LoRa', 'GPRS']
+
+const selectedStatuses = ref([])
+const selectedFreshness = ref([])
+const selectedComm = ref([])
+const selectedZones = ref([])
+const searchTerm = ref('')
 
 const sensors = ref([
   {
-    sensorId: 'SN-1001',
-    type: 'Sıcaklık',
-    environment: 'Üretim Hattı',
-    lastReading: '24.6 °C',
-    battery: '%92',
+    sensorId: 'ASK-2401',
+    zone: 'Çankaya DMA-3',
+    location: 'Atatürk Bulvarı 112',
+    commMethod: 'LoRa',
+    lastReading: '132.4 m³',
+    lastPacketAt: minutesAgo(110).toISOString(),
+    batchLabel: 'Parti #4532',
     status: 'Aktif',
-    lat: 38.4843,
-    lng: 27.0891,
+    battery: '%86',
+    signal: '-78 dBm',
+    freshnessMinutes: 110,
+    lat: 39.9209,
+    lng: 32.8541
   },
   {
-    sensorId: 'SN-1002',
-    type: 'Nem',
-    environment: 'Depo',
-    lastReading: '%58',
-    battery: '%70',
-    status: 'Bakımda',
-    lat: 38.4872,
-    lng: 27.0947,
-  },
-  {
-    sensorId: 'SN-1003',
-    type: 'Basınç',
-    environment: 'Pompa Odası',
-    lastReading: '5.8 bar',
-    battery: '%88',
+    sensorId: 'ASK-2405',
+    zone: 'Yenimahalle sanayi',
+    location: 'Organize Sanayi 3. Cadde',
+    commMethod: 'GPRS',
+    lastReading: '221.7 m³',
+    lastPacketAt: minutesAgo(280).toISOString(),
+    batchLabel: 'Parti #4531',
     status: 'Aktif',
-    lat: 38.4826,
-    lng: 27.0839,
+    battery: '%78',
+    signal: '-83 dBm',
+    freshnessMinutes: 280,
+    lat: 39.9727,
+    lng: 32.7305
   },
   {
-    sensorId: 'SN-1004',
-    type: 'Titreşim',
-    environment: 'Motor Bloğu',
-    lastReading: '0.42 g',
-    battery: '%60',
-    status: 'Kapalı',
-    lat: 38.4888,
-    lng: 27.0972,
+    sensorId: 'ASK-2409',
+    zone: 'Keçiören konut hattı',
+    location: 'Fatih Caddesi 54',
+    commMethod: 'LoRa',
+    lastReading: '89.2 m³',
+    lastPacketAt: minutesAgo(460).toISOString(),
+    batchLabel: 'Parti #4529',
+    status: 'Gecikmeli',
+    battery: '%74',
+    signal: '-80 dBm',
+    freshnessMinutes: 460,
+    lat: 39.9836,
+    lng: 32.8628
   },
   {
-    sensorId: 'SN-1005',
-    type: 'Gaz',
-    environment: 'Kimya Tesisi',
-    lastReading: '30 ppm',
-    battery: '%95',
+    sensorId: 'ASK-2412',
+    zone: 'Altındağ tarihi merkez',
+    location: 'Anafartalar Mahallesi 18',
+    commMethod: 'LoRa',
+    lastReading: '76.5 m³',
+    lastPacketAt: minutesAgo(640).toISOString(),
+    batchLabel: 'Parti #4528',
+    status: 'Gecikmeli',
+    battery: '%69',
+    signal: '-88 dBm',
+    freshnessMinutes: 640,
+    lat: 39.9423,
+    lng: 32.8611
+  },
+  {
+    sensorId: 'ASK-2419',
+    zone: 'Polatlı transfer hattı',
+    location: 'Polatlı OSB Girişi',
+    commMethod: 'GPRS',
+    lastReading: '304.1 m³',
+    lastPacketAt: minutesAgo(1500).toISOString(),
+    batchLabel: 'Parti #4524',
+    status: 'Offline',
+    battery: '%41',
+    signal: '-',
+    freshnessMinutes: 1500,
+    lat: 39.5866,
+    lng: 32.1475
+  },
+  {
+    sensorId: 'ASK-2423',
+    zone: 'Mamak konut hattı',
+    location: 'Başak Mahallesi 21',
+    commMethod: 'LoRa',
+    lastReading: '112.3 m³',
+    lastPacketAt: minutesAgo(190).toISOString(),
+    batchLabel: 'Parti #4530',
     status: 'Aktif',
-    lat: 38.4801,
-    lng: 27.0914,
-  },
-  {
-    sensorId: 'SN-1006',
-    type: 'Sıcaklık',
-    environment: 'Soğuk Hava Deposu',
-    lastReading: '4.1 °C',
-    battery: '%55',
-    status: 'Bakımda',
-    lat: 38.4864,
-    lng: 27.0856,
-  },
-  {
-    sensorId: 'SN-1007',
-    type: 'Nem',
-    environment: 'Sunucu Odası',
-    lastReading: '%41',
     battery: '%82',
+    signal: '-75 dBm',
+    freshnessMinutes: 190,
+    lat: 39.9298,
+    lng: 32.8868
+  },
+  {
+    sensorId: 'ASK-2431',
+    zone: 'Sincan endüstriyel bölge',
+    location: '1. Organize 5. Sokak',
+    commMethod: 'GPRS',
+    lastReading: '198.6 m³',
+    lastPacketAt: minutesAgo(720).toISOString(),
+    batchLabel: 'Parti #4527',
+    status: 'Gecikmeli',
+    battery: '%65',
+    signal: '-91 dBm',
+    freshnessMinutes: 720,
+    lat: 39.9609,
+    lng: 32.6205
+  },
+  {
+    sensorId: 'ASK-2435',
+    zone: 'İvedik terfi hattı',
+    location: 'Kavaklıdere Mevkii',
+    commMethod: 'LoRa',
+    lastReading: '256.9 m³',
+    lastPacketAt: minutesAgo(1480).toISOString(),
+    batchLabel: 'Parti #4525',
+    status: 'Offline',
+    battery: '%58',
+    signal: '-',
+    freshnessMinutes: 1480,
+    lat: 40.0006,
+    lng: 32.8134
+  },
+  {
+    sensorId: 'ASK-2442',
+    zone: 'Gölbaşı kampüs',
+    location: 'İncek Bulvarı 15',
+    commMethod: 'LoRa',
+    lastReading: '65.7 m³',
+    lastPacketAt: minutesAgo(260).toISOString(),
+    batchLabel: 'Parti #4531',
     status: 'Aktif',
-    lat: 38.4835,
-    lng: 27.0959,
+    battery: '%91',
+    signal: '-70 dBm',
+    freshnessMinutes: 260,
+    lat: 39.8056,
+    lng: 32.8267
   },
   {
-    sensorId: 'SN-1008',
-    type: 'Basınç',
-    environment: 'Hidrolik Hat',
-    lastReading: '6.2 bar',
-    battery: '%68',
-    status: 'Bakımda',
-    lat: 38.4895,
-    lng: 27.0888,
+    sensorId: 'ASK-2447',
+    zone: 'Elmadağ içme suyu',
+    location: 'Şehitlik Mahallesi 9',
+    commMethod: 'GPRS',
+    lastReading: '142.8 m³',
+    lastPacketAt: minutesAgo(510).toISOString(),
+    batchLabel: 'Parti #4529',
+    status: 'Gecikmeli',
+    battery: '%67',
+    signal: '-88 dBm',
+    freshnessMinutes: 510,
+    lat: 39.9204,
+    lng: 33.2304
   },
   {
-    sensorId: 'SN-1009',
-    type: 'Titreşim',
-    environment: 'Konveyör',
-    lastReading: '0.35 g',
-    battery: '%77',
+    sensorId: 'ASK-2452',
+    zone: 'Etimesgut konut hattı',
+    location: 'Şeker Mahallesi 61',
+    commMethod: 'LoRa',
+    lastReading: '104.6 m³',
+    lastPacketAt: minutesAgo(140).toISOString(),
+    batchLabel: 'Parti #4532',
     status: 'Aktif',
-    lat: 38.4819,
-    lng: 27.0984,
+    battery: '%88',
+    signal: '-72 dBm',
+    freshnessMinutes: 140,
+    lat: 39.9516,
+    lng: 32.6221
   },
   {
-    sensorId: 'SN-1010',
-    type: 'Gaz',
-    environment: 'Arıtma Tesisi',
-    lastReading: '12 ppm',
+    sensorId: 'ASK-2458',
+    zone: 'Pursaklar dağıtım',
+    location: 'Tevfik İleri Cad. 44',
+    commMethod: 'LoRa',
+    lastReading: '76.2 m³',
+    lastPacketAt: minutesAgo(330).toISOString(),
+    batchLabel: 'Parti #4530',
+    status: 'Aktif',
+    battery: '%84',
+    signal: '-77 dBm',
+    freshnessMinutes: 330,
+    lat: 40.0381,
+    lng: 32.8991
+  },
+  {
+    sensorId: 'ASK-2466',
+    zone: 'Ostim sanayi',
+    location: '1234. Sokak 17',
+    commMethod: 'GPRS',
+    lastReading: '278.4 m³',
+    lastPacketAt: minutesAgo(1380).toISOString(),
+    batchLabel: 'Parti #4526',
+    status: 'Offline',
     battery: '%49',
-    status: 'Kapalı',
-    lat: 38.4849,
-    lng: 27.0931,
+    signal: '-',
+    freshnessMinutes: 1380,
+    lat: 39.9753,
+    lng: 32.7642
   },
+  {
+    sensorId: 'ASK-2474',
+    zone: 'Ayaş kaynak',
+    location: 'Ayaş Yolu 5. Km',
+    commMethod: 'LoRa',
+    lastReading: '88.5 m³',
+    lastPacketAt: minutesAgo(380).toISOString(),
+    batchLabel: 'Parti #4529',
+    status: 'Gecikmeli',
+    battery: '%72',
+    signal: '-85 dBm',
+    freshnessMinutes: 380,
+    lat: 40.0219,
+    lng: 32.3374
+  },
+  {
+    sensorId: 'ASK-2479',
+    zone: 'Beypazarı dağıtım',
+    location: 'Zafer Mahallesi 6',
+    commMethod: 'GPRS',
+    lastReading: '156.3 m³',
+    lastPacketAt: minutesAgo(260).toISOString(),
+    batchLabel: 'Parti #4531',
+    status: 'Aktif',
+    battery: '%83',
+    signal: '-82 dBm',
+    freshnessMinutes: 260,
+    lat: 40.1678,
+    lng: 31.9215
+  },
+  {
+    sensorId: 'ASK-2483',
+    zone: 'Kazan endüstriyel bölge',
+    location: 'Fabrika Caddesi 3',
+    commMethod: 'LoRa',
+    lastReading: '214.7 m³',
+    lastPacketAt: minutesAgo(1240).toISOString(),
+    batchLabel: 'Parti #4526',
+    status: 'Offline',
+    battery: '%52',
+    signal: '-',
+    freshnessMinutes: 1240,
+    lat: 40.2315,
+    lng: 32.6802
+  },
+  {
+    sensorId: 'ASK-2489',
+    zone: 'Şereflikoçhisar kuyular',
+    location: 'Güney Mahallesi 2',
+    commMethod: 'GPRS',
+    lastReading: '198.1 m³',
+    lastPacketAt: minutesAgo(310).toISOString(),
+    batchLabel: 'Parti #4530',
+    status: 'Aktif',
+    battery: '%76',
+    signal: '-79 dBm',
+    freshnessMinutes: 310,
+    lat: 38.9396,
+    lng: 33.5381
+  },
+  {
+    sensorId: 'ASK-2493',
+    zone: 'Çubuk dağıtım',
+    location: 'Yıldırım Beyazıt Cad. 28',
+    commMethod: 'LoRa',
+    lastReading: '134.2 m³',
+    lastPacketAt: minutesAgo(125).toISOString(),
+    batchLabel: 'Parti #4532',
+    status: 'Aktif',
+    battery: '%90',
+    signal: '-69 dBm',
+    freshnessMinutes: 125,
+    lat: 40.2389,
+    lng: 33.0326
+  }
 ])
 
-const workOrderColumnDefs = ref([
-  { field: 'sensorId', headerName: 'Sensör ID' },
-  { field: 'workOrderId', headerName: 'İş Emri ID' },
-  { field: 'type', headerName: 'İş Emri Tipi', enableRowGroup: true },
-  { field: 'payload', headerName: 'Payload' },
-  { field: 'status', headerName: 'Durum', enableRowGroup: true },
-  { field: 'createdDate', headerName: 'Oluşturulma Tarihi' },
-  { field: 'sentDate', headerName: 'Gönderim Tarihi' },
-  { field: 'responseDate', headerName: 'Cevap Tarihi' },
+const zoneOptions = computed(() => {
+  const set = new Set()
+  sensors.value.forEach((sensor) => set.add(sensor.zone))
+  return Array.from(set)
+})
+
+const resolveFreshness = (minutes) => {
+  const baseline = averageIntervalMinutes.value || 240
+  const watchThreshold = baseline * 1.5
+  const actionThreshold = baseline * 2.4
+
+  if (minutes <= watchThreshold) {
+    return {
+      badge: 'Beklenen aralıkta',
+      filter: 'Beklenen aralıkta',
+      chipColor: 'success',
+      level: 'on-time',
+      tone: 'rgba(16, 185, 129, 0.18)',
+      description: 'Ortalama aralık içinde.'
+    }
+  }
+  if (minutes <= actionThreshold) {
+    return {
+      badge: 'Kontrol edilmeli',
+      filter: 'Kontrol edilmeli',
+      chipColor: 'amber-darken-2',
+      level: 'delayed',
+      tone: 'rgba(245, 158, 11, 0.18)',
+      description: 'Aralık aşıldı, izleme önerilir.'
+    }
+  }
+  return {
+    badge: 'Müdahale gerekli',
+    filter: 'Müdahale gerekli',
+    chipColor: 'red-darken-2',
+    level: 'missed',
+    tone: 'rgba(248, 113, 113, 0.18)',
+    description: 'Uzayan gecikme nedeniyle aksiyon alınmalı.'
+  }
+}
+
+const decoratedSensors = computed(() => {
+  return sensors.value.map((sensor) => {
+    const lastPacketDate = new Date(sensor.lastPacketAt)
+    const freshness = resolveFreshness(sensor.freshnessMinutes)
+    return {
+      ...sensor,
+      lastPacketDate,
+      lastPacketLabel: formatTime(lastPacketDate),
+      lastPacketAgo: formatAgo(lastPacketDate, nowRef.value),
+      lastPacketDisplay: `${formatTime(lastPacketDate)} • ${formatAgo(lastPacketDate, nowRef.value)}`,
+      freshnessBadge: freshness.badge,
+      freshnessLevel: freshness.level,
+      freshnessFilter: freshness.filter,
+      freshnessChipColor: freshness.chipColor,
+      freshnessTone: freshness.tone,
+      freshnessDescription: freshness.description
+    }
+  })
+})
+
+const filteredSensors = computed(() => {
+  const term = searchTerm.value.trim().toLowerCase()
+  return decoratedSensors.value.filter((sensor) => {
+    if (selectedStatuses.value.length && !selectedStatuses.value.includes(sensor.status)) {
+      return false
+    }
+    if (selectedFreshness.value.length && !selectedFreshness.value.includes(sensor.freshnessFilter)) {
+      return false
+    }
+    if (selectedComm.value.length && !selectedComm.value.includes(sensor.commMethod)) {
+      return false
+    }
+    if (selectedZones.value.length && !selectedZones.value.includes(sensor.zone)) {
+      return false
+    }
+    if (!term) {
+      return true
+    }
+    const haystack = `${sensor.sensorId} ${sensor.zone} ${sensor.location} ${sensor.commMethod} ${sensor.status}`.toLowerCase()
+    return haystack.includes(term)
+  })
+})
+
+const filteredStats = computed(() => {
+  let onTime = 0
+  let delayed = 0
+  let missed = 0
+  filteredSensors.value.forEach((sensor) => {
+    if (sensor.freshnessFilter === 'Beklenen aralıkta') onTime += 1
+    else if (sensor.freshnessFilter === 'Kontrol edilmeli') delayed += 1
+    else missed += 1
+  })
+  return {
+    total: filteredSensors.value.length,
+    onTime,
+    delayed,
+    missed
+  }
+})
+
+const columnDefs = ref([
+  { field: 'sensorId', headerName: 'Sayaç ID', checkboxSelection: true, pinned: 'left', width: 140 },
+  { field: 'zone', headerName: 'Bölge', enableRowGroup: true, width: 170 },
+  { field: 'commMethod', headerName: 'İletişim', enableRowGroup: true, width: 130 },
+  {
+    field: 'lastPacketDisplay',
+    headerName: 'Son veri',
+    sortable: true,
+    comparator: (a, b, nodeA, nodeB) => nodeA.data.lastPacketDate - nodeB.data.lastPacketDate,
+    minWidth: 220
+  },
+  {
+    field: 'freshnessBadge',
+    headerName: 'Veri aralığı',
+    minWidth: 160,
+    cellRenderer: (params) => {
+      if (!params.data) return ''
+      return `<span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;background:${params.data.freshnessTone};color:#0f172a;">${params.value}</span>`
+    }
+  },
+  {
+    field: 'status',
+    headerName: 'Durum',
+    width: 140,
+    cellRenderer: (params) => {
+      if (!params.data) return params.value
+      const colors = {
+        Aktif: '#10B981',
+        Gecikmeli: '#F59E0B',
+        Offline: '#EF4444'
+      }
+      const color = colors[params.value] || '#1F2937'
+      return `<span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;background:rgba(15,23,42,0.05);color:${color};border:1px solid rgba(15,23,42,0.08);">${params.value}</span>`
+    }
+  },
+  { field: 'lastReading', headerName: 'Son okuma', width: 130 },
+  { field: 'battery', headerName: 'Batarya', width: 110 },
+  { field: 'signal', headerName: 'Sinyal', width: 120 },
+  { field: 'batchLabel', headerName: 'Parti etiketi', width: 160 }
 ])
+
+const defaultColDef = {
+  resizable: true,
+  sortable: true,
+  flex: 1,
+  minWidth: 120,
+  filter: true,
+  enableRowGroup: true,
+  floatingFilter: true
+}
+
+const gridOptions = {
+  rowClassRules: {
+    'sensor-row-delayed': (params) => params.data?.freshnessLevel === 'delayed',
+    'sensor-row-missed': (params) => params.data?.freshnessLevel === 'missed'
+  },
+  suppressRowClickSelection: false
+}
+
+const gridRef = ref(null)
+const selectedRows = ref([])
+const viewMode = ref('table')
+
+const workOrderPanel = ref(false)
+const workOrderTypes = ['Kalibrasyon', 'Firmware Güncelleme', 'Sensör Sıfırlama']
+const selectedWorkOrderType = ref(null)
+const workOrderPayload = ref({ description: '', calibrationCode: '', firmwareVersion: '', resetReason: '' })
 
 const workOrderData = ref([
   {
-    sensorId: 'SN-1001',
+    sensorId: 'ASK-2401',
     workOrderId: 'WO-9001',
     type: 'Kalibrasyon',
     payload: 'TEMP_SET=24.0',
     status: 'Tamamlandı',
     createdDate: '2025-09-12 08:45',
     sentDate: '2025-09-12 08:47',
-    responseDate: '2025-09-12 08:51',
+    responseDate: '2025-09-12 08:51'
   },
   {
-    sensorId: 'SN-1003',
+    sensorId: 'ASK-2409',
     workOrderId: 'WO-9002',
     type: 'Firmware Güncelleme',
     payload: 'FW=v2.1.4',
     status: 'Gönderildi',
     createdDate: '2025-09-14 14:05',
     sentDate: '2025-09-14 14:06',
-    responseDate: '-',
+    responseDate: '-'
   },
   {
-    sensorId: 'SN-1005',
+    sensorId: 'ASK-2412',
     workOrderId: 'WO-9003',
     type: 'Sensör Sıfırlama',
     payload: 'RESET=GAS',
     status: 'Bekliyor',
     createdDate: '2025-09-15 11:18',
     sentDate: '-',
-    responseDate: '-',
+    responseDate: '-'
   },
   {
-    sensorId: 'SN-1007',
+    sensorId: 'ASK-2435',
     workOrderId: 'WO-9004',
     type: 'Kalibrasyon',
-    payload: 'HUMI_REF=%40',
+    payload: 'FLOW_RANGE=200',
     status: 'Tamamlandı',
     createdDate: '2025-09-10 09:30',
     sentDate: '2025-09-10 09:32',
-    responseDate: '2025-09-10 09:35',
+    responseDate: '2025-09-10 09:35'
   },
   {
-    sensorId: 'SN-1008',
+    sensorId: 'ASK-2466',
     workOrderId: 'WO-9005',
     type: 'Firmware Güncelleme',
     payload: 'FW=v3.0.0',
     status: 'Başarısız',
     createdDate: '2025-09-09 07:50',
     sentDate: '2025-09-09 07:52',
-    responseDate: '2025-09-09 07:58',
+    responseDate: '2025-09-09 07:58'
   },
   {
-    sensorId: 'SN-1002',
+    sensorId: 'ASK-2442',
     workOrderId: 'WO-9006',
     type: 'Sensör Sıfırlama',
     payload: 'RESET=HUM',
     status: 'Tamamlandı',
     createdDate: '2025-09-11 16:20',
     sentDate: '2025-09-11 16:22',
-    responseDate: '2025-09-11 16:24',
-  },
-  {
-    sensorId: 'SN-1010',
-    workOrderId: 'WO-9007',
-    type: 'Firmware Güncelleme',
-    payload: 'FW=v1.9.8',
-    status: 'Bekliyor',
-    createdDate: '2025-09-13 18:05',
-    sentDate: '-',
-    responseDate: '-',
-  },
-  {
-    sensorId: 'SN-1004',
-    workOrderId: 'WO-9008',
-    type: 'Kalibrasyon',
-    payload: 'VIB_RANGE=0.5',
-    status: 'Gönderildi',
-    createdDate: '2025-09-16 06:40',
-    sentDate: '2025-09-16 06:42',
-    responseDate: '-',
-  },
-])
-
-const alertColumnDefs = ref([
-  { field: 'sensorId', headerName: 'Sensör ID' },
-  { field: 'alertId', headerName: 'Alarm Kodu' },
-  { field: 'type', headerName: 'Alarm Tipi', enableRowGroup: true },
-  {
-    field: 'severity',
-    headerName: 'Önem Derecesi',
-    cellRenderer: (params) => {
-      const colors = {
-        Düşük: '#8BC34A',
-        Orta: '#FFC107',
-        Yüksek: '#FF5722',
-        Kritik: '#F44336',
-      }
-      const color = colors[params.value] || '#9E9E9E'
-      return `<span style="background-color:${color};color:white;padding:3px 8px;border-radius:8px;font-size:12px;">${params.value}</span>`
-    },
-  },
-  { field: 'createdDate', headerName: 'Oluşturulma Tarihi' },
-  { field: 'status', headerName: 'Durum' },
+    responseDate: '2025-09-11 16:24'
+  }
 ])
 
 const alertData = ref([
   {
     alertId: 'AL-501',
-    sensorId: 'SN-1005',
-    type: 'Gaz Seviyesi Kritik',
+    sensorId: 'ASK-2435',
+    type: 'Basınç düşüşü',
     severity: 'Kritik',
     createdDate: '2025-09-15 03:20',
-    status: 'Açık',
+    status: 'Açık'
   },
   {
     alertId: 'AL-502',
-    sensorId: 'SN-1002',
-    type: 'Nem Sensörü İletişim Hatası',
+    sensorId: 'ASK-2442',
+    type: 'İletişim kaybı',
     severity: 'Yüksek',
     createdDate: '2025-09-14 19:05',
-    status: 'İzlemede',
+    status: 'İzlemede'
   },
   {
     alertId: 'AL-503',
-    sensorId: 'SN-1007',
-    type: 'Sıcaklık Eşiği Aşıldı',
-    severity: 'Orta',
+    sensorId: 'ASK-2412',
+    type: 'Debi eşiği aşıldı',
+    severity: 'Kritik',
     createdDate: '2025-09-13 12:45',
-    status: 'Kapalı',
+    status: 'Açık'
   },
   {
     alertId: 'AL-504',
-    sensorId: 'SN-1009',
-    type: 'Titreşim Artışı',
+    sensorId: 'ASK-2466',
+    type: 'Sayaç kapalı',
     severity: 'Yüksek',
     createdDate: '2025-09-16 05:32',
-    status: 'Açık',
+    status: 'Açık'
   },
+  {
+    alertId: 'AL-505',
+    sensorId: 'ASK-2409',
+    type: 'Geciken veri paketi',
+    severity: 'Orta',
+    createdDate: '2025-09-16 04:12',
+    status: 'İzlemede'
+  },
+  {
+    alertId: 'AL-506',
+    sensorId: 'ASK-2474',
+    type: 'Kaçak ihtimali',
+    severity: 'Orta',
+    createdDate: '2025-09-15 22:18',
+    status: 'Açık'
+  }
 ])
 
-function sendWorkOrder() {
-  if (!selectedRows.value.length) {
-    alert('Herhangi bir sensör seçilmedi.')
-    return
-  }
+const localeText = {
+  page: 'Sayfa',
+  more: 'Daha fazla',
+  to: '-',
+  of: '/',
+  next: 'Sonraki',
+  last: 'Son',
+  first: 'İlk',
+  previous: 'Önceki',
+  loadingOoo: 'Yükleniyor...',
+  selectAll: 'Tümünü seç',
+  searchOoo: 'Ara...',
+  blanks: 'Boş',
+  filterOoo: 'Filtrele...',
+  applyFilter: 'Uygula',
+  equals: 'Eşittir',
+  notEqual: 'Eşit değil',
+  lessThan: 'Küçüktür',
+  greaterThan: 'Büyüktür'
+}
+
+const resetFilters = () => {
+  selectedStatuses.value = []
+  selectedFreshness.value = []
+  selectedComm.value = []
+  selectedZones.value = []
+  searchTerm.value = ''
+}
+
+const selectAllRows = () => {
+  if (!gridRef.value) return
+  gridRef.value.api.selectAll()
+}
+
+const onSelectionChanged = (event) => {
+  selectedRows.value = event.api.getSelectedRows()
+}
+
+const sendWorkOrder = () => {
+  if (!selectedRows.value.length) return
   workOrderPanel.value = true
 }
 
-function confirmSendWorkOrder() {
-  if (!selectedWorkOrderType.value) {
-    alert('Lütfen bir iş emri tipi seçiniz.')
-    return
-  }
-
-  console.log('İş emri tipi:', selectedWorkOrderType.value)
-  console.log('Seçili sensörler:', selectedRows.value)
-  console.log('Girilen veriler:', workOrderPayload.value)
-
-  alert(`${selectedRows.value.length} sensör için '${selectedWorkOrderType.value}' iş emri hazırlandı (örnek simülasyon).`)
-
+const confirmSendWorkOrder = () => {
   workOrderPanel.value = false
   selectedWorkOrderType.value = null
   workOrderPayload.value = { description: '', calibrationCode: '', firmwareVersion: '', resetReason: '' }
 }
 
-function onSelectionChanged() {
-  selectedRows.value = gridRef.value?.api?.getSelectedRows() || []
-}
-
-function selectAllRows() {
-  if (gridRef.value?.api) {
-    gridRef.value.api.selectAll()
-    selectedRows.value = gridRef.value.api.getSelectedRows()
-  }
+const updateMapMarkers = (mapInstance) => {
+  sensors.value.forEach((sensor) => {
+    const freshness = resolveFreshness(sensor.freshnessMinutes)
+    const marker = L.circleMarker([sensor.lat, sensor.lng], {
+      radius: 10,
+      color: '#0f172a',
+      weight: 1,
+      fillOpacity: 0.85,
+      fillColor:
+        freshness.level === 'on-time'
+          ? 'rgba(16, 185, 129, 0.9)'
+          : freshness.level === 'delayed'
+            ? 'rgba(245, 158, 11, 0.9)'
+            : 'rgba(248, 113, 113, 0.9)'
+    })
+    marker.bindPopup(
+      `<strong>${sensor.sensorId}</strong><br/>${sensor.zone}<br/>Son veri: ${formatTime(new Date(sensor.lastPacketAt))}<br/>${freshness.badge}`
+    )
+    marker.addTo(mapInstance)
+  })
 }
 
 let mapInstance = null
 
-function initMap() {
-  const mapContainer = document.getElementById('sensor-map')
-  if (!mapContainer) return
-
-  if (mapInstance) {
-    mapInstance.remove()
-    mapInstance = null
-  }
-
-  mapInstance = L.map(mapContainer).setView([38.4849, 27.0891], 15)
+onMounted(() => {
+  mapInstance = L.map('sensor-map').setView([39.9334, 32.8597], 9)
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap contributors',
+    maxZoom: 18,
+    attribution: '&copy; OpenStreetMap'
   }).addTo(mapInstance)
-
-  sensors.value.forEach((sensor) => {
-    const color = sensor.status === 'Aktif' ? '#4CAF50' : sensor.status === 'Bakımda' ? '#FFC107' : '#F44336'
-    L.circleMarker([sensor.lat, sensor.lng], {
-      color,
-      radius: 8,
-      fillColor: color,
-      fillOpacity: 0.9,
-      weight: 1.5,
-    })
-      .bindPopup(
-        `<b>${sensor.sensorId}</b><br>${sensor.type} - <span style="color:${color};font-weight:bold;">${sensor.status}</span>`
-      )
-      .addTo(mapInstance)
-  })
-}
-
-watch(activeTab, (val) => {
-  if (val === 'map') setTimeout(initMap, 150)
+  updateMapMarkers(mapInstance)
 })
 
-const workOrderNotification = ref({ visible: false, message: '' })
-let workOrderTimer = null
-
-function showRandomWorkOrderResponse() {
-  const randomSensor = sensors.value[Math.floor(Math.random() * sensors.value.length)]
-  if (!randomSensor) return
-
-  workOrderNotification.value.message = `${randomSensor.sensorId} sensöründen iş emri cevabı geldi!`
-  workOrderNotification.value.visible = true
-
-  setTimeout(() => (workOrderNotification.value.visible = false), 4000)
-}
-
-onMounted(() => {
-  const loop = () => {
-    const delay = 5000 + Math.random() * 10000
-    workOrderTimer = setTimeout(() => {
-      showRandomWorkOrderResponse()
-      loop()
-    }, delay)
-  }
-  loop()
-})
-
-const alarmNotification = ref({ visible: false, message: '' })
-let alarmTimer = null
-
-function showRandomAlarm() {
-  const randomSensor = sensors.value[Math.floor(Math.random() * sensors.value.length)]
-  if (!randomSensor) return
-
-  const randomType = ['Sıcaklık Artışı', 'Pil Seviyesi Düşük', 'İletişim Hatası']
-  const type = randomType[Math.floor(Math.random() * randomType.length)]
-
-  alarmNotification.value.message = `🚨 ${randomSensor.sensorId} sensöründe ${type}!`
-  alarmNotification.value.visible = true
-
-  setTimeout(() => (alarmNotification.value.visible = false), 4000)
-}
-
-onMounted(() => {
-  const alarmLoop = () => {
-    const delay = 15000 + Math.random() * 20000
-    alarmTimer = setTimeout(() => {
-      showRandomAlarm()
-      alarmLoop()
-    }, delay)
-  }
-  alarmLoop()
-})
-
-onUnmounted(() => {
-  clearTimeout(workOrderTimer)
-  clearTimeout(alarmTimer)
+watch([sensors, averageIntervalMinutes], () => {
   if (mapInstance) {
-    mapInstance.remove()
-    mapInstance = null
+    mapInstance.eachLayer((layer) => {
+      if (layer instanceof L.CircleMarker) {
+        mapInstance.removeLayer(layer)
+      }
+    })
+    updateMapMarkers(mapInstance)
   }
 })
-
-const localeText = {
-  loadingOoo: 'Yükleniyor...',
-  noRowsToShow: 'Gösterilecek kayıt yok',
-  page: 'Sayfa',
-  of: '/',
-  to: '→',
-  next: 'Sonraki',
-  last: 'Son',
-  first: 'İlk',
-  previous: 'Önceki',
-  applyFilter: 'Filtreyi Uygula',
-  clearFilter: 'Filtreyi Temizle',
-  resetFilter: 'Filtreyi Sıfırla',
-  selectAll: 'Tümünü Seç',
-  searchOoo: 'Ara...',
-  blanks: '(Boş)',
-  filterOoo: 'Filtrele...',
-  equals: 'Eşittir',
-  notEqual: 'Eşit Değil',
-  empty: 'Boş',
-  lessThan: 'Küçüktür',
-  greaterThan: 'Büyüktür',
-  lessThanOrEqual: 'Küçük veya Eşit',
-  greaterThanOrEqual: 'Büyük veya Eşit',
-  inRange: 'Arasında',
-  contains: 'İçerir',
-  notContains: 'İçermez',
-  startsWith: 'İle Başlar',
-  endsWith: 'İle Biter',
-  menuFilter: 'Filtre',
-  menuSortAscending: 'Artan Sırala',
-  menuSortDescending: 'Azalan Sırala',
-  menuGroup: 'Grupla',
-  menuUngroup: 'Grubu Kaldır',
-  paginationPageSize: 'Sayfa boyutu',
-  more: 'Daha fazla',
-  totalRows: 'Toplam Satır',
-  andCondition: 'VE',
-  orCondition: 'VEYA',
-  notBlank: 'Boş Değil',
-}
 </script>
 
 <style scoped>
-.ag-theme-alpine {
-  --ag-font-size: 14px;
-  border-radius: 10px;
-}
-
-:global(.theme-light) .ag-theme-alpine {
-  --ag-background-color: #ffffff;
-  --ag-foreground-color: #1f2937;
-  --ag-header-background-color: #f4f6f8;
-  --ag-header-foreground-color: #1f2937;
-  --ag-row-hover-color: rgba(14, 165, 233, 0.12);
-  --ag-border-color: #e2e8f0;
-  --ag-odd-row-background-color: #f8fafc;
-}
-
-:global(.theme-dark) .ag-theme-alpine {
-  --ag-background-color: #101a2c;
-  --ag-foreground-color: #e2e8f0;
-  --ag-header-background-color: #1e293b;
-  --ag-header-foreground-color: #e2e8f0;
-  --ag-row-hover-color: rgba(45, 212, 191, 0.18);
-  --ag-border-color: #1f2937;
-  --ag-odd-row-background-color: rgba(148, 163, 184, 0.08);
-}
-
-.slide-fade-enter-active {
-  transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
-}
-
-.slide-fade-leave-active {
-  transition: all 0.4s ease;
-}
-
-.slide-fade-enter-from,
-.slide-fade-leave-to {
-  opacity: 0;
-  transform: translateY(30px);
-}
-
-.fancy-toast {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  background: var(--toast-info-bg);
-  color: var(--toast-info-text);
-  padding: 16px 22px;
-  border-radius: 14px;
-  box-shadow: var(--toast-info-shadow);
+.sensor-shell {
+  padding: 28px;
   display: flex;
-  align-items: center;
-  gap: 12px;
-  z-index: 9999;
-  font-size: 15px;
-  font-weight: 500;
-  letter-spacing: 0.3px;
-  animation: toastPulse 4s ease-in-out infinite;
+  flex-direction: column;
+  gap: 28px;
 }
 
-@keyframes toastPulse {
-  0%,
-  100% {
-    box-shadow: var(--toast-info-shadow);
-    transform: translateY(0);
-  }
-  50% {
-    box-shadow: var(--toast-info-shadow);
-    transform: translateY(-2px);
-  }
-}
-
-.toast-icon {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  width: 38px;
-  height: 38px;
+.sensor-header {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-wrap: wrap;
+  gap: 28px;
+  align-items: flex-start;
+  justify-content: space-between;
 }
 
-.toast-text {
-  white-space: nowrap;
-}
-
-.alarm-toast {
-  position: fixed;
-  bottom: 110px;
-  right: 24px;
-  background: var(--toast-alarm-bg);
-  color: var(--toast-alarm-text);
-  padding: 16px 22px;
-  border-radius: 14px;
-  box-shadow: var(--toast-alarm-shadow);
+.sensor-heading {
+  flex: 1 1 320px;
   display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sensor-badge {
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-  z-index: 9998;
-  font-size: 15px;
+  gap: 6px;
+  background: rgba(14, 165, 233, 0.16);
+  padding: 6px 12px;
+  border-radius: 999px;
   font-weight: 600;
-  letter-spacing: 0.3px;
-  animation: alarmPulse 4s ease-in-out infinite;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
-@keyframes alarmPulse {
-  0%,
-  100% {
-    box-shadow: var(--toast-alarm-shadow);
-    transform: translateY(0);
+.sensor-title {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--heading-color);
+}
+
+.sensor-subtitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--muted-text);
+}
+
+.sensor-header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: stretch;
+}
+
+.meta-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid var(--border-soft);
+  min-width: 220px;
+}
+
+.meta-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted-text);
+  font-weight: 600;
+}
+
+.meta-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--heading-color);
+}
+
+.meta-hint {
+  font-size: 13px;
+  color: var(--muted-text);
+}
+
+.sensor-content {
+  gap: 24px;
+}
+
+.filter-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.filter-card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 22px;
+  border-radius: 20px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+}
+
+.filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.filter-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--heading-color);
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.filter-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--muted-text);
+}
+
+.filter-chip {
+  justify-content: flex-start;
+}
+
+.update-card {
+  padding: 20px;
+  border-radius: 20px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.update-card h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--heading-color);
+}
+
+.update-card p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted-text);
+}
+
+.update-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.update-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.update-time {
+  font-weight: 600;
+  color: var(--heading-color);
+}
+
+.update-meta {
+  font-size: 13px;
+  color: var(--muted-text);
+}
+
+.update-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted-text);
+}
+
+.list-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.list-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+  border-radius: 22px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+}
+
+.list-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toolbar-search {
+  flex: 1 1 280px;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.view-toggle {
+  border-radius: 999px;
+}
+
+.list-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.meta-chip {
+  font-weight: 600;
+}
+
+.grid-wrapper {
+  min-height: 480px;
+}
+
+.sensor-grid {
+  width: 100%;
+  height: 480px;
+  border-radius: 18px;
+}
+
+.card-grid {
+  padding-top: 6px;
+}
+
+.sensor-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sensor-card.on-time {
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.sensor-card.delayed {
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.sensor-card.missed {
+  border-color: rgba(248, 113, 113, 0.4);
+}
+
+.sensor-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+}
+
+.sensor-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.sensor-id {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--heading-color);
+}
+
+.sensor-zone {
+  font-size: 13px;
+  color: var(--muted-text);
+}
+
+.sensor-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--muted-text);
+}
+
+.sensor-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sensor-label {
+  font-weight: 600;
+  color: var(--heading-color);
+}
+
+.sensor-value {
+  text-align: right;
+}
+
+.map-card {
+  padding: 24px;
+  border-radius: 22px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.map-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.map-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--heading-color);
+}
+
+.map-subtitle {
+  font-size: 13px;
+  color: var(--muted-text);
+}
+
+.map-container {
+  width: 100%;
+  height: 380px;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 13px;
+  color: var(--muted-text);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.legend-dot.on-time {
+  background: rgba(16, 185, 129, 0.9);
+}
+
+.legend-dot.delayed {
+  background: rgba(245, 158, 11, 0.9);
+}
+
+.legend-dot.missed {
+  background: rgba(248, 113, 113, 0.9);
+}
+
+.log-row {
+  gap: 20px;
+}
+
+.log-card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 22px;
+  border-radius: 20px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+}
+
+.log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.log-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--heading-color);
+}
+
+:global(.sensor-row-delayed) {
+  background: rgba(245, 158, 11, 0.12) !important;
+}
+
+:global(.sensor-row-missed) {
+  background: rgba(248, 113, 113, 0.12) !important;
+}
+
+:global(.sensor-row-delayed .ag-cell),
+:global(.sensor-row-missed .ag-cell) {
+  border-bottom-color: transparent !important;
+}
+
+:global(.ag-theme-alpine.sensor-grid) {
+  --ag-font-size: 13px;
+  --ag-header-background-color: #f8fafc;
+  --ag-border-color: #e2e8f0;
+  --ag-row-hover-color: rgba(14, 165, 233, 0.12);
+}
+
+@media (max-width: 1280px) {
+  .sensor-header {
+    flex-direction: column;
   }
-  50% {
-    box-shadow: var(--toast-alarm-shadow);
-    transform: translateY(-2px);
+
+  .sensor-header-meta {
+    width: 100%;
   }
 }
 
-@media (max-width: 600px) {
-  .fancy-toast,
-  .alarm-toast {
-    right: 16px;
-    left: 16px;
+@media (max-width: 960px) {
+  .list-toolbar {
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  .alarm-toast {
-    bottom: 180px;
+  .toolbar-actions {
+    justify-content: space-between;
+  }
+
+  .map-container {
+    height: 320px;
   }
 }
 </style>

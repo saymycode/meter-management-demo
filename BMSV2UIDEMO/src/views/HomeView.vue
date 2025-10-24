@@ -1,52 +1,61 @@
 <template>
-  <v-container fluid class="dashboard-shell" tag="section">
-    <v-row class="g-4" no-gutters>
+  <v-container fluid class="home-shell" tag="section">
+    <v-row class="g-6" no-gutters>
       <v-col cols="12">
-        <v-card class="dashboard-hero" elevation="0">
-          <div class="hero-left">
-            <div class="hero-badge">Baylan Su Yönetimi</div>
-            <h1 class="hero-title">Şehir şebekesinde su dağıtım görünümü</h1>
-            <p class="hero-subtitle">
-              ASKİ, İSKİ ve benzeri operatörler için son 24 saatte online olan sayaçlar, aktiflik oranı, vana ve gateway durumlarıyla su tüketiminizi tek ekranda özetliyoruz. Detaylar için ilgili modüllere geçebilirsiniz.
+        <v-card class="hero-card" elevation="0">
+          <div class="hero-main">
+            <div class="org-chip">{{ organizationName }}</div>
+            <h1 class="hero-title">Sayaç operasyon özeti</h1>
+            <p class="hero-text">
+              {{ organizationRegion }} için LoRa ve GPRS sayaçlarından gelen toplu veriler burada özetlenir.
+              Veriler gün içinde yalnızca birkaç kez toplu halde gelir; tüm göstergeler son alınan partiye göre güncellenir.
             </p>
             <div class="hero-meta">
               <div class="meta-block">
-                <span class="meta-label">Bugün</span>
-                <span class="meta-value">{{ formattedDate }}</span>
+                <span class="meta-label">Son veri alımı</span>
+                <span class="meta-value">{{ lastUpdateLabel }}</span>
+                <span class="meta-hint">{{ lastUpdateAgo }}</span>
               </div>
-              <v-divider vertical class="mx-4" />
               <div class="meta-block">
-                <span class="meta-label">Toplam sayaç</span>
-                <span class="meta-value">{{ totalMeters }}</span>
+                <span class="meta-label">Son 24 saatte parti</span>
+                <span class="meta-value">{{ batchesInLastDay }}</span>
+                <span class="meta-hint">Ortalama {{ averageIntervalLabel }} aralık</span>
               </div>
-              <v-divider vertical class="mx-4" />
               <div class="meta-block">
-                <span class="meta-label">Son 24 saatte online</span>
-                <span class="meta-value">{{ last24hOnline }}</span>
+                <span class="meta-label">Veri durumu</span>
+                <v-chip :color="freshnessChip.color" class="meta-chip" size="small" variant="tonal">
+                  {{ freshnessChip.label }}
+                </v-chip>
+                <span class="meta-hint">{{ freshnessChip.helper }}</span>
               </div>
-              <v-divider vertical class="mx-4" />
               <div class="meta-block">
-                <span class="meta-label">Aktiflik oranı</span>
-                <span class="meta-value">{{ connectionRate }}</span>
+                <span class="meta-label">Kapsam</span>
+                <span class="meta-value">{{ formatNumber(totalMeters) }} sayaç</span>
+                <span class="meta-hint">{{ activeMeterRatio }}</span>
               </div>
+            </div>
+            <div class="hero-actions">
+              <v-btn color="primary" prepend-icon="mdi-format-list-bulleted" variant="flat">Sensör listesine git</v-btn>
+              <v-btn color="primary" prepend-icon="mdi-file-download" variant="text">Günlük özet indir</v-btn>
             </div>
           </div>
-          <div class="hero-right">
-            <div class="hero-highlight">
-              <span class="highlight-label">Anlık debi</span>
-              <span class="highlight-value">4.2 m³/sn</span>
-              <span class="highlight-change positive">+3.1% • son 15 dk</span>
-            </div>
-            <div class="hero-spark">
-              <v-sparkline
-                :model-value="heroTrend"
-                :line-width="3"
-                :smooth="16"
-                auto-draw
-                auto-line-width
-                class="hero-sparkline"
-              />
-              <div class="hero-caption">Hat basıncı stabil • Kapasitenin %68'i kullanılıyor</div>
+          <div class="hero-side">
+            <div class="batch-card">
+              <h2 class="batch-title">Son gelen partiler</h2>
+              <span class="batch-subtitle">Gerçekleşen iletim saatleri ve kapsama bilgileri</span>
+              <ul class="batch-list">
+                <li v-for="batch in recentBatches" :key="batch.id" class="batch-item">
+                  <div class="batch-time">{{ batch.timeLabel }}</div>
+                  <div class="batch-meta">
+                    <span class="batch-ago">{{ batch.agoLabel }}</span>
+                    <span class="batch-coverage">{{ batch.coverageLabel }}</span>
+                  </div>
+                </li>
+              </ul>
+              <div class="batch-footer">
+                <v-icon size="18" color="primary">mdi-timer-sand</v-icon>
+                <span>{{ cadenceSummary }}</span>
+              </div>
             </div>
           </div>
         </v-card>
@@ -64,20 +73,12 @@
             </div>
           </div>
           <div class="metric-body">
+            <span class="metric-caption">{{ metric.caption }}</span>
             <div class="metric-trend" :class="metric.trendPositive ? 'positive' : 'negative'">
-              <v-icon size="18">{{ metric.trendPositive ? 'mdi-arrow-up' : 'mdi-arrow-down' }}</v-icon>
+              <v-icon size="18">{{ metric.trendPositive ? 'mdi-check-circle' : 'mdi-alert' }}</v-icon>
               <span>{{ metric.trend }}</span>
               <span class="trend-label">{{ metric.trendLabel }}</span>
             </div>
-            <v-sparkline
-              :model-value="metric.sparkline"
-              :smooth="12"
-              :line-width="3"
-              :gradient="metric.gradient"
-              auto-draw
-              auto-line-width
-              class="metric-sparkline"
-            />
           </div>
         </v-card>
       </v-col>
@@ -86,53 +87,40 @@
         <v-card class="panel-card" elevation="0">
           <div class="panel-header">
             <div>
-              <h2>Su tüketim eğilimleri</h2>
-              <span class="panel-hint">Son 7 güne ait toplam tüketim (m³)</span>
+              <h2>Parti bazlı tüketim eğrisi</h2>
+              <span class="panel-hint">Son dokuz toplu iletim için tüketim toplamı (m³)</span>
             </div>
-            <v-chip prepend-icon="mdi-calendar-range" class="panel-chip" variant="flat">7 gün</v-chip>
+            <v-chip prepend-icon="mdi-calendar-clock" class="panel-chip" size="small" variant="flat">
+              {{ cadenceDescription }}
+            </v-chip>
           </div>
           <div class="panel-body">
             <v-sparkline
-              :model-value="consumptionTrend"
-              :smooth="10"
               :line-width="4"
+              :model-value="consumptionTrend"
+              :smooth="12"
+              :gradient="trendGradient"
               auto-draw
               auto-line-width
               class="trend-chart"
+              fill
             />
             <div class="panel-legend">
               <div class="legend-item">
                 <span class="dot primary"></span>
-                <span>Planlanan</span>
+                <span>Gerçekleşen tüketim</span>
               </div>
               <div class="legend-item">
                 <span class="dot secondary"></span>
-                <span>Gerçekleşen</span>
+                <span>Planlanan hedef</span>
               </div>
             </div>
             <v-row class="panel-summary" dense>
-              <v-col cols="12" sm="6" md="3">
+              <v-col v-for="summary in trendSummaries" :key="summary.label" cols="12" sm="6" md="3">
                 <div class="summary-item">
-                  <span class="summary-label">24 saat toplam</span>
-                  <span class="summary-value">182.4 bin m³</span>
-                </div>
-              </v-col>
-              <v-col cols="12" sm="6" md="3">
-                <div class="summary-item">
-                  <span class="summary-label">1 hafta toplam</span>
-                  <span class="summary-value">1.24 milyon m³</span>
-                </div>
-              </v-col>
-              <v-col cols="12" sm="6" md="3">
-                <div class="summary-item">
-                  <span class="summary-label">1 ay toplam</span>
-                  <span class="summary-value">5.3 milyon m³</span>
-                </div>
-              </v-col>
-              <v-col cols="12" sm="6" md="3">
-                <div class="summary-item">
-                  <span class="summary-label">1 yıl toplam</span>
-                  <span class="summary-value positive">61.2 milyon m³</span>
+                  <span class="summary-label">{{ summary.label }}</span>
+                  <span class="summary-value" :class="summary.highlight ? 'positive' : ''">{{ summary.value }}</span>
+                  <span class="summary-hint">{{ summary.hint }}</span>
                 </div>
               </v-col>
             </v-row>
@@ -144,30 +132,28 @@
         <v-card class="panel-card compact" elevation="0">
           <div class="panel-header">
             <div>
-              <h2>Durum özetleri</h2>
-              <span class="panel-hint">Basınç, kalite ve vana operasyonlarına ait anlık durum</span>
+              <h2>Veri tazeliği izleme</h2>
+              <span class="panel-hint">Son iki gün için sayaçların parti katılım durumları</span>
             </div>
           </div>
-          <div class="status-grid">
-            <div
-              v-for="status in statusCards"
-              :key="status.title"
-              class="status-card"
-            >
-              <div class="status-header">
-                <v-avatar size="36" class="status-icon" :style="{ background: status.accent }">
-                  <v-icon size="20">{{ status.icon }}</v-icon>
-                </v-avatar>
-                <v-chip :color="status.badgeColor" class="status-chip" size="small" variant="tonal">
-                  {{ status.badge }}
-                </v-chip>
+          <div class="freshness-stats">
+            <div v-for="freshness in freshnessBreakdown" :key="freshness.label" class="freshness-row">
+              <div class="freshness-left">
+                <div class="freshness-dot" :style="{ background: freshness.color }" />
+                <div class="freshness-text">
+                  <span class="freshness-label">{{ freshness.label }}</span>
+                  <span class="freshness-hint">{{ freshness.hint }}</span>
+                </div>
               </div>
-              <div class="status-body">
-                <span class="status-title">{{ status.title }}</span>
-                <span class="status-value">{{ status.value }}</span>
-                <span class="status-desc">{{ status.description }}</span>
+              <div class="freshness-values">
+                <span class="freshness-value">{{ freshness.value }}</span>
+                <v-chip :color="freshness.chipColor" size="small" variant="tonal">{{ freshness.percentage }}</v-chip>
               </div>
             </div>
+          </div>
+          <div class="freshness-footer">
+            <v-icon size="18" color="primary">mdi-information-outline</v-icon>
+            <span>Geciken sayaçlar otomatik olarak iş emri listesine aktarılır.</span>
           </div>
         </v-card>
       </v-col>
@@ -177,9 +163,11 @@
           <div class="panel-header">
             <div>
               <h2>Alarm özeti</h2>
-              <span class="panel-hint">Şu anki kritik ve önemli uyarılar</span>
+              <span class="panel-hint">Kritik uyarılar parti bazlı değerlendirildi</span>
             </div>
-            <v-chip prepend-icon="mdi-bell-alert" class="panel-chip warning" variant="flat">{{ criticalAlerts24h }} kritik</v-chip>
+            <v-chip prepend-icon="mdi-bell-alert" class="panel-chip warning" size="small" variant="flat">
+              {{ criticalAlerts }} kritik
+            </v-chip>
           </div>
           <v-list class="alert-list" density="compact">
             <v-list-item v-for="alert in alerts" :key="alert.title" class="alert-item">
@@ -202,10 +190,10 @@
         <v-card class="panel-card compact" elevation="0">
           <div class="panel-header">
             <div>
-              <h2>En fazla su tüketen bölgeler</h2>
-              <span class="panel-hint">İlk 5 bölge • Son 24 saat</span>
+              <h2>En fazla tüketen bölgeler</h2>
+              <span class="panel-hint">Son iki parti ortalaması</span>
             </div>
-            <v-chip prepend-icon="mdi-map-marker" class="panel-chip" variant="flat">DMA görünümü</v-chip>
+            <v-chip prepend-icon="mdi-map-marker-path" class="panel-chip" size="small" variant="flat">DMA görünümü</v-chip>
           </div>
           <v-list class="region-list" density="compact">
             <v-list-item v-for="region in topRegions" :key="region.name" class="region-item">
@@ -217,13 +205,41 @@
               <template #append>
                 <div class="region-meta">
                   <span class="region-value">{{ region.value }}</span>
-                  <span class="region-trend" :class="region.trendPositive ? 'positive' : 'negative'">
-                    {{ region.trend }}
-                  </span>
+                  <span class="region-trend" :class="region.trendPositive ? 'positive' : 'negative'">{{ region.trend }}</span>
+                  <span class="region-hint">{{ region.hint }}</span>
                 </div>
               </template>
             </v-list-item>
           </v-list>
+        </v-card>
+      </v-col>
+
+      <v-col cols="12">
+        <v-card class="panel-card compact" elevation="0">
+          <div class="panel-header">
+            <div>
+              <h2>Operasyon notları</h2>
+              <span class="panel-hint">Geciken partiler ve saha aksiyonları için önerilen adımlar</span>
+            </div>
+          </div>
+          <v-row class="notes-grid" dense>
+            <v-col v-for="note in operationNotes" :key="note.title" cols="12" md="4">
+              <div class="note-card">
+                <v-avatar size="36" class="note-icon" :style="{ background: note.accent }">
+                  <v-icon size="20">{{ note.icon }}</v-icon>
+                </v-avatar>
+                <div class="note-body">
+                  <span class="note-title">{{ note.title }}</span>
+                  <span class="note-desc">{{ note.description }}</span>
+                </div>
+                <v-chip size="small" :color="note.badgeColor" variant="tonal">{{ note.badge }}</v-chip>
+              </div>
+            </v-col>
+          </v-row>
+          <div class="notes-footer">
+            <v-icon size="18" color="primary">mdi-book-information-variant</v-icon>
+            <span>Veri paylaşımı kurum bazında yapılır; farklı kurumların sayaçları bu ekranda görünmez.</span>
+          </div>
         </v-card>
       </v-col>
     </v-row>
@@ -233,157 +249,297 @@
 <script setup>
 import { computed, ref } from 'vue'
 
-const totalMeters = '16.842'
-const last24hOnline = '15.620'
-const connectionRate = '92.7%'
+const organizationName = 'ASKİ Su Operasyon Merkezi'
+const organizationRegion = 'Ankara hizmet bölgesi'
+const totalMeters = 16842
+const activeMeters = 15620
+const freshBatchNow = ref(new Date())
 
-const heroTrend = ref([3.6, 3.8, 3.9, 4.1, 4.3, 4.2, 4.4, 4.7, 4.5, 4.8, 4.6])
+const formatNumber = (value) => value.toLocaleString('tr-TR')
+
+const formatTime = (date) =>
+  new Intl.DateTimeFormat('tr-TR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: 'numeric',
+    month: 'long'
+  }).format(date)
+
+const formatRelative = (from, to) => {
+  const diffMinutes = Math.round((to.getTime() - from.getTime()) / 60000)
+  const absMinutes = Math.abs(diffMinutes)
+  const hours = Math.floor(absMinutes / 60)
+  const minutes = absMinutes % 60
+  const buildText = () => {
+    if (hours === 0) {
+      return `${minutes} dk`
+    }
+    if (minutes === 0) {
+      return `${hours} saat`
+    }
+    return `${hours} saat ${minutes} dk`
+  }
+  return diffMinutes >= 0 ? `${buildText()} sonra` : `${buildText()} önce`
+}
+
+const formatAgo = (date, reference) => formatRelative(date, reference).replace('sonra', 'önce')
+
+const formatDuration = (minutes) => {
+  if (!minutes || Number.isNaN(minutes)) {
+    return '-'
+  }
+  const hours = Math.floor(minutes / 60)
+  const mins = Math.round(minutes % 60)
+  if (hours === 0) {
+    return `${mins} dk`
+  }
+  if (mins === 0) {
+    return `${hours} saat`
+  }
+  return `${hours} saat ${mins} dk`
+}
+
+const minutesAgo = (minutes) => new Date(freshBatchNow.value.getTime() - minutes * 60000)
+
+const batchHistory = ref([
+  { id: 'batch-0', receivedAt: minutesAgo(75), meterCount: 15428, coverage: 0.92 },
+  { id: 'batch-1', receivedAt: minutesAgo(320), meterCount: 15206, coverage: 0.9 },
+  { id: 'batch-2', receivedAt: minutesAgo(645), meterCount: 15102, coverage: 0.88 },
+  { id: 'batch-3', receivedAt: minutesAgo(980), meterCount: 15688, coverage: 0.94 },
+  { id: 'batch-4', receivedAt: minutesAgo(1320), meterCount: 14974, coverage: 0.87 }
+])
+
+const lastBatchReceived = computed(() => batchHistory.value[0]?.receivedAt ?? freshBatchNow.value)
+
+const batchIntervals = computed(() => {
+  const items = batchHistory.value
+  const result = []
+  for (let index = 0; index < items.length - 1; index += 1) {
+    const current = items[index]
+    const next = items[index + 1]
+    if (current && next) {
+      result.push(Math.abs((current.receivedAt.getTime() - next.receivedAt.getTime()) / 60000))
+    }
+  }
+  return result
+})
+
+const averageIntervalMinutes = computed(() => {
+  const intervals = batchIntervals.value
+  if (!intervals.length) {
+    return 0
+  }
+  const total = intervals.reduce((sum, value) => sum + value, 0)
+  return total / intervals.length
+})
+
+const batchesInLastDay = computed(
+  () => batchHistory.value.filter((batch) => freshBatchNow.value.getTime() - batch.receivedAt.getTime() <= 24 * 60 * 60000).length
+)
+
+const averageIntervalLabel = computed(() => formatDuration(averageIntervalMinutes.value))
+
+const cadenceSummary = computed(() => {
+  if (!batchHistory.value.length) {
+    return 'Henüz parti alınmadı.'
+  }
+  return `Son 24 saatte ${batchesInLastDay.value} parti • Ortalama aralık ${averageIntervalLabel.value}`
+})
+
+const lastUpdateLabel = computed(() => formatTime(lastBatchReceived.value))
+const lastUpdateAgo = computed(() => formatAgo(lastBatchReceived.value, freshBatchNow.value))
+
+const freshnessChip = computed(() => {
+  const lastBatch = lastBatchReceived.value
+  const now = freshBatchNow.value
+  const diffMinutes = Math.max(0, (now.getTime() - lastBatch.getTime()) / 60000)
+  const baseline = averageIntervalMinutes.value || 240
+  const watchThreshold = baseline * 1.5
+  const actionThreshold = baseline * 2.4
+
+  if (diffMinutes <= watchThreshold) {
+    return {
+      label: 'Beklenen aralıkta',
+      color: 'success',
+      helper: `Son parti ${formatAgo(lastBatch, now)} alındı`
+    }
+  }
+  if (diffMinutes <= actionThreshold) {
+    return {
+      label: 'Kontrol edilmeli',
+      color: 'amber-darken-2',
+      helper: `Son parti ${formatAgo(lastBatch, now)} alındı`
+    }
+  }
+  return {
+    label: 'Müdahale gerekli',
+    color: 'red-darken-2',
+    helper: `Son parti ${formatAgo(lastBatch, now)} alındı`
+  }
+})
+
+const recentBatches = computed(() =>
+  batchHistory.value.slice(0, 4).map((batch, index) => ({
+    id: batch.id,
+    timeLabel: formatTime(batch.receivedAt),
+    agoLabel: formatAgo(batch.receivedAt, freshBatchNow.value),
+    coverageLabel: `${formatNumber(batch.meterCount)} sayaç • %${Math.round(batch.coverage * 100)}`,
+    isLatest: index === 0
+  }))
+)
+
+const activeMeterRatio = computed(() => {
+  const ratio = (activeMeters / totalMeters) * 100
+  return `${formatNumber(activeMeters)} aktif • %${ratio.toFixed(1)}`
+})
 
 const overviewMetrics = [
   {
-    title: 'Son 24 saat tüketim',
-    value: '182.400 m³',
-    trend: '+4.6%',
-    trendLabel: 'önceki güne göre',
+    title: 'Aktif sayaç',
+    value: formatNumber(activeMeters),
+    caption: 'Son parti içinde veri gönderen sayaç',
+    trend: '+124 sayaç',
+    trendLabel: 'Önceki partiye göre',
     trendPositive: true,
     icon: 'mdi-water',
-    accent: 'linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(56, 189, 248, 0.35))',
-    gradient: ['rgba(14, 165, 233, 0)', 'rgba(14, 165, 233, 0.35)', 'rgba(56, 189, 248, 0.45)'],
-    sparkline: [162.1, 168.3, 170.4, 175.8, 178.6, 181.2, 182.4]
+    accent: 'linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(56, 189, 248, 0.32))'
   },
   {
-    title: 'Aktif sayaç oranı',
-    value: '92.7 %',
-    trend: '+1.2%',
-    trendLabel: 'son 7 gün',
-    trendPositive: true,
-    icon: 'mdi-counter',
-    accent: 'linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(16, 185, 129, 0.35))',
-    gradient: ['rgba(16, 185, 129, 0)', 'rgba(16, 185, 129, 0.3)', 'rgba(5, 150, 105, 0.45)'],
-    sparkline: [88.2, 89.5, 90.1, 91.3, 92, 92.4, 92.7]
-  },
-  {
-    title: 'Aktif gateway',
-    value: '128 / 134',
-    trend: '+4',
-    trendLabel: 'son bakım turu',
-    trendPositive: true,
-    icon: 'mdi-router-network',
-    accent: 'linear-gradient(135deg, rgba(249, 115, 22, 0.18), rgba(234, 88, 12, 0.35))',
-    gradient: ['rgba(234, 88, 12, 0)', 'rgba(249, 115, 22, 0.3)', 'rgba(251, 146, 60, 0.45)'],
-    sparkline: [119, 121, 123, 124, 126, 127, 128]
-  },
-  {
-    title: 'Açık vana sayısı',
-    value: '1.284',
-    trend: '−18',
-    trendLabel: 'planlı operasyon',
+    title: 'Kontrol gerektiren',
+    value: formatNumber(482),
+    caption: 'Ortalama aralığı aşan sayaç',
+    trend: '58 kritik',
+    trendLabel: 'Saha kontrolü gerekli',
     trendPositive: false,
-    icon: 'mdi-valve',
-    accent: 'linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(45, 212, 191, 0.35))',
-    gradient: ['rgba(59, 130, 246, 0)', 'rgba(59, 130, 246, 0.22)', 'rgba(45, 212, 191, 0.4)'],
-    sparkline: [1324, 1310, 1298, 1288, 1286, 1282, 1284]
+    icon: 'mdi-timer-sand',
+    accent: 'linear-gradient(135deg, rgba(249, 115, 22, 0.18), rgba(234, 88, 12, 0.32))'
+  },
+  {
+    title: 'İletim başarısı',
+    value: '93%',
+    caption: 'Son partide paket iletim oranı',
+    trend: '+2 puan',
+    trendLabel: 'Haftalık ortalama',
+    trendPositive: true,
+    icon: 'mdi-swap-vertical',
+    accent: 'linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(16, 185, 129, 0.28))'
+  },
+  {
+    title: 'Açık alarm',
+    value: '12',
+    caption: '4 kritik, 8 takipte',
+    trend: 'Son partide 3 yeni',
+    trendLabel: 'Geciken sayaçlardan',
+    trendPositive: false,
+    icon: 'mdi-bell-alert',
+    accent: 'linear-gradient(135deg, rgba(59, 130, 246, 0.18), rgba(96, 165, 250, 0.32))'
   }
 ]
 
-const consumptionTrend = ref([26.4, 27.8, 28.1, 29.6, 30.8, 31.1, 28.9])
+const consumptionTrend = ref([18.6, 19.4, 19.1, 20.2, 21.5, 21.2, 22.4, 21.9, 22.6])
 
-const statusCards = [
+const trendSummaries = [
+  { label: 'Son parti', value: '22.6 bin m³', hint: 'Güncel toplu veri', highlight: true },
+  { label: 'Son 24 saat', value: '44.5 bin m³', hint: 'Gelen üç partinin toplamı' },
+  { label: 'Dün', value: '43.8 bin m³', hint: '%1.6 artış' },
+  { label: 'Haftalık', value: '302 bin m³', hint: 'Son 7 gün ortalaması' }
+]
+
+const cadenceDescription = computed(() => {
+  if (!batchHistory.value.length) {
+    return 'Veri bekleniyor'
+  }
+  const diff = Math.abs(Math.round((freshBatchNow.value - lastBatchReceived.value) / 60000))
+  const baseline = averageIntervalMinutes.value || 240
+  if (diff <= baseline * 1.5) {
+    return 'Beklenen aralıkta'
+  }
+  if (diff <= baseline * 2.4) {
+    return 'Kontrol edilmeli'
+  }
+  return 'Müdahale gerekli'
+})
+
+const freshnessBreakdown = [
   {
-    title: 'Şebeke basıncı',
-    value: '6.2 bar',
-    description: 'Ana hat basıncı güvenli aralıkta.',
-    icon: 'mdi-water-pump',
-    badge: 'Stabil',
-    badgeColor: 'primary',
-    accent: 'rgba(59, 130, 246, 0.18)'
+    label: 'Beklenen aralıkta',
+    value: formatNumber(15138),
+    hint: 'Ortalama aralık içinde güncellendi',
+    percentage: '%89',
+    color: 'rgba(34, 197, 94, 0.35)',
+    chipColor: 'success'
   },
   {
-    title: 'Rezervuar doluluk',
-    value: '78 %',
-    description: 'Merkez depoları kritik seviyenin üzerinde.',
-    icon: 'mdi-tank',
-    badge: 'Yeterli',
-    badgeColor: 'teal',
-    accent: 'rgba(13, 148, 136, 0.18)'
+    label: 'Kontrol edilmeli',
+    value: formatNumber(964),
+    hint: 'Ortalama aralığı aştı',
+    percentage: '%6',
+    color: 'rgba(245, 158, 11, 0.28)',
+    chipColor: 'amber-darken-2'
   },
   {
-    title: 'Kalite ölçümleri',
-    value: '0.3 mg/L',
-    description: 'Klor seviyesi ulusal standartlarda.',
-    icon: 'mdi-flask-outline',
-    badge: 'Normal',
-    badgeColor: 'blue-darken-1',
-    accent: 'rgba(37, 99, 235, 0.18)'
-  },
-  {
-    title: 'Kaçak takibi',
-    value: '12 olay',
-    description: 'Saha ekiplerine yönlendirildi.',
-    icon: 'mdi-pipe-leak',
-    badge: 'Takipte',
-    badgeColor: 'amber-darken-2',
-    accent: 'rgba(245, 158, 11, 0.18)'
+    label: 'Müdahale gerekli',
+    value: formatNumber(740),
+    hint: 'Uzayan gecikme nedeniyle alarmda',
+    percentage: '%5',
+    color: 'rgba(248, 113, 113, 0.28)',
+    chipColor: 'red-darken-2'
   }
 ]
 
-const criticalAlerts24h = 7
+const criticalAlerts = 4
 
 const alerts = [
   {
-    title: 'DMA-3 basınç düşüşü',
-    subtitle: 'Çankaya DMA-3 • 04:26',
-    count: 'Acil',
-    icon: 'mdi-alert-decagram-outline',
-    color: 'red-darken-1'
+    title: 'Basınç düşüşü',
+    subtitle: 'İvedik terfi hattında veri 5 saattir gelmedi',
+    icon: 'mdi-gauge-low',
+    color: 'red-darken-2',
+    count: 2
   },
   {
-    title: 'Kapalı vana uyarısı',
-    subtitle: 'Altındağ vana-12 • saha ziyareti gerekiyor',
-    count: '2',
-    icon: 'mdi-valve',
-    color: 'orange-darken-2'
-  },
-  {
-    title: 'Gateway bağlantısı koptu',
-    subtitle: 'Keçiören 5G-02 • 18 dk offline',
-    count: '18 dk',
+    title: 'İletişim kaybı',
+    subtitle: 'Altındağ bölgesinde 3 sayaç cevap vermiyor',
     icon: 'mdi-access-point-network-off',
-    color: 'amber-darken-2'
+    color: 'amber-darken-2',
+    count: 3
   },
   {
-    title: 'Klor seviyesi yükseldi',
-    subtitle: 'Mamak kalite noktası • 1.6 mg/L',
-    count: '1',
-    icon: 'mdi-flask-alert',
-    color: 'blue-darken-1'
+    title: 'Kaçak ihtimali',
+    subtitle: 'Polatlı hattında tüketim ortalaması yükseldi',
+    icon: 'mdi-water-alert',
+    color: 'primary',
+    count: 7
   }
 ]
 
 const topRegions = [
   {
     rank: '1',
-    name: 'Çankaya - Merkez DMA',
-    subtitle: '1.842 aktif sayaç • 86 gateway',
-    value: '28.4 bin m³',
-    trend: '+5.2%',
-    trendPositive: true
+    name: 'Çankaya DMA-3',
+    subtitle: '1.204 aktif sayaç • 42 gateway',
+    value: '22.6 bin m³',
+    trend: '+2.4%',
+    trendPositive: true,
+    hint: 'Son parti referansı'
   },
   {
     rank: '2',
-    name: 'Keçiören - Kuzey hattı',
-    subtitle: '1.264 aktif sayaç • 54 gateway',
-    value: '24.1 bin m³',
-    trend: '+3.4%',
-    trendPositive: true
+    name: 'Yenimahalle sanayi',
+    subtitle: '884 aktif sayaç • 31 gateway',
+    value: '19.7 bin m³',
+    trend: '-0.8%',
+    trendPositive: false,
+    hint: 'Kontrol bekleyen 4 sayaç'
   },
   {
     rank: '3',
-    name: 'Yenimahalle sanayi bölgesi',
-    subtitle: '932 aktif sayaç • 31 gateway',
-    value: '19.7 bin m³',
-    trend: '−1.1%',
-    trendPositive: false
+    name: 'Keçiören konut hattı',
+    subtitle: '1.342 aktif sayaç • 54 gateway',
+    value: '18.4 bin m³',
+    trend: '+1.2%',
+    trendPositive: true,
+    hint: 'Son parti tamlandı'
   },
   {
     rank: '4',
@@ -391,7 +547,8 @@ const topRegions = [
     subtitle: '1.506 aktif sayaç • 47 gateway',
     value: '17.9 bin m³',
     trend: '+0.9%',
-    trendPositive: true
+    trendPositive: true,
+    hint: 'Son parti 75 dk önce'
   },
   {
     rank: '5',
@@ -399,196 +556,231 @@ const topRegions = [
     subtitle: '684 aktif sayaç • 22 gateway',
     value: '15.8 bin m³',
     trend: '+0.4%',
-    trendPositive: true
+    trendPositive: true,
+    hint: 'Müdahale gerekli 2 sayaç'
   }
 ]
 
-const formattedDate = computed(() => {
-  return new Date().toLocaleDateString('tr-TR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long'
-  })
-})
+const operationNotes = [
+  {
+    title: 'Gateway kontrol listesi',
+    description: '5 saatten uzun süredir veri göndermeyen sayaçlar için saha taraması planlandı.',
+    icon: 'mdi-router-network',
+    badge: 'Saha ziyareti',
+    badgeColor: 'primary',
+    accent: 'rgba(59, 130, 246, 0.18)'
+  },
+  {
+    title: 'Bakım planı',
+    description: 'Batarya seviyesi düşük sayaçlar bir sonraki partide tekrar doğrulanacak.',
+    icon: 'mdi-battery-alert',
+    badge: 'Yenilendi',
+    badgeColor: 'teal',
+    accent: 'rgba(45, 212, 191, 0.18)'
+  },
+  {
+    title: 'Veri kalite kontrolü',
+    description: 'İletim başarısı %90 altına düşen bölgeler için doğrulama kuralı eklendi.',
+    icon: 'mdi-clipboard-check',
+    badge: 'Aktif',
+    badgeColor: 'success',
+    accent: 'rgba(34, 197, 94, 0.18)'
+  }
+]
 </script>
 
 <style scoped>
-.dashboard-shell {
+.home-shell {
   padding: 28px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 28px;
 }
 
-.dashboard-shell :deep(.v-row.g-4) {
-  row-gap: 24px;
+.home-shell :deep(.v-row.g-6) {
+  row-gap: 28px;
 }
 
-.dashboard-hero {
+.hero-card {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: stretch;
   gap: 32px;
+  justify-content: space-between;
   padding: 32px 36px;
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(45, 212, 191, 0.12));
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(45, 212, 191, 0.12));
   border-radius: 26px;
   border: 1px solid var(--border-soft);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
 }
 
-.hero-left {
+.hero-main {
   flex: 1 1 360px;
-  max-width: 560px;
+  max-width: 640px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
 }
 
-.hero-badge {
-  align-self: flex-start;
-  padding: 6px 14px;
+.org-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 118, 110, 0.12);
+  padding: 6px 12px;
   border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+  font-weight: 600;
+  color: #0f766e;
+  font-size: 13px;
   text-transform: uppercase;
-  background: rgba(14, 165, 233, 0.15);
-  color: var(--accent-color);
+  letter-spacing: 0.5px;
 }
 
 .hero-title {
-  margin: 0;
   font-size: 32px;
   font-weight: 800;
   color: var(--heading-color);
-  line-height: 1.15;
+  margin: 0;
 }
 
-.hero-subtitle {
-  margin: 0;
-  color: var(--muted-text);
+.hero-text {
   font-size: 16px;
-  line-height: 1.55;
+  color: var(--muted-text);
+  margin: 0;
+  line-height: 1.6;
 }
 
 .hero-meta {
-  display: flex;
-  align-items: center;
+  display: grid;
   gap: 18px;
-  font-size: 14px;
-  color: var(--muted-text);
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  padding: 18px 20px;
+  background: rgba(255, 255, 255, 0.65);
+  border-radius: 20px;
+  border: 1px solid var(--border-soft);
 }
 
 .meta-block {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .meta-label {
+  font-size: 12px;
   font-weight: 600;
-  color: var(--muted-text);
   text-transform: uppercase;
-  font-size: 11px;
   letter-spacing: 0.5px;
+  color: var(--muted-text);
 }
 
 .meta-value {
+  font-size: 20px;
   font-weight: 700;
   color: var(--heading-color);
 }
 
-.hero-right {
-  flex: 1 1 280px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 24px;
-  min-width: 280px;
+.meta-hint {
+  font-size: 13px;
+  color: var(--muted-text);
 }
 
-.hero-highlight {
-  background: var(--surface-card);
-  border-radius: 20px;
-  padding: 22px;
+.meta-chip {
+  align-self: flex-start;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.hero-side {
+  flex: 1 1 280px;
+  max-width: 360px;
+  display: flex;
+  align-items: stretch;
+}
+
+.batch-card {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 16px;
+  padding: 26px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.75);
   border: 1px solid var(--border-soft);
 }
 
-.highlight-label {
-  font-size: 12px;
-  text-transform: uppercase;
-  color: var(--muted-text);
-  letter-spacing: 0.5px;
-  font-weight: 600;
-}
-
-.highlight-value {
-  font-size: 36px;
-  font-weight: 800;
+.batch-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
   color: var(--heading-color);
 }
 
-.highlight-change {
+.batch-subtitle {
   font-size: 13px;
-  font-weight: 600;
   color: var(--muted-text);
 }
 
-.highlight-change.positive {
-  color: #059669;
-}
-
-.hero-spark {
+.batch-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: var(--surface-card);
-  border-radius: 20px;
-  padding: 22px;
-  border: 1px solid var(--border-soft);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.hero-sparkline {
-  height: 120px;
-  --v-theme-surface-variant: rgba(14, 165, 233, 0.16);
-  color: #0ea5e9;
+.batch-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.04);
 }
 
-.hero-caption {
+.batch-time {
+  font-weight: 600;
+  color: var(--heading-color);
+}
+
+.batch-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  color: var(--muted-text);
+}
+
+.batch-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 13px;
   color: var(--muted-text);
 }
 
 .metric-card {
-  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
   padding: 22px;
+  border-radius: 22px;
   background: var(--surface-card);
-  border-radius: 24px;
   border: 1px solid var(--border-soft);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.metric-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
 }
 
 .metric-header {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
 }
 
 .metric-icon {
-  color: var(--accent-color);
-  box-shadow: var(--accent-shadow);
+  color: #0f172a;
 }
 
 .metric-text {
@@ -598,59 +790,60 @@ const formattedDate = computed(() => {
 }
 
 .metric-label {
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  color: var(--muted-text);
+  font-size: 14px;
   font-weight: 600;
+  color: var(--muted-text);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
 }
 
 .metric-value {
-  font-size: 24px;
-  font-weight: 800;
+  font-size: 26px;
+  font-weight: 700;
   color: var(--heading-color);
 }
 
 .metric-body {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
+}
+
+.metric-caption {
+  font-size: 14px;
+  color: var(--muted-text);
 }
 
 .metric-trend {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-weight: 600;
   font-size: 13px;
-  color: var(--muted-text);
+  padding: 4px 10px;
+  border-radius: 999px;
 }
 
 .metric-trend.positive {
-  color: #059669;
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
 }
 
 .metric-trend.negative {
-  color: #dc2626;
+  background: rgba(248, 113, 113, 0.12);
+  color: #b91c1c;
 }
 
-.metric-trend .trend-label {
-  font-weight: 500;
-  color: var(--muted-text);
-}
-
-.metric-sparkline {
-  height: 70px;
+.trend-label {
+  font-weight: 600;
 }
 
 .panel-card {
-  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 24px 26px;
+  gap: 20px;
+  padding: 26px;
+  border-radius: 24px;
   background: var(--surface-card);
-  border-radius: 26px;
   border: 1px solid var(--border-soft);
 }
 
@@ -662,7 +855,7 @@ const formattedDate = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
 }
 
 .panel-header h2 {
@@ -673,22 +866,12 @@ const formattedDate = computed(() => {
 }
 
 .panel-hint {
-  display: block;
   font-size: 13px;
   color: var(--muted-text);
-  margin-top: 4px;
 }
 
 .panel-chip {
-  border-radius: 999px;
-  background: rgba(14, 165, 233, 0.16);
-  color: var(--accent-color);
-  font-weight: 600;
-}
-
-.panel-chip.warning {
-  background: rgba(248, 113, 113, 0.16);
-  color: #dc2626;
+  align-self: flex-start;
 }
 
 .panel-body {
@@ -699,7 +882,6 @@ const formattedDate = computed(() => {
 
 .trend-chart {
   height: 160px;
-  color: #0ea5e9;
 }
 
 .panel-legend {
@@ -710,41 +892,44 @@ const formattedDate = computed(() => {
 }
 
 .legend-item {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  display: inline-block;
 }
 
 .dot.primary {
-  background: #38bdf8;
+  background: rgba(14, 165, 233, 0.8);
 }
 
 .dot.secondary {
-  background: #2dd4bf;
+  background: rgba(99, 102, 241, 0.65);
 }
 
 .panel-summary {
-  margin-top: 12px;
+  margin-top: 6px;
 }
 
 .summary-item {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.03);
 }
 
 .summary-label {
-  font-size: 12px;
-  text-transform: uppercase;
-  color: var(--muted-text);
+  font-size: 13px;
   font-weight: 600;
+  color: var(--muted-text);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
 }
 
 .summary-value {
@@ -754,106 +939,101 @@ const formattedDate = computed(() => {
 }
 
 .summary-value.positive {
-  color: #059669;
+  color: #047857;
 }
 
-.status-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 18px;
-}
-
-.status-card {
-  background: var(--surface-card);
-  border-radius: 20px;
-  padding: 18px;
-  border: 1px solid var(--border-soft);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.status-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.status-icon {
-  color: var(--accent-color);
-}
-
-.status-chip {
-  font-weight: 600;
-  text-transform: none;
-}
-
-.status-body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.status-title {
-  font-size: 14px;
+.summary-hint {
+  font-size: 12px;
   color: var(--muted-text);
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  font-weight: 600;
 }
 
-.status-value {
-  font-size: 22px;
+.freshness-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.freshness-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.freshness-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.freshness-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+
+.freshness-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.freshness-label {
+  font-size: 15px;
   font-weight: 700;
   color: var(--heading-color);
 }
 
-.status-desc {
+.freshness-hint {
+  font-size: 13px;
+  color: var(--muted-text);
+}
+
+.freshness-values {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+
+.freshness-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 13px;
   color: var(--muted-text);
 }
 
 .alert-list {
-  padding: 0;
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .alert-item {
   border-radius: 16px;
-  margin-bottom: 8px;
-  padding: 12px;
-  background: rgba(148, 163, 184, 0.08);
-}
-
-.alert-item:last-child {
-  margin-bottom: 0;
 }
 
 .region-list {
-  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .region-item {
   border-radius: 16px;
-  margin-bottom: 10px;
-  padding: 12px 16px;
-  background: rgba(148, 163, 184, 0.08);
-}
-
-.region-item:last-child {
-  margin-bottom: 0;
 }
 
 .region-rank {
   width: 32px;
   height: 32px;
-  border-radius: 12px;
-  background: rgba(14, 165, 233, 0.14);
-  color: var(--accent-color);
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.05);
   font-weight: 700;
+  color: var(--heading-color);
 }
 
 .region-meta {
@@ -869,59 +1049,73 @@ const formattedDate = computed(() => {
 }
 
 .region-trend {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
 }
 
 .region-trend.positive {
-  color: #059669;
+  color: #047857;
 }
 
 .region-trend.negative {
-  color: #dc2626;
+  color: #b91c1c;
 }
 
-@media (max-width: 1280px) {
-  .dashboard-shell {
-    padding: 22px;
-  }
+.region-hint {
+  font-size: 12px;
+  color: var(--muted-text);
+}
 
-  .hero-title {
-    font-size: 28px;
-  }
+.notes-grid {
+  margin-top: 4px;
+}
+
+.note-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.03);
+}
+
+.note-icon {
+  color: #0f172a;
+}
+
+.note-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.note-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--heading-color);
+}
+
+.note-desc {
+  font-size: 13px;
+  color: var(--muted-text);
+}
+
+.notes-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted-text);
+  margin-top: 12px;
 }
 
 @media (max-width: 960px) {
-  .dashboard-hero {
-    padding: 26px;
+  .hero-card {
+    padding: 28px;
   }
 
-  .hero-meta {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-}
-
-@media (max-width: 600px) {
-  .dashboard-shell {
-    padding: 18px 16px 60px;
-  }
-
-  .dashboard-hero {
-    padding: 22px;
-  }
-
-  .hero-title {
-    font-size: 24px;
-  }
-
-  .metric-card {
-    padding: 20px;
-  }
-
-  .panel-card {
-    padding: 22px;
+  .hero-side {
+    max-width: 100%;
   }
 }
 </style>
