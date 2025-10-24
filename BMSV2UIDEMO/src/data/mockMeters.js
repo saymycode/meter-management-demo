@@ -1,0 +1,269 @@
+export const organizationProfile = {
+  id: 'aski',
+  name: 'ASKİ Su ve Elektrik Operasyon Merkezi',
+  scope: 'ASKİ',
+  region: 'Ankara',
+  description:
+    'ASKİ sayaçları LoRa ve GPRS ağları üzerinden gün içinde rastgele saatlerde veri gönderir. Tüm paneller kurum kapsamında filtrelenir ve başka bir organizasyonun verisi bu ekranda yer almaz.',
+  tagline: 'Günlük pencere tabanlı sayaç izlemesi'
+}
+
+export const referenceNow = '2025-01-14T10:30:00+03:00'
+
+export const meterSnapshots = [
+  {
+    id: 'ASKI-W-10021',
+    type: 'water',
+    communication: 'LoRa',
+    location: 'Çankaya DMA-3 • Maltepe Mah.',
+    lastCommunication: '2025-01-14T09:42:00+03:00',
+    consumption: {
+      last24h: 48.2,
+      previous24h: 44.5,
+      history: [11.4, 9.8, 10.7, 8.9, 7.4]
+    },
+    zone: 'Çankaya DMA-3',
+    lastReading: '48.2 m³',
+    battery: '%86',
+    signal: '-78 dBm',
+    window: 'Dinamik 24s',
+    lat: 39.9106,
+    lng: 32.8537
+  },
+  {
+    id: 'ASKI-W-10077',
+    type: 'water',
+    communication: 'LoRa',
+    location: 'Yenimahalle • Demetevler',
+    lastCommunication: '2025-01-14T06:20:00+03:00',
+    consumption: {
+      last24h: 38.6,
+      previous24h: 37.9,
+      history: [8.1, 7.4, 6.8, 7.6, 8.7]
+    },
+    zone: 'Yenimahalle Batı',
+    lastReading: '38.6 m³',
+    battery: '%81',
+    signal: '-84 dBm',
+    window: 'Dinamik 24s',
+    lat: 39.9681,
+    lng: 32.7579
+  },
+  {
+    id: 'ASKI-W-10103',
+    type: 'water',
+    communication: 'GPRS',
+    location: 'Sincan • Temelli OSB',
+    lastCommunication: '2025-01-13T17:55:00+03:00',
+    consumption: {
+      last24h: 24.1,
+      previous24h: 29.3,
+      history: [6.8, 6.1, 5.4, 4.0, 1.8]
+    },
+    zone: 'Sincan Sanayi',
+    lastReading: '24.1 m³',
+    battery: '%74',
+    signal: '-95 dBm',
+    window: 'Dinamik 24s',
+    lat: 39.9099,
+    lng: 32.4898
+  },
+  {
+    id: 'ASKI-W-10244',
+    type: 'water',
+    communication: 'LoRa',
+    location: 'Mamak • Natoyolu',
+    lastCommunication: '2025-01-12T12:35:00+03:00',
+    consumption: {
+      last24h: 9.7,
+      previous24h: 18.4,
+      history: [3.5, 2.4, 1.8, 1.2, 0.8]
+    },
+    zone: 'Mamak Doğu',
+    lastReading: '9.7 m³',
+    battery: '%52',
+    signal: '-102 dBm',
+    window: 'Dinamik 24s',
+    lat: 39.9334,
+    lng: 32.9113
+  },
+  {
+    id: 'ASKI-E-22017',
+    type: 'electric',
+    communication: 'GPRS',
+    location: 'Etimesgut • Elvankent Trafo',
+    lastCommunication: '2025-01-14T08:58:00+03:00',
+    consumption: {
+      last24h: 612.0,
+      previous24h: 588.3,
+      history: [142, 148, 151, 152, 145]
+    },
+    zone: 'Etimesgut Enerji',
+    lastReading: '612 kWh',
+    battery: '—',
+    signal: 'RSRP -96 dBm',
+    window: 'Dinamik 24s',
+    lat: 39.9471,
+    lng: 32.6367
+  },
+  {
+    id: 'ASKI-E-22064',
+    type: 'electric',
+    communication: 'GPRS',
+    location: 'Polatlı • Zafer Mah.',
+    lastCommunication: '2025-01-13T21:12:00+03:00',
+    consumption: {
+      last24h: 452.4,
+      previous24h: 463.1,
+      history: [118, 120, 112, 101, 91]
+    },
+    zone: 'Polatlı Şebeke',
+    lastReading: '452 kWh',
+    battery: '—',
+    signal: 'RSRP -102 dBm',
+    window: 'Dinamik 24s',
+    lat: 39.584,
+    lng: 32.1413
+  },
+  {
+    id: 'ASKI-E-22102',
+    type: 'electric',
+    communication: 'LoRa',
+    location: 'Altındağ • Siteler',
+    lastCommunication: '2025-01-14T04:44:00+03:00',
+    consumption: {
+      last24h: 734.2,
+      previous24h: 702.5,
+      history: [168, 172, 152, 125, 117]
+    },
+    zone: 'Altındağ Sanayi',
+    lastReading: '734 kWh',
+    battery: '%64',
+    signal: '-88 dBm',
+    window: 'Dinamik 24s',
+    lat: 39.9541,
+    lng: 32.8748
+  },
+  {
+    id: 'ASKI-W-10312',
+    type: 'water',
+    communication: 'LoRa',
+    location: 'Keçiören • Esertepe',
+    lastCommunication: '2025-01-13T13:18:00+03:00',
+    consumption: {
+      last24h: 18.4,
+      previous24h: 21.0,
+      history: [5.4, 4.1, 3.3, 2.8, 2.1]
+    },
+    zone: 'Keçiören Kuzey',
+    lastReading: '18.4 m³',
+    battery: '%69',
+    signal: '-94 dBm',
+    window: 'Dinamik 24s',
+    lat: 40.0017,
+    lng: 32.8703
+  },
+  {
+    id: 'ASKI-W-10365',
+    type: 'water',
+    communication: 'GPRS',
+    location: 'Beypazarı • Bağözü',
+    lastCommunication: '2025-01-14T05:05:00+03:00',
+    consumption: {
+      last24h: 33.8,
+      previous24h: 31.4,
+      history: [7.2, 6.5, 6.0, 6.8, 7.3]
+    },
+    zone: 'Beypazarı Hat',
+    lastReading: '33.8 m³',
+    battery: '%77',
+    signal: '-90 dBm',
+    window: 'Dinamik 24s',
+    lat: 40.1652,
+    lng: 31.9199
+  },
+  {
+    id: 'ASKI-E-22214',
+    type: 'electric',
+    communication: 'LoRa',
+    location: 'Yenimahalle • Ostim OSB',
+    lastCommunication: '2025-01-14T07:35:00+03:00',
+    consumption: {
+      last24h: 812.6,
+      previous24h: 798.2,
+      history: [198, 184, 162, 140, 128]
+    },
+    zone: 'Ostim Enerji',
+    lastReading: '812 kWh',
+    battery: '%58',
+    signal: '-86 dBm',
+    window: 'Dinamik 24s',
+    lat: 39.974,
+    lng: 32.7685
+  },
+  {
+    id: 'ASKI-E-22308',
+    type: 'electric',
+    communication: 'GPRS',
+    location: 'Kahramankazan • Saray',
+    lastCommunication: '2025-01-12T17:02:00+03:00',
+    consumption: {
+      last24h: 112.8,
+      previous24h: 201.4,
+      history: [44, 33, 19, 11, 6]
+    },
+    zone: 'Kazan Besleme',
+    lastReading: '112 kWh',
+    battery: '—',
+    signal: 'RSRP -110 dBm',
+    window: 'Dinamik 24s',
+    lat: 40.1964,
+    lng: 32.6839
+  },
+  {
+    id: 'ASKI-W-10408',
+    type: 'water',
+    communication: 'LoRa',
+    location: 'Gölbaşı • Taşpınar',
+    lastCommunication: '2025-01-14T02:26:00+03:00',
+    consumption: {
+      last24h: 27.5,
+      previous24h: 25.2,
+      history: [6.2, 5.9, 5.3, 5.0, 5.1]
+    },
+    zone: 'Gölbaşı Güney',
+    lastReading: '27.5 m³',
+    battery: '%83',
+    signal: '-82 dBm',
+    window: 'Dinamik 24s',
+    lat: 39.7682,
+    lng: 32.8026
+  }
+]
+
+export const hourlyActivity = [
+  { hour: '00', count: 36 },
+  { hour: '01', count: 28 },
+  { hour: '02', count: 25 },
+  { hour: '03', count: 19 },
+  { hour: '04', count: 31 },
+  { hour: '05', count: 44 },
+  { hour: '06', count: 52 },
+  { hour: '07', count: 68 },
+  { hour: '08', count: 75 },
+  { hour: '09', count: 81 },
+  { hour: '10', count: 62 },
+  { hour: '11', count: 55 },
+  { hour: '12', count: 48 },
+  { hour: '13', count: 42 },
+  { hour: '14', count: 37 },
+  { hour: '15', count: 33 },
+  { hour: '16', count: 29 },
+  { hour: '17', count: 24 },
+  { hour: '18', count: 21 },
+  { hour: '19', count: 19 },
+  { hour: '20', count: 17 },
+  { hour: '21', count: 14 },
+  { hour: '22', count: 12 },
+  { hour: '23', count: 9 }
+]

@@ -1,37 +1,59 @@
 <template>
-  <v-container fluid class="sensor-shell" tag="section">
-    <div class="sensor-header">
-      <div class="sensor-heading">
-        <div class="sensor-badge">Su sayaçları</div>
-        <h1 class="sensor-title">Sayaç listesi</h1>
-        <p class="sensor-subtitle">
-          Kurumunuzun LoRa ve GPRS sayaçları günde üç kez veri gönderir. Aşağıdaki liste son alınan partiye göre
-          güncellendi; geciken sayaçlar otomatik olarak vurgulanır.
+  <v-container fluid class="sensor-dashboard" tag="section">
+    <section class="sensor-header">
+      <div class="header-left">
+        <div class="header-chip">{{ organization.scope }} • Sensör listesi</div>
+        <h1>Kurumsal sayaç yönetimi</h1>
+        <p>
+          ASKİ'ye bağlı su ve elektrik sayaçları gün içinde rastgele saatlerde paket gönderir. Bu ekran yalnızca kurumunuza ait
+          LoRa ve GPRS sayaçlarını gösterir; farklı organizasyonların verileri görünmez.
         </p>
-      </div>
-      <div class="sensor-header-meta">
-        <div class="meta-card">
-          <span class="meta-label">Son veri alımı</span>
-          <span class="meta-value">{{ lastBatchLabel }}</span>
-          <v-chip :color="freshnessChip.color" size="small" variant="tonal">{{ freshnessChip.label }}</v-chip>
-          <span class="meta-hint">{{ lastBatchAgo }}</span>
+        <div class="header-meta">
+          <DataFreshnessIndicator
+            :last-update="lastPacket"
+            :now="now"
+            :pending-threshold-hours="24"
+            :inactive-threshold-hours="48"
+            title="Son veri"
+          />
+          <div class="meta-grid">
+            <div class="meta-item" v-for="meta in headerMetrics" :key="meta.label">
+              <span class="meta-label">{{ meta.label }}</span>
+              <span class="meta-value">{{ meta.value }}</span>
+              <span class="meta-hint">{{ meta.hint }}</span>
+            </div>
+          </div>
         </div>
-        <div class="meta-card">
-          <span class="meta-label">Bir sonraki pencere</span>
-          <span class="meta-value">{{ nextWindowLabel }}</span>
-          <span class="meta-hint">{{ nextWindowCountdown }}</span>
+      </div>
+      <div class="header-right">
+        <div class="summary-item">
+          <span class="summary-label">Toplam sayaç</span>
+          <span class="summary-value">{{ totalSensors.toLocaleString('tr-TR') }}</span>
+        </div>
+        <div class="summary-split">
+          <div>
+            <span class="summary-label">LoRa</span>
+            <span class="summary-value">{{ communicationBreakdown.LoRa.toLocaleString('tr-TR') }}</span>
+          </div>
+          <div>
+            <span class="summary-label">GPRS</span>
+            <span class="summary-value">{{ communicationBreakdown.GPRS.toLocaleString('tr-TR') }}</span>
+          </div>
+        </div>
+        <div class="summary-note">
+          <v-icon icon="mdi-lightning-bolt" size="18" />
+          <span>Veriler canlı değil; her sayaç 24 saatlik pencere içinde rastgele saatlerde görünür.</span>
         </div>
       </div>
-    </div>
+    </section>
 
     <v-row class="sensor-content" no-gutters>
       <v-col cols="12" md="3" class="filter-column">
         <v-card class="filter-card" elevation="0">
           <div class="filter-header">
             <h2>Filtreler</h2>
-            <v-btn color="primary" density="comfortable" variant="text" @click="resetFilters">Temizle</v-btn>
+            <v-btn density="comfortable" variant="text" @click="resetFilters">Temizle</v-btn>
           </div>
-
           <div class="filter-group">
             <span class="filter-title">Durum</span>
             <v-chip-group v-model="selectedStatuses" column multiple>
@@ -48,41 +70,54 @@
               </v-chip>
             </v-chip-group>
           </div>
-
           <div class="filter-group">
             <span class="filter-title">Veri tazeliği</span>
             <v-chip-group v-model="selectedFreshness" column multiple>
               <v-chip
-                v-for="bucket in freshnessOptions"
-                :key="bucket"
-                :value="bucket"
+                v-for="option in freshnessOptions"
+                :key="option"
+                :value="option"
                 class="filter-chip"
                 color="teal"
                 filter
                 variant="tonal"
               >
-                {{ bucket }}
+                {{ option }}
               </v-chip>
             </v-chip-group>
           </div>
-
           <div class="filter-group">
-            <span class="filter-title">İletişim yöntemi</span>
+            <span class="filter-title">İletişim</span>
             <v-chip-group v-model="selectedComm" column multiple>
               <v-chip
-                v-for="method in communicationOptions"
-                :key="method"
-                :value="method"
+                v-for="comm in communicationOptions"
+                :key="comm"
+                :value="comm"
                 class="filter-chip"
                 color="blue"
                 filter
                 variant="tonal"
               >
-                {{ method }}
+                {{ comm }}
               </v-chip>
             </v-chip-group>
           </div>
-
+          <div class="filter-group">
+            <span class="filter-title">Sayaç tipi</span>
+            <v-chip-group v-model="selectedTypes" column multiple>
+              <v-chip
+                v-for="type in typeOptions"
+                :key="type"
+                :value="type"
+                class="filter-chip"
+                color="purple"
+                filter
+                variant="tonal"
+              >
+                {{ type }}
+              </v-chip>
+            </v-chip-group>
+          </div>
           <div class="filter-group">
             <span class="filter-title">Bölgeler</span>
             <v-chip-group v-model="selectedZones" column multiple>
@@ -91,7 +126,7 @@
                 :key="zone"
                 :value="zone"
                 class="filter-chip"
-                color="purple"
+                color="amber"
                 filter
                 variant="tonal"
               >
@@ -101,36 +136,25 @@
           </div>
         </v-card>
 
-        <v-card class="schedule-card" elevation="0">
-          <div class="schedule-header">
-            <div>
-              <h2>İletim pencereleri</h2>
-              <p>Beklenen parti saatleri ve mevcut durum.</p>
-            </div>
-            <v-chip class="schedule-chip" prepend-icon="mdi-calendar-clock" size="small" variant="flat">
-              Sıradaki: {{ nextWindowLabel }}
-            </v-chip>
+        <v-card class="plan-card" elevation="0">
+          <div class="plan-header">
+            <h2>Arayüz tutarlılık planı</h2>
+            <span>Sensor ekranı için görsel prensipler</span>
           </div>
-          <v-table class="schedule-table" density="compact">
-            <thead>
-              <tr>
-                <th>Saat</th>
-                <th>Durum</th>
-                <th>Not</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="slot in scheduleTimeline" :key="slot.key">
-                <td class="schedule-time">{{ slot.time }}</td>
-                <td class="schedule-status">
-                  <v-chip :color="scheduleStatusColor(slot.status)" size="small" variant="tonal">
-                    {{ slot.statusLabel }}
-                  </v-chip>
-                </td>
-                <td class="schedule-note">{{ slot.note }}</td>
-              </tr>
-            </tbody>
-          </v-table>
+          <v-list density="compact" class="plan-list">
+            <v-list-item>
+              <v-list-item-title>• Koyu kartlar, neon aksanlar ve yuvarlatılmış köşeler HomeView ile aynıdır.</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-title>• Veri tazeliği çip renkleri (yeşil/sarı/kırmızı) hem grid hem kart görünümünde tekrar eder.</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-title>• Tipografi hiyerarşisi: başlıklar 20px, etiketler 13px üst-alt boşluklu.</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-title>• Kart geçişlerinde hafif gölge ve hover ışımaları kullanılır; animasyonlar 160ms.</v-list-item-title>
+            </v-list-item>
+          </v-list>
         </v-card>
       </v-col>
 
@@ -147,15 +171,14 @@
               variant="outlined"
               clearable
             />
-
             <div class="toolbar-actions">
-              <v-btn color="primary" variant="text" @click="selectAllRows">Tümünü seç</v-btn>
+              <v-btn variant="text" @click="selectAllRows">Tümünü seç</v-btn>
               <v-btn
                 color="primary"
-                prepend-icon="mdi-clipboard-text"
+                prepend-icon="mdi-clipboard-text-outline"
                 variant="flat"
                 :disabled="selectedRows.length === 0"
-                @click="sendWorkOrder"
+                @click="openWorkOrder"
               >
                 İş emri planla
               </v-btn>
@@ -168,29 +191,25 @@
 
           <div class="list-meta">
             <v-chip class="meta-chip" color="primary" variant="tonal">Toplam: {{ filteredStats.total }}</v-chip>
-            <v-chip class="meta-chip" color="success" variant="tonal">Takvimde: {{ filteredStats.onTime }}</v-chip>
-            <v-chip class="meta-chip" color="amber-darken-2" variant="tonal">
-              1 çevrim gecikmeli: {{ filteredStats.delayed }}
-            </v-chip>
-            <v-chip class="meta-chip" color="red-darken-2" variant="tonal">
-              2+ çevrim gecikmeli: {{ filteredStats.missed }}
-            </v-chip>
+            <v-chip class="meta-chip" color="success" variant="tonal">Aktif: {{ filteredStats.active }}</v-chip>
+            <v-chip class="meta-chip" color="amber-darken-2" variant="tonal">Beklemede: {{ filteredStats.pending }}</v-chip>
+            <v-chip class="meta-chip" color="red-darken-2" variant="tonal">Pasif: {{ filteredStats.inactive }}</v-chip>
           </div>
 
           <div v-if="viewMode === 'table'" class="grid-wrapper">
             <ag-grid-vue
               ref="gridRef"
-              class="ag-theme-alpine sensor-grid"
+              class="ag-theme-alpine-dark sensor-grid"
               :columnDefs="columnDefs"
               :rowData="filteredSensors"
               :quickFilterText="searchTerm"
               :defaultColDef="defaultColDef"
               :gridOptions="gridOptions"
-              :localeText="localeText"
-              animateRows
-              pagination
-              :paginationPageSize="8"
-              rowSelection="multiple"
+              :rowSelection="'multiple'"
+              :animateRows="true"
+              :pagination="true"
+              :paginationPageSize="10"
+              suppressMovableColumns
               @selection-changed="onSelectionChanged"
             />
           </div>
@@ -204,28 +223,38 @@
                       <span class="sensor-id">{{ sensor.sensorId }}</span>
                       <span class="sensor-zone">{{ sensor.zone }}</span>
                     </div>
-                    <v-chip :color="sensor.freshnessChipColor" size="small" variant="tonal">
-                      {{ sensor.freshnessBadge }}
-                    </v-chip>
+                    <v-chip :color="sensor.freshnessChip" size="small" variant="tonal">{{ sensor.freshnessBadge }}</v-chip>
                   </div>
                   <div class="sensor-card-body">
+                    <div class="sensor-row">
+                      <span class="sensor-label">Tip</span>
+                      <span class="sensor-value">{{ sensor.typeLabel }} • {{ sensor.commMethod }}</span>
+                    </div>
                     <div class="sensor-row">
                       <span class="sensor-label">Son veri</span>
                       <span class="sensor-value">{{ sensor.lastPacketDisplay }}</span>
                     </div>
                     <div class="sensor-row">
-                      <span class="sensor-label">Durum</span>
-                      <span class="sensor-value">{{ sensor.status }} • {{ sensor.commMethod }}</span>
+                      <span class="sensor-label">Konum</span>
+                      <span class="sensor-value">{{ sensor.location }}</span>
                     </div>
                     <div class="sensor-row">
                       <span class="sensor-label">Okuma</span>
-                      <span class="sensor-value">{{ sensor.lastReading }} • {{ sensor.window }}</span>
+                      <span class="sensor-value">{{ sensor.lastReading }}</span>
                     </div>
                     <div class="sensor-row">
                       <span class="sensor-label">Batarya / Sinyal</span>
                       <span class="sensor-value">{{ sensor.battery }} • {{ sensor.signal }}</span>
                     </div>
                   </div>
+                  <v-sparkline
+                    :model-value="sensor.sparkline"
+                    :smooth="12"
+                    :line-width="3"
+                    auto-draw
+                    class="sensor-sparkline"
+                    color="rgba(59,130,246,0.6)"
+                  />
                 </div>
               </v-col>
             </v-row>
@@ -236,110 +265,36 @@
           <div class="map-header">
             <div>
               <h2>Konum görünümü</h2>
-              <span class="map-subtitle">Son parti: {{ lastBatchLabel }} • {{ lastBatchAgo }}</span>
+              <span class="map-subtitle">Son paket: {{ lastPacketLabel }} • {{ lastPacketAgo }}</span>
             </div>
-            <v-chip prepend-icon="mdi-map-marker-path" size="small" variant="tonal">DMA odaklı</v-chip>
+            <v-chip prepend-icon="mdi-crosshairs-gps" size="small" variant="tonal">Kurum kapsamı</v-chip>
           </div>
           <div id="sensor-map" class="map-container" />
           <div class="map-legend">
             <div class="legend-item">
-              <span class="legend-dot on-time" /> Takvimde
+              <span class="legend-dot active" /> Aktif
             </div>
             <div class="legend-item">
-              <span class="legend-dot delayed" /> 1 çevrim gecikmeli
+              <span class="legend-dot pending" /> Beklemede
             </div>
             <div class="legend-item">
-              <span class="legend-dot missed" /> 2+ çevrim gecikmeli
+              <span class="legend-dot inactive" /> Pasif
             </div>
           </div>
         </v-card>
-
-        <v-row class="log-row" no-gutters>
-          <v-col cols="12" lg="6">
-            <v-card class="log-card" elevation="0">
-              <div class="log-header">
-                <div>
-                  <h2>İş emri geçmişi</h2>
-                  <span>Son gönderilen işlemler</span>
-                </div>
-                <v-btn color="primary" size="small" variant="text">Tamamını gör</v-btn>
-              </div>
-              <v-table density="compact">
-                <thead>
-                  <tr>
-                    <th>Kod</th>
-                    <th>Sayaç</th>
-                    <th>Tip</th>
-                    <th>Durum</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="entry in workOrderData.slice(0, 6)" :key="entry.workOrderId">
-                    <td>{{ entry.workOrderId }}</td>
-                    <td>{{ entry.sensorId }}</td>
-                    <td>{{ entry.type }}</td>
-                    <td>{{ entry.status }}</td>
-                  </tr>
-                </tbody>
-              </v-table>
-            </v-card>
-          </v-col>
-
-          <v-col cols="12" lg="6">
-            <v-card class="log-card" elevation="0">
-              <div class="log-header">
-                <div>
-                  <h2>Alarm listesi</h2>
-                  <span>Partilere göre gruplanan açık uyarılar</span>
-                </div>
-                <v-btn color="primary" size="small" variant="text">Alarm yönetimi</v-btn>
-              </div>
-              <v-table density="compact">
-                <thead>
-                  <tr>
-                    <th>Kod</th>
-                    <th>Sayaç</th>
-                    <th>Alarm</th>
-                    <th>Seviye</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="alert in alertData.slice(0, 6)" :key="alert.alertId">
-                    <td>{{ alert.alertId }}</td>
-                    <td>{{ alert.sensorId }}</td>
-                    <td>{{ alert.type }}</td>
-                    <td>{{ alert.severity }}</td>
-                  </tr>
-                </tbody>
-              </v-table>
-            </v-card>
-          </v-col>
-        </v-row>
       </v-col>
     </v-row>
   </v-container>
 
-  <v-navigation-drawer
-    v-model="workOrderPanel"
-    location="right"
-    width="420"
-    temporary
-    scrim="false"
-    elevation="10"
-  >
+  <v-navigation-drawer v-model="workOrderPanel" location="right" width="420" temporary scrim="false" elevation="10">
     <v-card flat>
-      <v-card-title class="text-h6 d-flex align-center justify-space-between">
+      <v-card-title class="drawer-title">
         <span>İş emri planla</span>
         <v-btn icon="mdi-close" variant="text" @click="workOrderPanel = false" />
       </v-card-title>
-
       <v-divider />
-
       <v-card-text>
-        <div class="text-subtitle-2 mb-3 text-grey-darken-1">
-          Seçili sayaç sayısı: <strong>{{ selectedRows.length }}</strong>
-        </div>
-
+        <div class="drawer-summary">Seçili sayaç sayısı: <strong>{{ selectedRows.length }}</strong></div>
         <v-select
           v-model="selectedWorkOrderType"
           :items="workOrderTypes"
@@ -348,45 +303,21 @@
           density="comfortable"
           class="mb-3"
         />
-
         <template v-if="selectedWorkOrderType === 'Kalibrasyon'">
-          <v-text-field
-            v-model="workOrderPayload.calibrationCode"
-            label="Kalibrasyon kodu"
-            variant="outlined"
-            density="comfortable"
-            class="mb-3"
-          />
+          <v-text-field v-model="workOrderPayload.calibrationCode" label="Kalibrasyon kodu" variant="outlined" />
         </template>
-
         <template v-else-if="selectedWorkOrderType === 'Firmware Güncelleme'">
-          <v-text-field
-            v-model="workOrderPayload.firmwareVersion"
-            label="Hedef firmware sürümü"
-            variant="outlined"
-            density="comfortable"
-            class="mb-3"
-          />
+          <v-text-field v-model="workOrderPayload.firmwareVersion" label="Hedef sürüm" variant="outlined" />
         </template>
-
         <template v-else-if="selectedWorkOrderType === 'Sensör Sıfırlama'">
-          <v-text-field
-            v-model="workOrderPayload.resetReason"
-            label="Sıfırlama nedeni"
-            variant="outlined"
-            density="comfortable"
-            class="mb-3"
-          />
+          <v-text-field v-model="workOrderPayload.resetReason" label="Sıfırlama nedeni" variant="outlined" />
         </template>
-
-        <v-textarea v-model="workOrderPayload.description" label="Açıklama" variant="outlined" rows="2" />
+        <v-textarea v-model="workOrderPayload.description" label="Açıklama" variant="outlined" rows="3" />
       </v-card-text>
-
       <v-divider />
-
       <v-card-actions class="justify-end">
-        <v-btn color="grey" variant="text" @click="workOrderPanel = false">İptal</v-btn>
-        <v-btn color="primary" variant="flat" @click="confirmSendWorkOrder">Gönder</v-btn>
+        <v-btn variant="text" @click="workOrderPanel = false">İptal</v-btn>
+        <v-btn color="primary" variant="flat" @click="confirmWorkOrder">Gönder</v-btn>
       </v-card-actions>
     </v-card>
   </v-navigation-drawer>
@@ -394,434 +325,201 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { AgGridVue } from 'ag-grid-vue3'
-import 'ag-grid-enterprise'
 import { ModuleRegistry } from 'ag-grid-community'
 import { AllEnterpriseModule } from 'ag-grid-enterprise'
-ModuleRegistry.registerModules([AllEnterpriseModule])
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import DataFreshnessIndicator from '@/components/common/DataFreshnessIndicator.vue'
+import { meterSnapshots, organizationProfile, referenceNow } from '@/data/mockMeters'
+import { formatAbsolute, formatClock, formatRelativeAgo, hoursBetween, toDate } from '@/utils/time'
 
-const nowRef = ref(new Date())
-const lastBatchReceived = ref(new Date(Date.now() - 1000 * 60 * 165))
-const scheduleWindows = [8, 12, 24]
+ModuleRegistry.registerModules([AllEnterpriseModule])
 
-const formatTime = (date) =>
-  new Intl.DateTimeFormat('tr-TR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    day: 'numeric',
-    month: 'long'
-  }).format(date)
+const organization = organizationProfile
+const now = ref(new Date(referenceNow))
+const route = useRoute()
 
-const formatRelative = (from, to) => {
-  const diffMinutes = Math.round((to.getTime() - from.getTime()) / 60000)
-  const absMinutes = Math.abs(diffMinutes)
-  const hours = Math.floor(absMinutes / 60)
-  const minutes = absMinutes % 60
-  const buildText = () => {
-    if (hours === 0) return `${minutes} dk`
-    if (minutes === 0) return `${hours} saat`
-    return `${hours} saat ${minutes} dk`
-  }
-  return diffMinutes >= 0 ? `${buildText()} sonra` : `${buildText()} önce`
-}
-
-const formatAgo = (date, reference) => formatRelative(date, reference).replace('sonra', 'önce')
-
-const getFreshnessChip = (lastBatch, now) => {
-  const diffMinutes = Math.max(0, (now.getTime() - lastBatch.getTime()) / 60000)
-  if (diffMinutes <= 180) {
-    return {
-      label: 'Takvimde',
-      color: 'success',
-      helper: `Son parti ${formatAgo(lastBatch, now)} alındı`
-    }
-  }
-  if (diffMinutes <= 360) {
-    return {
-      label: '1 çevrim gecikti',
-      color: 'amber-darken-2',
-      helper: `Son parti ${formatAgo(lastBatch, now)} alındı`
-    }
-  }
-  return {
-    label: '2+ çevrim gecikti',
-    color: 'red-darken-2',
-    helper: `Son parti ${formatAgo(lastBatch, now)} alındı`
-  }
-}
-
-const getWindowDate = (base, hour) => {
-  const result = new Date(base)
-  if (hour === 24) {
-    result.setDate(result.getDate() + 1)
-    result.setHours(0, 0, 0, 0)
-  } else {
-    result.setHours(hour, 0, 0, 0)
-  }
-  return result
-}
-
-const scheduleTimeline = computed(() =>
-  scheduleWindows.map((hour) => {
-    const now = nowRef.value
-    const windowDate = getWindowDate(now, hour)
-    const lastBatch = lastBatchReceived.value
-    let status = 'upcoming'
-    let statusLabel = 'Bekleniyor'
-    let note = `${formatTime(windowDate)} hedef`
-
-    if (lastBatch.getTime() >= windowDate.getTime()) {
-      status = 'completed'
-      statusLabel = 'Tamamlandı'
-      note = `${formatAgo(windowDate, lastBatch)} içerisinde alındı`
-    } else if (now.getTime() >= windowDate.getTime()) {
-      status = 'delayed'
-      statusLabel = 'Gecikti'
-      note = 'Son parti bekleniyor'
-    }
-
-    return {
-      key: `${hour}-${status}`,
-      time: hour === 24 ? '24:00' : `${hour.toString().padStart(2, '0')}:00`,
-      status,
-      statusLabel,
-      note
-    }
-  })
-)
-
-const scheduleStatusColor = (status) => {
-  if (status === 'completed') return 'success'
-  if (status === 'delayed') return 'amber-darken-2'
-  return 'primary'
-}
-
-const nextWindow = computed(() => {
-  const now = nowRef.value
-  for (const hour of scheduleWindows) {
-    const candidate = getWindowDate(now, hour)
-    if (candidate.getTime() > now.getTime()) {
-      return candidate
-    }
-  }
-  const tomorrow = new Date(now)
-  tomorrow.setDate(now.getDate() + 1)
-  tomorrow.setHours(scheduleWindows[0], 0, 0, 0)
-  return tomorrow
-})
-
-const nextWindowLabel = computed(() => formatTime(nextWindow.value))
-const nextWindowCountdown = computed(() => formatRelative(nowRef.value, nextWindow.value))
-const lastBatchLabel = computed(() => formatTime(lastBatchReceived.value))
-const lastBatchAgo = computed(() => formatAgo(lastBatchReceived.value, nowRef.value))
-const freshnessChip = computed(() => getFreshnessChip(lastBatchReceived.value, nowRef.value))
-
-const statusOptions = ['Aktif', 'Gecikmeli', 'Offline']
-const freshnessOptions = ['Takvimde', '1 çevrim gecikmeli', '2+ çevrim gecikmeli']
+const statusOptions = ['Aktif', 'Beklemede', 'Pasif']
+const freshnessOptions = ['< 24 saat', '24-48 saat', '48+ saat']
 const communicationOptions = ['LoRa', 'GPRS']
+const typeOptions = ['Su', 'Elektrik']
 
 const selectedStatuses = ref([])
 const selectedFreshness = ref([])
 const selectedComm = ref([])
+const selectedTypes = ref([])
 const selectedZones = ref([])
 const searchTerm = ref('')
 
-const minutesAgoIso = (minutes) => new Date(nowRef.value.getTime() - minutes * 60000).toISOString()
+const rawSensors = ref(meterSnapshots)
 
-const sensors = ref([
-  {
-    sensorId: 'ASK-2401',
-    zone: 'Çankaya DMA-3',
-    location: 'Atatürk Bulvarı 112',
-    commMethod: 'LoRa',
-    lastReading: '132.4 m³',
-    lastPacketAt: minutesAgoIso(110),
-    window: '12:00',
-    status: 'Aktif',
-    battery: '%86',
-    signal: '-78 dBm',
-    freshnessMinutes: 110,
-    lat: 39.9106,
-    lng: 32.8537
-  },
-  {
-    sensorId: 'ASK-2409',
-    zone: 'Yenimahalle Batı',
-    location: 'İvedik OSB 8. Cd',
-    commMethod: 'GPRS',
-    lastReading: '94.2 m³',
-    lastPacketAt: minutesAgoIso(260),
-    window: '12:00',
-    status: 'Gecikmeli',
-    battery: '%72',
-    signal: '-92 dBm',
-    freshnessMinutes: 260,
-    lat: 39.9822,
-    lng: 32.7579
-  },
-  {
-    sensorId: 'ASK-2412',
-    zone: 'Keçiören Kuzey',
-    location: 'Şehit Kubilay Cd. 64',
-    commMethod: 'LoRa',
-    lastReading: '118.7 m³',
-    lastPacketAt: minutesAgoIso(70),
-    window: '12:00',
-    status: 'Aktif',
-    battery: '%88',
-    signal: '-74 dBm',
-    freshnessMinutes: 70,
-    lat: 40.0017,
-    lng: 32.8703
-  },
-  {
-    sensorId: 'ASK-2420',
-    zone: 'Sincan Sanayi',
-    location: '1. Organize Cd. 11',
-    commMethod: 'LoRa',
-    lastReading: '164.1 m³',
-    lastPacketAt: minutesAgoIso(410),
-    window: '00:00',
-    status: 'Gecikmeli',
-    battery: '%58',
-    signal: '-96 dBm',
-    freshnessMinutes: 410,
-    lat: 39.9681,
-    lng: 32.5638
-  },
-  {
-    sensorId: 'ASK-2435',
-    zone: 'Etimesgut Merkez',
-    location: 'İstasyon Cd. 23',
-    commMethod: 'GPRS',
-    lastReading: '101.8 m³',
-    lastPacketAt: minutesAgoIso(35),
-    window: '12:00',
-    status: 'Aktif',
-    battery: '%79',
-    signal: '-83 dBm',
-    freshnessMinutes: 35,
-    lat: 39.9471,
-    lng: 32.6367
-  },
-  {
-    sensorId: 'ASK-2442',
-    zone: 'Altındağ Tarihi',
-    location: 'Ulus Meydanı',
-    commMethod: 'LoRa',
-    lastReading: '76.5 m³',
-    lastPacketAt: minutesAgoIso(560),
-    window: '08:00',
-    status: 'Offline',
-    battery: '%38',
-    signal: '—',
-    freshnessMinutes: 560,
-    lat: 39.9407,
-    lng: 32.8596
-  },
-  {
-    sensorId: 'ASK-2450',
-    zone: 'Çankaya DMA-1',
-    location: 'Tunus Cd. 72',
-    commMethod: 'LoRa',
-    lastReading: '72.3 m³',
-    lastPacketAt: minutesAgoIso(70),
-    window: '12:00',
-    status: 'Aktif',
-    battery: '%91',
-    signal: '-70 dBm',
-    freshnessMinutes: 70,
-    lat: 39.9034,
-    lng: 32.8597
-  },
-  {
-    sensorId: 'ASK-2466',
-    zone: 'Mamak Konut',
-    location: 'Boğaziçi Mh. 41',
-    commMethod: 'GPRS',
-    lastReading: '52.9 m³',
-    lastPacketAt: minutesAgoIso(510),
-    window: '00:00',
-    status: 'Offline',
-    battery: '%44',
-    signal: '—',
-    freshnessMinutes: 510,
-    lat: 39.933,
-    lng: 32.9112
-  },
-  {
-    sensorId: 'ASK-2474',
-    zone: 'Keçiören Kuzey',
-    location: 'Osmangazi Mh. 9',
-    commMethod: 'LoRa',
-    lastReading: '104.2 m³',
-    lastPacketAt: minutesAgoIso(125),
-    window: '12:00',
-    status: 'Aktif',
-    battery: '%83',
-    signal: '-79 dBm',
-    freshnessMinutes: 125,
-    lat: 39.9994,
-    lng: 32.844
-  }
-])
-
-const zoneOptions = computed(() => {
-  const set = new Set()
-  sensors.value.forEach((sensor) => set.add(sensor.zone))
-  return Array.from(set).sort((a, b) => a.localeCompare(b, 'tr'))
-})
-
-const resolveFreshness = (minutes) => {
-  if (minutes <= 180) {
-    return {
-      badge: 'Takvimde',
-      filter: 'Takvimde',
-      chipColor: 'success',
-      level: 'on-time',
-      tone: 'rgba(16, 185, 129, 0.18)',
-      description: 'Son pencere verisi alındı.'
-    }
-  }
-  if (minutes <= 360) {
-    return {
-      badge: '1 çevrim gecikmeli',
-      filter: '1 çevrim gecikmeli',
-      chipColor: 'amber-darken-2',
-      level: 'delayed',
-      tone: 'rgba(245, 158, 11, 0.18)',
-      description: 'Son pencere verisi eksik.'
-    }
-  }
-  return {
-    badge: '2+ çevrim gecikmeli',
-    filter: '2+ çevrim gecikmeli',
-    chipColor: 'red-darken-2',
-    level: 'missed',
-    tone: 'rgba(248, 113, 113, 0.18)',
-    description: '24 saati aşan gecikme var.'
-  }
+const classifyStatus = (lastCommunication) => {
+  const hours = hoursBetween(lastCommunication, now.value)
+  if (hours <= 24) return 'Aktif'
+  if (hours <= 48) return 'Beklemede'
+  return 'Pasif'
 }
 
-const decoratedSensors = computed(() =>
-  sensors.value.map((sensor) => {
-    const lastPacketDate = new Date(sensor.lastPacketAt)
-    const freshness = resolveFreshness(sensor.freshnessMinutes)
+const classifyFreshness = (lastCommunication) => {
+  const hours = hoursBetween(lastCommunication, now.value)
+  if (hours <= 24) return '< 24 saat'
+  if (hours <= 48) return '24-48 saat'
+  return '48+ saat'
+}
+
+const sensorRecords = computed(() =>
+  rawSensors.value.map((meter) => {
+    const lastPacket = toDate(meter.lastCommunication)
+    const status = classifyStatus(lastPacket)
+    const freshness = classifyFreshness(lastPacket)
+    const typeLabel = meter.type === 'water' ? 'Su' : 'Elektrik'
+    const freshnessMap = {
+      '< 24 saat': { badge: 'Takvimde', chip: 'success', level: 'on-time' },
+      '24-48 saat': { badge: 'Beklemede', chip: 'amber-darken-2', level: 'delayed' },
+      '48+ saat': { badge: 'Pasif', chip: 'red-darken-2', level: 'missed' }
+    }
+    const mapping = freshnessMap[freshness]
+
     return {
-      ...sensor,
-      lastPacketDate,
-      lastPacketLabel: formatTime(lastPacketDate),
-      lastPacketAgo: formatAgo(lastPacketDate, nowRef.value),
-      lastPacketDisplay: `${formatTime(lastPacketDate)} • ${formatAgo(lastPacketDate, nowRef.value)}`,
-      freshnessBadge: freshness.badge,
-      freshnessLevel: freshness.level,
-      freshnessFilter: freshness.filter,
-      freshnessChipColor: freshness.chipColor,
-      freshnessTone: freshness.tone,
-      freshnessDescription: freshness.description
+      sensorId: meter.id,
+      zone: meter.zone,
+      location: meter.location,
+      commMethod: meter.communication,
+      type: meter.type,
+      typeLabel,
+      lastReading: meter.lastReading ?? '-',
+      battery: meter.battery ?? '—',
+      signal: meter.signal ?? '—',
+      window: meter.window ?? 'Dinamik 24s',
+      status,
+      freshnessBucket: freshness,
+      freshnessBadge: mapping.badge,
+      freshnessChip: mapping.chip,
+      freshnessLevel: mapping.level,
+      lastPacketAt: lastPacket,
+      lastPacketLabel: formatAbsolute(lastPacket),
+      lastPacketAgo: formatRelativeAgo(lastPacket, now.value),
+      lastPacketDisplay: `${formatClock(lastPacket)} • ${formatRelativeAgo(lastPacket, now.value)}`,
+      commSort: meter.communication,
+      sparkline: meter.consumption?.history ?? [],
+      lat: meter.lat,
+      lng: meter.lng
     }
   })
 )
 
+const zoneOptions = computed(() => [...new Set(sensorRecords.value.map((sensor) => sensor.zone))])
+
 const filteredSensors = computed(() => {
   const term = searchTerm.value.trim().toLowerCase()
-  return decoratedSensors.value.filter((sensor) => {
-    if (selectedStatuses.value.length && !selectedStatuses.value.includes(sensor.status)) {
-      return false
-    }
-    if (selectedFreshness.value.length && !selectedFreshness.value.includes(sensor.freshnessFilter)) {
-      return false
-    }
-    if (selectedComm.value.length && !selectedComm.value.includes(sensor.commMethod)) {
-      return false
-    }
-    if (selectedZones.value.length && !selectedZones.value.includes(sensor.zone)) {
-      return false
-    }
-    if (!term) {
-      return true
-    }
+  return sensorRecords.value.filter((sensor) => {
+    if (selectedStatuses.value.length && !selectedStatuses.value.includes(sensor.status)) return false
+    if (selectedFreshness.value.length && !selectedFreshness.value.includes(sensor.freshnessBucket)) return false
+    if (selectedComm.value.length && !selectedComm.value.includes(sensor.commMethod)) return false
+    if (selectedTypes.value.length && !selectedTypes.value.includes(sensor.typeLabel)) return false
+    if (selectedZones.value.length && !selectedZones.value.includes(sensor.zone)) return false
+
+    if (!term) return true
     const haystack = `${sensor.sensorId} ${sensor.zone} ${sensor.location} ${sensor.commMethod} ${sensor.status}`.toLowerCase()
     return haystack.includes(term)
   })
 })
 
 const filteredStats = computed(() => {
-  let onTime = 0
-  let delayed = 0
-  let missed = 0
+  const stats = { total: filteredSensors.value.length, active: 0, pending: 0, inactive: 0 }
   filteredSensors.value.forEach((sensor) => {
-    if (sensor.freshnessFilter === 'Takvimde') onTime += 1
-    else if (sensor.freshnessFilter === '1 çevrim gecikmeli') delayed += 1
-    else missed += 1
+    if (sensor.status === 'Aktif') stats.active += 1
+    else if (sensor.status === 'Beklemede') stats.pending += 1
+    else stats.inactive += 1
   })
-  return {
-    total: filteredSensors.value.length,
-    onTime,
-    delayed,
-    missed
-  }
+  return stats
 })
 
-const columnDefs = ref([
-  { field: 'sensorId', headerName: 'Sayaç ID', checkboxSelection: true, pinned: 'left', width: 140 },
-  { field: 'zone', headerName: 'Bölge', enableRowGroup: true, width: 170 },
-  { field: 'commMethod', headerName: 'İletişim', enableRowGroup: true, width: 130 },
+const totalSensors = computed(() => sensorRecords.value.length)
+
+const communicationBreakdown = computed(() =>
+  sensorRecords.value.reduce(
+    (acc, sensor) => {
+      acc[sensor.commMethod] = (acc[sensor.commMethod] ?? 0) + 1
+      return acc
+    },
+    { LoRa: 0, GPRS: 0 }
+  )
+)
+
+const headerMetrics = computed(() => [
   {
-    field: 'lastPacketDisplay',
+    label: 'Aktif sayaç',
+    value: `${filteredStats.value.active.toLocaleString('tr-TR')}`,
+    hint: `Toplamın %${totalSensors.value ? ((filteredStats.value.active / totalSensors.value) * 100).toFixed(1) : '0.0'}`
+  },
+  {
+    label: 'Beklemede',
+    value: filteredStats.value.pending.toLocaleString('tr-TR'),
+    hint: '24-48 saat arası'
+  },
+  {
+    label: 'Pasif',
+    value: filteredStats.value.inactive.toLocaleString('tr-TR'),
+    hint: '48+ saat'
+  }
+])
+
+const lastPacket = computed(() =>
+  sensorRecords.value.reduce((latest, sensor) => (sensor.lastPacketAt > latest ? sensor.lastPacketAt : latest), new Date(0))
+)
+
+const lastPacketLabel = computed(() => formatAbsolute(lastPacket.value))
+const lastPacketAgo = computed(() => formatRelativeAgo(lastPacket.value, now.value))
+
+const columnDefs = ref([
+  { field: 'sensorId', headerName: 'Sayaç', pinned: 'left', checkboxSelection: true, width: 150 },
+  { field: 'typeLabel', headerName: 'Tip', enableRowGroup: true, width: 120 },
+  { field: 'zone', headerName: 'Bölge', enableRowGroup: true, width: 160 },
+  { field: 'commMethod', headerName: 'İletişim', enableRowGroup: true, width: 120 },
+  {
+    field: 'lastPacketLabel',
     headerName: 'Son veri',
-    sortable: true,
-    comparator: (a, b, nodeA, nodeB) => nodeA.data.lastPacketDate - nodeB.data.lastPacketDate,
-    minWidth: 220
+    minWidth: 200,
+    valueGetter: (params) => `${params.data.lastPacketLabel} • ${params.data.lastPacketAgo}`
   },
   {
     field: 'freshnessBadge',
     headerName: 'Veri tazeliği',
-    minWidth: 160,
+    width: 160,
     cellRenderer: (params) => {
-      if (!params.data) return ''
-      return `<span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;background:${params.data.freshnessTone};color:#0f172a;">${params.value}</span>`
-    }
-  },
-  {
-    field: 'status',
-    headerName: 'Durum',
-    width: 140,
-    cellRenderer: (params) => {
-      if (!params.data) return params.value
+      if (!params.value) return ''
       const colors = {
-        Aktif: '#10B981',
-        Gecikmeli: '#F59E0B',
-        Offline: '#EF4444'
+        Takvimde: 'rgba(34,197,94,0.18)',
+        Beklemede: 'rgba(251,191,36,0.18)',
+        Pasif: 'rgba(248,113,113,0.18)'
       }
-      const color = colors[params.value] || '#1F2937'
-      return `<span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;background:rgba(15,23,42,0.05);color:${color};border:1px solid rgba(15,23,42,0.08);">${params.value}</span>`
+      const color = colors[params.value] || 'rgba(59,130,246,0.18)'
+      return `<span style="display:inline-flex;align-items:center;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:600;background:${color};color:#f8fafc;">${params.value}</span>`
     }
   },
-  { field: 'lastReading', headerName: 'Son okuma', width: 130 },
+  { field: 'lastReading', headerName: 'Okuma', width: 130 },
   { field: 'battery', headerName: 'Batarya', width: 110 },
-  { field: 'signal', headerName: 'Sinyal', width: 120 },
-  { field: 'window', headerName: 'Planlanan pencere', width: 160 }
+  { field: 'signal', headerName: 'Sinyal', width: 140 },
+  { field: 'window', headerName: 'Pencere', width: 140 }
 ])
 
 const defaultColDef = {
   resizable: true,
   sortable: true,
-  flex: 1,
-  minWidth: 120,
   filter: true,
-  enableRowGroup: true,
-  floatingFilter: true
+  floatingFilter: true,
+  minWidth: 120,
+  flex: 1
 }
 
 const gridOptions = {
   rowClassRules: {
-    'sensor-row-delayed': (params) => params.data?.freshnessLevel === 'delayed',
-    'sensor-row-missed': (params) => params.data?.freshnessLevel === 'missed'
-  },
-  suppressRowClickSelection: false
+    'row-delayed': (params) => params.data?.freshnessLevel === 'delayed',
+    'row-missed': (params) => params.data?.freshnessLevel === 'missed'
+  }
 }
 
 const gridRef = ref(null)
@@ -833,474 +531,301 @@ const workOrderTypes = ['Kalibrasyon', 'Firmware Güncelleme', 'Sensör Sıfırl
 const selectedWorkOrderType = ref(null)
 const workOrderPayload = ref({ description: '', calibrationCode: '', firmwareVersion: '', resetReason: '' })
 
-const workOrderData = ref([
-  {
-    sensorId: 'ASK-2401',
-    workOrderId: 'WO-9001',
-    type: 'Kalibrasyon',
-    payload: 'TEMP_SET=24.0',
-    status: 'Tamamlandı',
-    createdDate: '2025-09-12 08:45',
-    sentDate: '2025-09-12 08:47',
-    responseDate: '2025-09-12 08:51'
-  },
-  {
-    sensorId: 'ASK-2409',
-    workOrderId: 'WO-9002',
-    type: 'Firmware Güncelleme',
-    payload: 'FW=v2.1.4',
-    status: 'Gönderildi',
-    createdDate: '2025-09-14 14:05',
-    sentDate: '2025-09-14 14:06',
-    responseDate: '-'
-  },
-  {
-    sensorId: 'ASK-2412',
-    workOrderId: 'WO-9003',
-    type: 'Sensör Sıfırlama',
-    payload: 'RESET=GAS',
-    status: 'Bekliyor',
-    createdDate: '2025-09-15 11:18',
-    sentDate: '-',
-    responseDate: '-'
-  },
-  {
-    sensorId: 'ASK-2435',
-    workOrderId: 'WO-9004',
-    type: 'Kalibrasyon',
-    payload: 'FLOW_RANGE=200',
-    status: 'Tamamlandı',
-    createdDate: '2025-09-10 09:30',
-    sentDate: '2025-09-10 09:32',
-    responseDate: '2025-09-10 09:35'
-  },
-  {
-    sensorId: 'ASK-2466',
-    workOrderId: 'WO-9005',
-    type: 'Firmware Güncelleme',
-    payload: 'FW=v3.0.0',
-    status: 'Başarısız',
-    createdDate: '2025-09-09 07:50',
-    sentDate: '2025-09-09 07:52',
-    responseDate: '2025-09-09 07:58'
-  },
-  {
-    sensorId: 'ASK-2442',
-    workOrderId: 'WO-9006',
-    type: 'Sensör Sıfırlama',
-    payload: 'RESET=HUM',
-    status: 'Tamamlandı',
-    createdDate: '2025-09-11 16:20',
-    sentDate: '2025-09-11 16:22',
-    responseDate: '2025-09-11 16:24'
-  }
-])
-
-const alertData = ref([
-  {
-    alertId: 'AL-501',
-    sensorId: 'ASK-2435',
-    type: 'Basınç düşüşü',
-    severity: 'Kritik',
-    createdDate: '2025-09-15 03:20',
-    status: 'Açık'
-  },
-  {
-    alertId: 'AL-502',
-    sensorId: 'ASK-2442',
-    type: 'İletişim kaybı',
-    severity: 'Yüksek',
-    createdDate: '2025-09-14 19:05',
-    status: 'İzlemede'
-  },
-  {
-    alertId: 'AL-503',
-    sensorId: 'ASK-2412',
-    type: 'Debi eşiği aşıldı',
-    severity: 'Kritik',
-    createdDate: '2025-09-13 12:45',
-    status: 'Açık'
-  },
-  {
-    alertId: 'AL-504',
-    sensorId: 'ASK-2466',
-    type: 'Sayaç kapalı',
-    severity: 'Yüksek',
-    createdDate: '2025-09-16 05:32',
-    status: 'Açık'
-  },
-  {
-    alertId: 'AL-505',
-    sensorId: 'ASK-2409',
-    type: 'Geciken veri paketi',
-    severity: 'Orta',
-    createdDate: '2025-09-16 04:12',
-    status: 'İzlemede'
-  },
-  {
-    alertId: 'AL-506',
-    sensorId: 'ASK-2474',
-    type: 'Kaçak ihtimali',
-    severity: 'Orta',
-    createdDate: '2025-09-15 22:18',
-    status: 'Açık'
-  }
-])
-
-const localeText = {
-  noRowsToShow: 'Gösterilecek kayıt yok',
-  page: 'Sayfa',
-  of: '/',
-  to: '→',
-  next: 'Sonraki',
-  last: 'Son',
-  first: 'İlk',
-  previous: 'Önceki',
-  applyFilter: 'Filtreyi uygula',
-  clearFilter: 'Filtreyi temizle',
-  resetFilter: 'Filtreyi sıfırla',
-  searchOoo: 'Ara...',
-  filterOoo: 'Filtrele...'
-}
-
-const selectAllRows = () => {
-  if (gridRef.value?.api) {
-    gridRef.value.api.selectAll()
-    selectedRows.value = gridRef.value.api.getSelectedRows()
-  }
-}
-
-const onSelectionChanged = () => {
-  selectedRows.value = gridRef.value?.api?.getSelectedRows() || []
-}
-
-const sendWorkOrder = () => {
-  if (!selectedRows.value.length) {
-    return
-  }
-  workOrderPanel.value = true
-}
-
-const confirmSendWorkOrder = () => {
-  if (!selectedWorkOrderType.value) {
-    alert('Lütfen bir iş emri tipi seçiniz.')
-    return
-  }
-
-  console.log('İş emri tipi:', selectedWorkOrderType.value)
-  console.log('Seçili sayaçlar:', selectedRows.value)
-  console.log('Girilen veriler:', workOrderPayload.value)
-
-  alert(`${selectedRows.value.length} sayaç için '${selectedWorkOrderType.value}' iş emri hazırlandı (örnek simülasyon).`)
-
-  workOrderPanel.value = false
-  selectedWorkOrderType.value = null
-  workOrderPayload.value = { description: '', calibrationCode: '', firmwareVersion: '', resetReason: '' }
-}
-
 const resetFilters = () => {
   selectedStatuses.value = []
   selectedFreshness.value = []
   selectedComm.value = []
+  selectedTypes.value = []
   selectedZones.value = []
-  searchTerm.value = ''
 }
 
-let mapInstance = null
-let mapMarkers = []
-let updateTimer = null
+const selectAllRows = () => {
+  if (gridRef.value) {
+    gridRef.value.api.selectAll()
+  }
+}
 
-const renderMarkers = () => {
-  if (!mapInstance) return
-  mapMarkers.forEach((marker) => marker.remove())
-  mapMarkers = []
+const onSelectionChanged = (event) => {
+  selectedRows.value = event.api.getSelectedRows()
+}
 
-  filteredSensors.value.forEach((sensor) => {
-    const color =
-      sensor.freshnessLevel === 'missed'
-        ? '#EF4444'
-        : sensor.freshnessLevel === 'delayed'
-          ? '#F59E0B'
-          : '#10B981'
+const openWorkOrder = () => {
+  workOrderPanel.value = true
+}
 
-    const marker = L.circleMarker([sensor.lat, sensor.lng], {
-      color,
-      radius: 9,
-      fillColor: color,
-      fillOpacity: 0.85,
-      weight: 1.5
-    })
-      .bindPopup(
-        `<strong>${sensor.sensorId}</strong><br>${sensor.zone}<br>${sensor.lastPacketLabel} • ${sensor.lastPacketAgo}`
-      )
-      .addTo(mapInstance)
+const confirmWorkOrder = () => {
+  workOrderPanel.value = false
+}
 
-    mapMarkers.push(marker)
-  })
+const applyRoutePrefill = () => {
+  const { status, communication, zone } = route.query
+  if (status && statusOptions.includes(status)) selectedStatuses.value = [status]
+  if (communication && communicationOptions.includes(communication)) selectedComm.value = [communication]
+  if (zone) selectedZones.value = [zone]
+}
+
+const mapState = {
+  instance: null,
+  markers: []
 }
 
 const initMap = () => {
-  const mapContainer = document.getElementById('sensor-map')
-  if (!mapContainer) return
+  if (mapState.instance) return
+  mapState.instance = L.map('sensor-map', {
+    zoomControl: false,
+    attributionControl: false
+  }).setView([39.9334, 32.8597], 10)
 
-  if (!mapInstance) {
-    mapInstance = L.map(mapContainer).setView([39.9334, 32.8597], 11)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(mapInstance)
-  }
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18
+  }).addTo(mapState.instance)
 
-  renderMarkers()
+  updateMarkers()
+}
+
+const updateMarkers = () => {
+  if (!mapState.instance) return
+  mapState.markers.forEach((marker) => marker.remove())
+  mapState.markers = filteredSensors.value.map((sensor) => {
+    const marker = L.circleMarker([sensor.lat, sensor.lng], {
+      radius: 9,
+      color: 'rgba(148,163,184,0.4)',
+      weight: 1,
+      fillColor:
+        sensor.status === 'Aktif'
+          ? 'rgba(34,197,94,0.65)'
+          : sensor.status === 'Beklemede'
+            ? 'rgba(251,191,36,0.7)'
+            : 'rgba(248,113,113,0.75)',
+      fillOpacity: 0.85
+    }).addTo(mapState.instance)
+    marker.bindPopup(`<strong>${sensor.sensorId}</strong><br/>${sensor.location}<br/>${sensor.lastPacketDisplay}`)
+    return marker
+  })
 }
 
 watch(filteredSensors, () => {
-  renderMarkers()
+  updateMarkers()
+  if (viewMode.value === 'table' && gridRef.value) {
+    gridRef.value.api.setRowData(filteredSensors.value)
+  }
 })
 
 onMounted(() => {
+  applyRoutePrefill()
   initMap()
-  updateTimer = setInterval(() => {
-    nowRef.value = new Date()
-  }, 60000)
 })
 
 onBeforeUnmount(() => {
-  if (updateTimer) {
-    clearInterval(updateTimer)
-    updateTimer = null
+  if (mapState.instance) {
+    mapState.instance.remove()
+    mapState.instance = null
   }
-  if (mapInstance) {
-    mapInstance.remove()
-    mapInstance = null
-  }
-  mapMarkers = []
 })
 </script>
 
 <style scoped>
-.sensor-shell {
+.sensor-dashboard {
   padding: 28px;
   display: flex;
   flex-direction: column;
   gap: 28px;
+  background: linear-gradient(180deg, rgba(10, 14, 26, 0.95) 0%, rgba(12, 19, 32, 0.82) 100%);
 }
 
 .sensor-header {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 24px 28px;
-  border-radius: 22px;
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(45, 212, 191, 0.12));
-  border: 1px solid var(--border-soft);
-  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.08);
+  gap: 32px;
+  padding: 28px 32px;
+  border-radius: 26px;
+  background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.2), transparent 45%), rgba(13, 20, 34, 0.86);
+  border: 1px solid rgba(59, 130, 246, 0.18);
+  box-shadow: 0 26px 54px rgba(2, 12, 24, 0.55);
 }
 
-.sensor-heading {
+.header-left {
+  flex: 1 1 420px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  max-width: 620px;
+  gap: 18px;
 }
 
-.sensor-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(15, 118, 110, 0.12);
-  padding: 6px 12px;
+.header-chip {
+  align-self: flex-start;
+  padding: 6px 14px;
   border-radius: 999px;
-  color: #0f766e;
+  background: rgba(45, 212, 191, 0.16);
+  color: rgba(226, 232, 240, 0.9);
   font-weight: 600;
-  font-size: 13px;
-  letter-spacing: 0.5px;
   text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
-.sensor-title {
+.header-left h1 {
   margin: 0;
-  font-size: 30px;
-  font-weight: 800;
-  color: var(--heading-color);
+  font-size: clamp(26px, 4vw, 34px);
+  color: rgba(248, 250, 252, 0.98);
 }
 
-.sensor-subtitle {
+.header-left p {
   margin: 0;
   font-size: 15px;
+  color: rgba(148, 163, 184, 0.86);
   line-height: 1.6;
-  color: var(--muted-text);
+  max-width: 640px;
 }
 
-.sensor-header-meta {
+.header-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.meta-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 18px;
-  align-items: stretch;
+  gap: 16px;
 }
 
-.meta-card {
+.meta-item {
+  min-width: 150px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(10, 18, 32, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.2);
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 16px 18px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.65);
-  border: 1px solid var(--border-soft);
-  min-width: 220px;
 }
 
 .meta-label {
   font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--muted-text);
-  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: rgba(148, 163, 184, 0.75);
 }
 
 .meta-value {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
-  color: var(--heading-color);
+  color: rgba(248, 250, 252, 0.95);
 }
 
 .meta-hint {
   font-size: 13px;
-  color: var(--muted-text);
+  color: rgba(148, 163, 184, 0.78);
+}
+
+.header-right {
+  flex: 1 1 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(10, 18, 32, 0.7);
+  border: 1px solid rgba(45, 212, 191, 0.16);
+}
+
+.summary-item,
+.summary-split > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summary-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: rgba(148, 163, 184, 0.75);
+}
+
+.summary-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: rgba(248, 250, 252, 0.95);
+}
+
+.summary-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.summary-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(148, 163, 184, 0.78);
 }
 
 .sensor-content {
-  gap: 24px;
+  row-gap: 28px !important;
 }
 
 .filter-column {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
-.filter-card {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 22px;
-  border-radius: 20px;
-  background: var(--surface-card);
-  border: 1px solid var(--border-soft);
+.filter-card,
+.plan-card {
+  padding: 24px;
+  border-radius: 24px;
+  background: rgba(10, 18, 32, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 20px 40px rgba(2, 12, 24, 0.45);
 }
 
 .filter-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-bottom: 12px;
 }
 
-.filter-header h2 {
+.filter-header h2,
+.plan-header h2 {
   margin: 0;
   font-size: 18px;
-  font-weight: 700;
-  color: var(--heading-color);
+  color: rgba(248, 250, 252, 0.94);
 }
 
 .filter-group {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.filter-group:last-of-type {
+  border-bottom: none;
 }
 
 .filter-title {
   font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
   text-transform: uppercase;
-  color: var(--muted-text);
+  color: rgba(148, 163, 184, 0.75);
+  letter-spacing: 0.3px;
 }
 
 .filter-chip {
-  justify-content: flex-start;
+  margin-bottom: 6px;
 }
 
-.schedule-card {
-  padding: 20px;
-  border-radius: 20px;
-  background: var(--surface-card);
-  border: 1px solid var(--border-soft);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.schedule-header {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.schedule-header h2 {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--heading-color);
-}
-
-.schedule-header p {
-  margin: 0;
+.plan-header span {
   font-size: 13px;
-  color: var(--muted-text);
+  color: rgba(148, 163, 184, 0.78);
 }
 
-.schedule-chip {
-  align-self: flex-start;
-  font-weight: 600;
-}
-
-.schedule-table {
-  border-collapse: separate;
-  border-spacing: 0;
-  width: 100%;
-}
-
-.schedule-table th,
-.schedule-table td {
-  padding: 8px 0;
-  font-size: 13px;
-  color: var(--muted-text);
-  border-bottom: 1px solid var(--border-soft);
-}
-
-.schedule-table th {
-  text-align: left;
-  font-weight: 600;
-  color: var(--heading-color);
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-}
-
-.schedule-table tr:last-child th,
-.schedule-table tr:last-child td {
-  border-bottom: none;
-}
-
-.schedule-time {
-  font-weight: 700;
-  color: var(--heading-color);
-}
-
-.schedule-status {
-  width: 120px;
-}
-
-.schedule-note {
-  color: var(--muted-text);
-}
-
-@media (min-width: 520px) {
-  .schedule-header {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
+.plan-list {
+  padding: 0;
+  margin-top: 12px;
 }
 
 .list-column {
@@ -1309,14 +834,16 @@ onBeforeUnmount(() => {
   gap: 24px;
 }
 
-.list-card {
+.list-card,
+.map-card {
   padding: 24px;
-  border-radius: 24px;
-  background: var(--surface-card);
-  border: 1px solid var(--border-soft);
+  border-radius: 26px;
+  background: rgba(10, 18, 32, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: 0 24px 44px rgba(2, 12, 24, 0.45);
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 20px;
 }
 
 .list-toolbar {
@@ -1329,18 +856,12 @@ onBeforeUnmount(() => {
 
 .toolbar-search {
   flex: 1 1 320px;
-  max-width: 460px;
 }
 
 .toolbar-actions {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 12px;
-}
-
-.view-toggle {
-  border: 1px solid var(--border-soft);
-  border-radius: 12px;
 }
 
 .list-meta {
@@ -1350,104 +871,97 @@ onBeforeUnmount(() => {
 }
 
 .meta-chip {
-  font-size: 13px;
-  letter-spacing: 0.3px;
+  font-weight: 600;
 }
 
 .grid-wrapper {
-  border-radius: 18px;
+  border-radius: 20px;
   overflow: hidden;
-  border: 1px solid var(--border-soft);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.65);
 }
 
 .sensor-grid {
   width: 100%;
-  height: 520px;
+  min-height: 520px;
 }
 
 .card-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+  padding: 8px 4px;
 }
 
 .sensor-card {
-  padding: 18px;
-  border-radius: 20px;
-  border: 1px solid var(--border-soft);
-  background: rgba(255, 255, 255, 0.75);
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(59, 130, 246, 0.18);
+  background: rgba(10, 16, 28, 0.78);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .sensor-card.on-time {
-  border-color: rgba(16, 185, 129, 0.35);
+  border-color: rgba(34, 197, 94, 0.32);
 }
 
 .sensor-card.delayed {
-  border-color: rgba(245, 158, 11, 0.35);
+  border-color: rgba(251, 191, 36, 0.32);
 }
 
 .sensor-card.missed {
-  border-color: rgba(248, 113, 113, 0.35);
+  border-color: rgba(248, 113, 113, 0.32);
 }
 
 .sensor-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.45);
 }
 
 .sensor-card-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
 }
 
 .sensor-id {
-  font-size: 16px;
   font-weight: 700;
-  color: var(--heading-color);
+  color: rgba(248, 250, 252, 0.96);
 }
 
 .sensor-zone {
   display: block;
   font-size: 13px;
-  color: var(--muted-text);
+  color: rgba(148, 163, 184, 0.78);
 }
 
 .sensor-card-body {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .sensor-row {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-size: 13px;
-  color: var(--muted-text);
 }
 
 .sensor-label {
-  font-weight: 600;
-  color: var(--heading-color);
+  font-size: 13px;
+  color: rgba(148, 163, 184, 0.75);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 .sensor-value {
+  font-size: 14px;
+  color: rgba(226, 232, 240, 0.9);
   text-align: right;
 }
 
-.map-card {
-  border-radius: 24px;
-  background: var(--surface-card);
-  border: 1px solid var(--border-soft);
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+.sensor-sparkline {
+  height: 46px;
 }
 
 .map-header {
@@ -1459,28 +973,26 @@ onBeforeUnmount(() => {
 .map-header h2 {
   margin: 0;
   font-size: 18px;
-  font-weight: 700;
-  color: var(--heading-color);
+  color: rgba(248, 250, 252, 0.94);
 }
 
 .map-subtitle {
+  display: block;
   font-size: 13px;
-  color: var(--muted-text);
+  color: rgba(148, 163, 184, 0.78);
 }
 
 .map-container {
-  width: 100%;
   height: 320px;
-  border-radius: 18px;
-  border: 1px solid var(--border-soft);
+  border-radius: 20px;
   overflow: hidden;
 }
 
 .map-legend {
   display: flex;
-  gap: 14px;
-  font-size: 12px;
-  color: var(--muted-text);
+  gap: 16px;
+  font-size: 13px;
+  color: rgba(148, 163, 184, 0.78);
 }
 
 .legend-item {
@@ -1493,90 +1005,53 @@ onBeforeUnmount(() => {
   width: 12px;
   height: 12px;
   border-radius: 50%;
+  display: inline-block;
 }
 
-.legend-dot.on-time {
-  background: #10b981;
+.legend-dot.active {
+  background: rgba(34, 197, 94, 0.75);
 }
 
-.legend-dot.delayed {
-  background: #f59e0b;
+.legend-dot.pending {
+  background: rgba(251, 191, 36, 0.75);
 }
 
-.legend-dot.missed {
-  background: #ef4444;
+.legend-dot.inactive {
+  background: rgba(248, 113, 113, 0.75);
 }
 
-.log-row {
-  gap: 24px;
-}
-
-.log-card {
-  padding: 22px;
-  border-radius: 20px;
-  background: var(--surface-card);
-  border: 1px solid var(--border-soft);
+.drawer-title {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.log-header {
-  display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: flex-start;
 }
 
-.log-header h2 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--heading-color);
+.drawer-summary {
+  font-size: 14px;
+  color: rgba(148, 163, 184, 0.8);
+  margin-bottom: 16px;
 }
 
-.log-header span {
-  font-size: 13px;
-  color: var(--muted-text);
+.row-delayed {
+  background: rgba(251, 191, 36, 0.08) !important;
 }
 
-:global(.sensor-row-delayed) {
-  background: rgba(245, 158, 11, 0.12) !important;
-}
-
-:global(.sensor-row-missed) {
-  background: rgba(248, 113, 113, 0.12) !important;
-}
-
-:global(.sensor-row-delayed .ag-cell),
-:global(.sensor-row-missed .ag-cell) {
-  border-bottom-color: transparent !important;
-}
-
-:global(.ag-theme-alpine.sensor-grid) {
-  --ag-font-size: 13px;
-  --ag-header-background-color: #f8fafc;
-  --ag-border-color: #e2e8f0;
-  --ag-row-hover-color: rgba(14, 165, 233, 0.12);
-}
-
-@media (max-width: 1280px) {
-  .sensor-header {
-    flex-direction: column;
-  }
-
-  .sensor-header-meta {
-    width: 100%;
-  }
+.row-missed {
+  background: rgba(248, 113, 113, 0.08) !important;
 }
 
 @media (max-width: 960px) {
-  .sensor-content {
-    flex-direction: column;
+  .sensor-dashboard {
+    padding: 18px;
   }
 
-  .toolbar-actions {
-    width: 100%;
-    justify-content: flex-end;
+  .sensor-header {
+    padding: 24px;
+  }
+
+  .list-card,
+  .map-card {
+    padding: 20px;
   }
 }
 </style>
