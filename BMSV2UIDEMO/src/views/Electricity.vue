@@ -11,47 +11,175 @@
     <v-window v-model="activeTab" class="mt-4">
       <!-- ÜRÜNLER TABI -->
       <v-window-item value="products">
-        <div>
-          <div class="d-flex align-center mb-2" style="gap: 10px">
-            <v-btn color="primary" variant="outlined" @click="selectAllRows">Tümünü Seç</v-btn>
-            <v-btn
-              color="success"
-              variant="flat"
-              :disabled="selectedRows.length === 0"
-              @click="sendWorkOrder"
-            >
-              İş Emri Gönder
-            </v-btn>
+        <v-container fluid class="product-tab" style="padding: 0">
+          <v-row class="products-layout" no-gutters align="stretch">
+            <!-- Sol: Filtre + Gruplama -->
+            <v-col cols="12" md="2" class="side-column">
+              <div class="side-wrapper">
+                <v-card class="filter-card" elevation="0">
+                  <div class="filter-header">
+                    <h2>Filtreler</h2>
+                    <v-btn density="comfortable" variant="text" @click="resetFilters"
+                      >Temizle</v-btn
+                    >
+                  </div>
 
-            <v-text-field
-              v-model="quickFilterText"
-              label="Genel Arama"
-              prepend-inner-icon="search"
-              variant="outlined"
-              hide-details
-              density="comfortable"
-              clearable
-            />
-          </div>
+                  <div class="filter-group">
+                    <span class="filter-title">Durum</span>
+                    <v-chip-group v-model="selectedStatuses" column multiple>
+                      <v-chip
+                        v-for="status in statusOptions"
+                        :key="status"
+                        :value="status"
+                        class="filter-chip"
+                        color="primary"
+                        variant="tonal"
+                        filter
+                      >
+                        {{ status }}
+                      </v-chip>
+                    </v-chip-group>
+                  </div>
 
-          <ag-grid-vue
-            class="ag-theme-alpine"
-            style="height: 600px; width: 100%"
-            :columnDefs="columnDefs"
-            :rowData="tools"
-            :quickFilterText="quickFilterText"
-            rowGroupPanelShow="always"
-            animateRows="true"
-            groupSelectsChildren="true"
-            rowSelection="multiple"
-            :localeText="localeText"
-            :defaultColDef="defaultColDef"
-            pagination
-            :paginationPageSize="6"
-            @grid-ready="onGridReady"
-            @selection-changed="onSelectionChanged"
-          />
-        </div>
+                  <div class="filter-group">
+                    <span class="filter-title">İletişim</span>
+                    <v-chip-group v-model="selectedComm" column multiple>
+                      <v-chip
+                        v-for="comm in communicationOptions"
+                        :key="comm"
+                        :value="comm"
+                        class="filter-chip"
+                        color="teal"
+                        variant="tonal"
+                        filter
+                      >
+                        {{ comm }}
+                      </v-chip>
+                    </v-chip-group>
+                  </div>
+
+                  <div class="filter-group">
+                    <span class="filter-title">Sayaç modeli</span>
+                    <v-chip-group v-model="selectedModels" column multiple>
+                      <v-chip
+                        v-for="model in modelOptions"
+                        :key="model"
+                        :value="model"
+                        class="filter-chip"
+                        color="purple"
+                        variant="tonal"
+                        filter
+                      >
+                        {{ model }}
+                      </v-chip>
+                    </v-chip-group>
+                  </div>
+
+                  <div class="filter-group">
+                    <span class="filter-title">Tüketim aralığı</span>
+                    <v-chip-group v-model="selectedConsumption" column multiple>
+                      <v-chip
+                        v-for="range in consumptionOptions"
+                        :key="range.value"
+                        :value="range.value"
+                        class="filter-chip"
+                        color="amber"
+                        variant="tonal"
+                        filter
+                      >
+                        {{ range.label }}
+                      </v-chip>
+                    </v-chip-group>
+                  </div>
+                </v-card>
+
+                <v-card class="group-card" elevation="0">
+                  <div class="group-header">
+                    <h2>Gruplama</h2>
+                    <p>Tabloyu bir alana göre gruplayarak kümelenmiş görünümü inceleyin.</p>
+                  </div>
+                  <v-chip-group v-model="groupBy" column>
+                    <v-chip
+                      v-for="option in groupOptions"
+                      :key="option.value"
+                      :value="option.value"
+                      class="filter-chip"
+                      color="deep-purple"
+                      variant="tonal"
+                    >
+                      {{ option.label }}
+                    </v-chip>
+                  </v-chip-group>
+                </v-card>
+              </div>
+            </v-col>
+
+            <!-- Orta: Tablo -->
+            <v-col cols="12" md="8" class="grid-column">
+              <v-card class="grid-card" elevation="0">
+                <div class="grid-toolbar">
+                  <div class="grid-summary">
+                    <v-chip class="summary-chip" color="primary" variant="tonal">
+                      Toplam: {{ filteredStats.total }}
+                    </v-chip>
+                    <v-chip class="summary-chip" color="success" variant="tonal">
+                      Aktif: {{ filteredStats.active }}
+                    </v-chip>
+                    <v-chip class="summary-chip" color="error" variant="tonal">
+                      Pasif: {{ filteredStats.inactive }}
+                    </v-chip>
+                  </div>
+
+                  <div class="toolbar-actions">
+                    <v-btn variant="text" @click="selectAllRows">Tümünü Seç</v-btn>
+                    <v-btn
+                      color="primary"
+                      variant="flat"
+                      prepend-icon="assignment"
+                      :disabled="selectedRows.length === 0"
+                      @click="sendWorkOrder"
+                    >
+                      İş Emri Gönder
+                    </v-btn>
+                  </div>
+                </div>
+
+                <v-text-field
+                  v-model="quickFilterText"
+                  class="mb-4"
+                  density="comfortable"
+                  hide-details
+                  label="Sayaç, model veya tip ara"
+                  prepend-inner-icon="search"
+                  variant="outlined"
+                  clearable
+                />
+
+                <div class="grid-wrapper">
+                  <ag-grid-vue
+                    class="ag-theme-alpine grid-full"
+                    :columnDefs="columnDefs"
+                    :rowData="displayRows"
+                    :quickFilterText="quickFilterText"
+                    :animateRows="true"
+                    rowSelection="multiple"
+                    :rowClassRules="rowClassRules"
+                    :localeText="localeText"
+                    :defaultColDef="defaultColDef"
+                    pagination
+                    :paginationPageSize="6"
+                    domLayout="normal"
+                    @grid-ready="onGridReady"
+                    @selection-changed="onSelectionChanged"
+                  />
+                </div>
+              </v-card>
+            </v-col>
+
+            <!-- Sağ: Filtre + Gruplama -->
+            <v-col cols="12" md="2" class="side-column"> </v-col>
+          </v-row>
+        </v-container>
       </v-window-item>
 
       <!-- HARİTA TABI -->
@@ -80,9 +208,7 @@
             :columnDefs="workOrderColumnDefs"
             :rowData="workOrderData"
             :quickFilterText="workOrderFilter"
-            rowGroupPanelShow="always"
             animateRows="true"
-            groupSelectsChildren="true"
             :localeText="localeText"
             :defaultColDef="defaultColDef"
             pagination
@@ -110,9 +236,7 @@
             :columnDefs="alertColumnDefs"
             :rowData="alertData"
             :quickFilterText="alertFilter"
-            rowGroupPanelShow="always"
             animateRows="true"
-            groupSelectsChildren="true"
             :localeText="localeText"
             :defaultColDef="defaultColDef"
             pagination
@@ -120,8 +244,10 @@
           />
         </div>
       </v-window-item>
-    </v-window> </v-container
-  ><!-- İş Emri Gönderim Modali -->
+    </v-window>
+  </v-container>
+
+  <!-- İş Emri Gönderim Modali -->
   <!-- İş Emri Paneli -->
   <v-navigation-drawer
     v-model="workOrderPanel"
@@ -228,7 +354,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community'
 ModuleRegistry.registerModules([AllCommunityModule])
@@ -241,24 +367,78 @@ const quickFilterText = ref('')
 const gridApi = ref(null)
 const selectedRows = ref([])
 const workOrderFilter = ref('')
+const selectedStatuses = ref([])
+const selectedComm = ref([])
+const selectedModels = ref([])
+const selectedConsumption = ref([])
+const groupBy = ref('none')
+
+const statusOptions = ['Aktif', 'Pasif']
+const consumptionOptions = [
+  { label: '0-20 kWh', value: '0-20', min: 0, max: 20 },
+  { label: '21-30 kWh', value: '21-30', min: 21, max: 30 },
+  { label: '31+ kWh', value: '31+', min: 31, max: Infinity },
+]
+
+const groupOptions = [
+  { label: 'Duruma göre', value: 'status' },
+  { label: 'İletişim tipine göre', value: 'type' },
+  { label: 'Modele göre', value: 'model' },
+  { label: 'Gruplama yok', value: 'none' },
+]
+
+const collator = new Intl.Collator('tr-TR')
 
 // ---- Kolon tanımları ----
 const columnDefs = ref([
   {
     field: 'name',
-    headerName: 'Ürün Kodu',
-    filter: 'agNumberColumnFilter',
-    checkboxSelection: true,
+    headerName: 'Sayaç No',
+    filter: 'agTextColumnFilter',
+    checkboxSelection: (params) => !params.data?.isGroup,
+    headerCheckboxSelection: true,
+    cellRenderer: (params) => {
+      if (params.data?.isGroup) {
+        return `
+          <div class="group-cell">
+            <strong>${params.data.groupLabel}</strong>
+            <span>${params.data.count} sayaç</span>
+            <small>Aktif: ${params.data.activeCount} · Pasif: ${params.data.inactiveCount}</small>
+          </div>
+        `
+      }
+      return params.value
+    },
   },
-  { field: 'model', headerName: 'Sayaç Modeli', filter: true, enableRowGroup: true },
-  { field: 'type', headerName: 'Cihaz Tipi', enableRowGroup: true },
-  { field: 'consumption', headerName: 'Tüketim', filter: true },
-  { field: 'commandIndex', headerName: 'Versiyon', filter: 'agNumberColumnFilter' },
+  {
+    field: 'model',
+    headerName: 'Sayaç Modeli',
+    filter: 'agTextColumnFilter',
+    valueGetter: (params) => (params.data?.isGroup ? '' : (params.data?.model ?? '')),
+  },
+  {
+    field: 'type',
+    headerName: 'İletişim Tipi',
+    valueGetter: (params) => (params.data?.isGroup ? '' : (params.data?.type ?? '')),
+  },
+  {
+    field: 'consumption',
+    headerName: 'Tüketim',
+    filter: true,
+    valueGetter: (params) => (params.data?.isGroup ? '' : (params.data?.consumption ?? '')),
+  },
+  {
+    field: 'commandIndex',
+    headerName: 'Versiyon',
+    filter: 'agNumberColumnFilter',
+    valueGetter: (params) => (params.data?.isGroup ? '' : (params.data?.commandIndex ?? '')),
+  },
   {
     field: 'status',
     headerName: 'Durum',
-    enableRowGroup: true,
+    valueGetter: (params) => (params.data?.isGroup ? '' : (params.data?.status ?? '')),
     cellRenderer: (params) => {
+      if (params.data?.isGroup) return ''
       const color = params.value === 'Aktif' ? '#4CAF50' : '#F44336'
       return `
         <span style="
@@ -343,8 +523,6 @@ const defaultColDef = {
   flex: 1,
   minWidth: 120,
   floatingFilter: true,
-  enableValue: true,
-  enableRowGroup: true,
   suppressMenuHide: false,
 }
 
@@ -451,6 +629,109 @@ const tools = ref([
     lng: 27.0931,
   },
 ])
+
+const communicationOptions = computed(() =>
+  Array.from(new Set(tools.value.map((tool) => tool.type))).sort((a, b) => collator.compare(a, b)),
+)
+
+const modelOptions = computed(() =>
+  Array.from(new Set(tools.value.map((tool) => tool.model))).sort((a, b) => collator.compare(a, b)),
+)
+
+const parseConsumption = (value) => {
+  const match = value?.toString().match(/\d+/)
+  return match ? Number(match[0]) : 0
+}
+
+const filteredTools = computed(() => {
+  return tools.value.filter((tool) => {
+    if (selectedStatuses.value.length && !selectedStatuses.value.includes(tool.status)) return false
+    if (selectedComm.value.length && !selectedComm.value.includes(tool.type)) return false
+    if (selectedModels.value.length && !selectedModels.value.includes(tool.model)) return false
+    if (selectedConsumption.value.length) {
+      const numericConsumption = parseConsumption(tool.consumption)
+      const matchesRange = selectedConsumption.value.some((rangeValue) => {
+        const range = consumptionOptions.find((option) => option.value === rangeValue)
+        if (!range) return false
+        return numericConsumption >= range.min && numericConsumption <= range.max
+      })
+      if (!matchesRange) return false
+    }
+    return true
+  })
+})
+
+function formatGroupLabel(key) {
+  if (groupBy.value === 'status') {
+    return `Durum: ${key}`
+  }
+  if (groupBy.value === 'type') {
+    return `İletişim: ${key}`
+  }
+  if (groupBy.value === 'model') {
+    return `Model: ${key}`
+  }
+  return key
+}
+
+const displayRows = computed(() => {
+  if (groupBy.value === 'none') return filteredTools.value
+
+  const groups = new Map()
+  filteredTools.value.forEach((tool) => {
+    const key = tool[groupBy.value] ?? 'Diğer'
+    if (!groups.has(key)) {
+      groups.set(key, [])
+    }
+    groups.get(key).push(tool)
+  })
+
+  const sortFn = (a, b) => collator.compare(a, b)
+  const result = []
+
+  Array.from(groups.entries())
+    .sort((a, b) => sortFn(a[0], b[0]))
+    .forEach(([key, items]) => {
+      const activeCount = items.filter((item) => item.status === 'Aktif').length
+      const inactiveCount = items.length - activeCount
+      result.push({
+        isGroup: true,
+        groupLabel: formatGroupLabel(key),
+        rawGroupKey: key,
+        count: items.length,
+        activeCount,
+        inactiveCount,
+        name: formatGroupLabel(key),
+      })
+      const sortedItems = [...items].sort((a, b) => collator.compare(a.name, b.name))
+      result.push(...sortedItems)
+    })
+
+  return result
+})
+
+const filteredStats = computed(() => {
+  const stats = { total: filteredTools.value.length, active: 0, inactive: 0 }
+  filteredTools.value.forEach((tool) => {
+    if (tool.status === 'Aktif') stats.active += 1
+    if (tool.status === 'Pasif') stats.inactive += 1
+  })
+  return stats
+})
+
+const rowClassRules = {
+  'group-row': (params) => params.data?.isGroup,
+}
+
+function resetFilters() {
+  selectedStatuses.value = []
+  selectedComm.value = []
+  selectedModels.value = []
+  selectedConsumption.value = []
+  groupBy.value = 'status'
+  quickFilterText.value = ''
+  gridApi.value?.setQuickFilter('')
+}
 
 // ---- İş Emri Geçmişi ----
 const workOrderData = ref([
@@ -567,21 +848,18 @@ const workOrderData = ref([
 ])
 
 const workOrderColumnDefs = ref([
-  { field: 'name', headerName: 'Sayaç No', enableRowGroup: true, filter: 'agNumberColumnFilter' },
+  { field: 'name', headerName: 'Sayaç No', filter: 'agTextColumnFilter' },
   {
     field: 'type',
     headerName: 'İş Emri Tipi',
-    enableRowGroup: true,
-    filter: 'agNumberColumnFilter',
+    filter: 'agTextColumnFilter',
   },
   { field: 'workOrderId', headerName: 'İş Emri Datası', cellStyle: { fontFamily: 'monospace' } },
   { field: 'data', headerName: 'Data', cellStyle: { fontFamily: 'monospace' } },
   {
     field: 'status',
     headerName: 'Durum',
-    enableRowGroup: true,
     cellRenderer: (params) => {
-      if (params.node.group) return '' // Grup satırında hücre boş olsun
       const colors = {
         Gönderildi: '#1976D2',
         Tamamlandı: '#4CAF50',
@@ -636,31 +914,76 @@ function confirmSendWorkOrder() {
 
 // ---- Grid Eventleri ----
 function onSelectionChanged(event) {
-  selectedRows.value = event.api.getSelectedRows()
+  selectedRows.value = event.api.getSelectedRows().filter((row) => !row.isGroup)
 }
 function selectAllRows() {
-  gridApi.value?.selectAll()
-  if (gridApi.value) {
-    selectedRows.value = gridApi.value.getSelectedRows()
-  }
+  if (!gridApi.value) return
+  gridApi.value.forEachNode((node) => {
+    if (node.data?.isGroup) {
+      node.setSelected(false)
+    } else {
+      node.setSelected(true)
+    }
+  })
+  selectedRows.value = gridApi.value.getSelectedRows().filter((row) => !row.isGroup)
 }
-
 function onGridReady(params) {
   gridApi.value = params.api
+  params.api.sizeColumnsToFit() // sadece kolonları boyutlandır
 }
 
+watch(filteredTools, () => {
+  if (gridApi.value) {
+    const selectedIds = new Set(selectedRows.value.map((row) => row.name))
+    nextTick(() => {
+      gridApi.value.forEachNode((node) => {
+        if (!node.data || node.data.isGroup) return
+        node.setSelected(selectedIds.has(node.data.name))
+      })
+      selectedRows.value = gridApi.value.getSelectedRows().filter((row) => !row.isGroup)
+    })
+  }
+
+  if (activeTab.value === 'map') {
+    setTimeout(initMap, 150)
+  }
+})
+
+watch(groupBy, () => {
+  if (!gridApi.value) return
+  const selectedIds = new Set(selectedRows.value.map((row) => row.name))
+  nextTick(() => {
+    gridApi.value.forEachNode((node) => {
+      if (!node.data || node.data.isGroup) return
+      node.setSelected(selectedIds.has(node.data.name))
+    })
+    selectedRows.value = gridApi.value.getSelectedRows().filter((row) => !row.isGroup)
+  })
+})
+
 // ---- Harita Başlatma ----
+let mapInstance = null
+
 function initMap() {
   const mapContainer = document.getElementById('map')
   if (!mapContainer) return
 
-  const map = L.map(mapContainer).setView([38.4849, 27.0891], 15)
+  if (mapInstance) {
+    mapInstance.remove()
+    mapInstance = null
+  }
+
+  mapContainer.innerHTML = ''
+
+  mapInstance = L.map(mapContainer).setView([38.4849, 27.0891], 15)
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '© OpenStreetMap contributors',
-  }).addTo(map)
+  }).addTo(mapInstance)
 
-  tools.value.forEach((tool) => {
+  const markerSource = filteredTools.value.length ? filteredTools.value : tools.value
+
+  markerSource.forEach((tool) => {
     const color = tool.status === 'Aktif' ? '#4CAF50' : '#F44336'
     L.circleMarker([tool.lat, tool.lng], {
       color,
@@ -672,7 +995,7 @@ function initMap() {
       .bindPopup(
         `<b>${tool.name}</b><br>${tool.type} - <span style="color:${color};font-weight:bold;">${tool.status}</span>`,
       )
-      .addTo(map)
+      .addTo(mapInstance)
   })
 }
 
@@ -681,13 +1004,12 @@ watch(activeTab, (val) => {
   if (val === 'map') setTimeout(initMap, 150)
 })
 
-import { onMounted, onUnmounted } from 'vue'
-
 const workOrderNotification = ref({ visible: false, message: '' })
 let workOrderTimer = null
 
 function showRandomWorkOrderResponse() {
-  const randomTool = tools.value[Math.floor(Math.random() * tools.value.length)]
+  const pool = filteredTools.value.length ? filteredTools.value : tools.value
+  const randomTool = pool[Math.floor(Math.random() * pool.length)]
   if (!randomTool) return
 
   workOrderNotification.value.message = `${randomTool.name} sayacından iş emri cevabı geldi! ⚙️`
@@ -710,7 +1032,8 @@ const alarmNotification = ref({ visible: false, message: '' })
 let alarmTimer = null
 
 function showRandomAlarm() {
-  const randomTool = tools.value[Math.floor(Math.random() * tools.value.length)]
+  const pool = filteredTools.value.length ? filteredTools.value : tools.value
+  const randomTool = pool[Math.floor(Math.random() * pool.length)]
   if (!randomTool) return
 
   const randomType = ['Üst Kapak Uyarısı', 'Müdahele', 'Düşük Akım'][Math.floor(Math.random() * 3)]
@@ -734,10 +1057,14 @@ onMounted(() => {
 
 onUnmounted(() => {
   clearTimeout(alarmTimer)
+  clearTimeout(workOrderTimer)
   gridApi.value = null
+  columnApi.value = null
+  if (mapInstance) {
+    mapInstance.remove()
+    mapInstance = null
+  }
 })
-
-onUnmounted(() => clearTimeout(workOrderTimer))
 
 const localeText = {
   // Genel
@@ -801,11 +1128,192 @@ const localeText = {
 </script>
 
 <style scoped>
+/* AG Grid genel tema */
 .ag-theme-alpine {
   --ag-font-size: 14px;
   border-radius: 10px;
 }
-/* Animasyon */
+
+/* Yerleşim */
+.products-layout {
+  display: flex !important;
+  align-items: stretch !important;
+  gap: 18px;
+}
+
+/* Update the products-layout styles */
+.products-layout {
+  display: flex !important;
+  align-items: stretch !important;
+  gap: 18px;
+}
+
+/* Update responsive styles */
+@media (max-width: 1280px) {
+  .products-layout {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .side-column {
+    flex: 1;
+    min-width: 300px;
+  }
+  .grid-column {
+    width: 100%;
+    order: -1;
+  }
+}
+
+.side-column,
+.grid-column {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.side-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* Kart stilleri */
+.filter-card,
+.group-card,
+.grid-card {
+  background: rgba(15, 23, 42, 0.95);
+  border-radius: 18px;
+  padding: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  color: #e2e8f0;
+}
+
+.group-card {
+  margin-top: 18px;
+  padding-bottom: 12px;
+  flex-grow: 1;
+}
+
+/* Başlıklar */
+.group-header h2,
+.filter-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  color: #f8fafc;
+}
+
+.group-header p {
+  margin: 6px 0 12px;
+  font-size: 13px;
+  color: #cbd5f5;
+  line-height: 1.4;
+}
+
+/* Filtre alanı */
+.filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.filter-group {
+  margin-bottom: 18px;
+}
+
+.filter-group:last-of-type {
+  margin-bottom: 0;
+}
+
+.filter-title {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: #a5b4fc;
+}
+
+.filter-chip {
+  margin-bottom: 8px;
+}
+
+/* Tablo alanı */
+.grid-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  backdrop-filter: blur(10px);
+}
+
+.grid-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.grid-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.summary-chip {
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.grid-wrapper {
+  flex: 1;
+  min-height: 600px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.28);
+}
+
+.grid-full {
+  height: 100%;
+  width: 100%;
+}
+
+/* Grup satırları (AG Grid) */
+:deep(.ag-row.group-row) {
+  background: rgba(59, 130, 246, 0.08) !important;
+}
+
+:deep(.ag-row.group-row .ag-cell) {
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+:deep(.group-cell) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+:deep(.group-cell span) {
+  font-size: 12px;
+  color: #cbd5f5;
+}
+
+:deep(.group-cell small) {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+/* Bildirim animasyonları */
 .slide-fade-enter-active {
   transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
 }
@@ -818,7 +1326,7 @@ const localeText = {
   transform: translateY(30px);
 }
 
-/* Bildirim kutusu */
+/* Bildirim kutuları */
 .fancy-toast {
   position: fixed;
   bottom: 24px;
@@ -838,18 +1346,6 @@ const localeText = {
   animation: toastPulse 4s ease-in-out infinite;
 }
 
-@keyframes toastPulse {
-  0%,
-  100% {
-    box-shadow: var(--toast-positive-shadow);
-    transform: translateY(0);
-  }
-  50% {
-    box-shadow: var(--toast-positive-shadow);
-    transform: translateY(-2px);
-  }
-}
-
 .toast-icon {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 50%;
@@ -863,6 +1359,7 @@ const localeText = {
 .toast-text {
   white-space: nowrap;
 }
+
 .alarm-toast {
   position: fixed;
   bottom: 110px;
@@ -882,18 +1379,27 @@ const localeText = {
   animation: alarmPulse 4s ease-in-out infinite;
 }
 
-@keyframes alarmPulse {
+@keyframes toastPulse {
   0%,
   100% {
-    box-shadow: var(--toast-alarm-shadow);
     transform: translateY(0);
   }
   50% {
-    box-shadow: var(--toast-alarm-shadow);
     transform: translateY(-2px);
   }
 }
 
+@keyframes alarmPulse {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+/* Tema uyumu */
 :global(.theme-light) .ag-theme-alpine {
   --ag-background-color: #ffffff;
   --ag-foreground-color: #1f2937;
@@ -914,13 +1420,39 @@ const localeText = {
   --ag-odd-row-background-color: rgba(148, 163, 184, 0.08);
 }
 
+/* Responsive */
+@media (max-width: 1280px) {
+  .products-layout {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .side-column {
+    flex: 1;
+    min-width: 300px;
+  }
+  .grid-column {
+    width: 100%;
+    order: -1;
+  }
+}
+
+@media (max-width: 960px) {
+  .grid-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .toolbar-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
 @media (max-width: 600px) {
   .fancy-toast,
   .alarm-toast {
     right: 16px;
     left: 16px;
   }
-
   .alarm-toast {
     bottom: 180px;
   }

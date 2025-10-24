@@ -387,9 +387,9 @@ import 'leaflet/dist/leaflet.css'
 import DataFreshnessIndicator from '@/components/common/DataFreshnessIndicator.vue'
 import { meterSnapshots, organizationProfile, referenceNow } from '@/data/mockMeters'
 import { formatAbsolute, formatClock, formatRelativeAgo, hoursBetween, toDate } from '@/utils/time'
-import 'ag-grid-community/styles/ag-grid.css'
-import 'ag-grid-community/styles/ag-theme-alpine.css'
-import 'ag-grid-community/styles/ag-theme-alpine-dark.css'
+// import 'ag-grid-community/styles/ag-grid.css'
+// import 'ag-grid-community/styles/ag-theme-alpine.css'
+// import 'ag-grid-community/styles/ag-theme-alpine-dark.css'
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
