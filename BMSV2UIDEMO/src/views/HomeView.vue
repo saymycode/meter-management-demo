@@ -2,60 +2,53 @@
   <v-container fluid class="home-shell" tag="section">
     <v-row class="g-6" no-gutters>
       <v-col cols="12">
-        <v-card class="hero-card" elevation="0">
-          <div class="hero-main">
+        <v-card class="intro-card" elevation="0">
+          <div class="intro-left">
             <div class="org-chip">{{ organizationName }}</div>
-            <h1 class="hero-title">Sayaç operasyon özeti</h1>
-            <p class="hero-text">
-              {{ organizationRegion }} için LoRa ve GPRS sayaçlarından gelen toplu veriler burada özetlenir.
-              Veriler gün içinde yalnızca birkaç kez toplu halde gelir; tüm göstergeler son alınan partiye göre güncellenir.
+            <h1 class="intro-title">Su sayaçları operasyon merkezi</h1>
+            <p class="intro-subtitle">
+              {{ organizationRegion }} için LoRa ve GPRS sayaçlarından gelen toplu ölçümleri takip ediyoruz.
+              Sistem günde üç defa veri alır; son çekilen parti üzerinden tüm göstergeler güncellenir.
             </p>
-            <div class="hero-meta">
+            <div class="intro-meta">
               <div class="meta-block">
                 <span class="meta-label">Son veri alımı</span>
                 <span class="meta-value">{{ lastUpdateLabel }}</span>
-                <span class="meta-hint">{{ lastUpdateAgo }}</span>
-              </div>
-              <div class="meta-block">
-                <span class="meta-label">Son 24 saatte parti</span>
-                <span class="meta-value">{{ batchesInLastDay }}</span>
-                <span class="meta-hint">Ortalama {{ averageIntervalLabel }} aralık</span>
-              </div>
-              <div class="meta-block">
-                <span class="meta-label">Veri durumu</span>
                 <v-chip :color="freshnessChip.color" class="meta-chip" size="small" variant="tonal">
                   {{ freshnessChip.label }}
                 </v-chip>
                 <span class="meta-hint">{{ freshnessChip.helper }}</span>
               </div>
+              <v-divider vertical class="mx-5 d-none d-md-flex" />
+              <div class="meta-block">
+                <span class="meta-label">Bir sonraki pencere</span>
+                <span class="meta-value">{{ nextWindowLabel }}</span>
+                <span class="meta-hint">{{ nextWindowCountdown }}</span>
+              </div>
+              <v-divider vertical class="mx-5 d-none d-md-flex" />
               <div class="meta-block">
                 <span class="meta-label">Kapsam</span>
                 <span class="meta-value">{{ formatNumber(totalMeters) }} sayaç</span>
                 <span class="meta-hint">{{ activeMeterRatio }}</span>
               </div>
             </div>
-            <div class="hero-actions">
+            <div class="intro-actions">
               <v-btn color="primary" prepend-icon="mdi-format-list-bulleted" variant="flat">Sensör listesine git</v-btn>
               <v-btn color="primary" prepend-icon="mdi-file-download" variant="text">Günlük özet indir</v-btn>
             </div>
           </div>
-          <div class="hero-side">
-            <div class="batch-card">
-              <h2 class="batch-title">Son gelen partiler</h2>
-              <span class="batch-subtitle">Gerçekleşen iletim saatleri ve kapsama bilgileri</span>
-              <ul class="batch-list">
-                <li v-for="batch in recentBatches" :key="batch.id" class="batch-item">
-                  <div class="batch-time">{{ batch.timeLabel }}</div>
-                  <div class="batch-meta">
-                    <span class="batch-ago">{{ batch.agoLabel }}</span>
-                    <span class="batch-coverage">{{ batch.coverageLabel }}</span>
-                  </div>
+          <div class="intro-right">
+            <div class="cadence-card">
+              <h2 class="cadence-title">Günlük iletim pencereleri</h2>
+              <span class="cadence-subtitle">Beklenen üç toplu iletim; tamamlananlar gri, gecikenler kehribar tonunda gösterilir.</span>
+              <ul class="cadence-timeline">
+                <li v-for="window in scheduleTimeline" :key="window.key" :class="['timeline-item', window.status]">
+                  <div class="timeline-dot" />
+                  <div class="timeline-time">{{ window.time }}</div>
+                  <div class="timeline-status">{{ window.statusLabel }}</div>
+                  <div class="timeline-note">{{ window.note }}</div>
                 </li>
               </ul>
-              <div class="batch-footer">
-                <v-icon size="18" color="primary">mdi-timer-sand</v-icon>
-                <span>{{ cadenceSummary }}</span>
-              </div>
             </div>
           </div>
         </v-card>
@@ -88,7 +81,7 @@
           <div class="panel-header">
             <div>
               <h2>Parti bazlı tüketim eğrisi</h2>
-              <span class="panel-hint">Son dokuz toplu iletim için tüketim toplamı (m³)</span>
+              <span class="panel-hint">Son dokuz iletim penceresine ait tüketim toplamı (m³)</span>
             </div>
             <v-chip prepend-icon="mdi-calendar-clock" class="panel-chip" size="small" variant="flat">
               {{ cadenceDescription }}
@@ -163,7 +156,7 @@
           <div class="panel-header">
             <div>
               <h2>Alarm özeti</h2>
-              <span class="panel-hint">Kritik uyarılar parti bazlı değerlendirildi</span>
+              <span class="panel-hint">Kritik uyarılar parti bazında değerlendirilir</span>
             </div>
             <v-chip prepend-icon="mdi-bell-alert" class="panel-chip warning" size="small" variant="flat">
               {{ criticalAlerts }} kritik
@@ -191,7 +184,7 @@
           <div class="panel-header">
             <div>
               <h2>En fazla tüketen bölgeler</h2>
-              <span class="panel-hint">Son iki parti ortalaması</span>
+              <span class="panel-hint">Son iki toplu gönderim ortalaması</span>
             </div>
             <v-chip prepend-icon="mdi-map-marker-path" class="panel-chip" size="small" variant="flat">DMA görünümü</v-chip>
           </div>
@@ -219,7 +212,7 @@
           <div class="panel-header">
             <div>
               <h2>Operasyon notları</h2>
-              <span class="panel-hint">Geciken partiler ve saha aksiyonları için önerilen adımlar</span>
+              <span class="panel-hint">Parti gecikmesi yaşayan sayaçlar için önerilen aksiyonlar</span>
             </div>
           </div>
           <v-row class="notes-grid" dense>
@@ -254,6 +247,9 @@ const organizationRegion = 'Ankara hizmet bölgesi'
 const totalMeters = 16842
 const activeMeters = 15620
 const freshBatchNow = ref(new Date())
+const lastBatchReceived = ref(new Date(Date.now() - 1000 * 60 * 165))
+const scheduleWindows = [8, 12, 24]
+const trendGradient = ['rgba(14,165,233,0.18)', 'rgba(14,165,233,0.05)']
 
 const formatNumber = (value) => value.toLocaleString('tr-TR')
 
@@ -282,111 +278,92 @@ const formatRelative = (from, to) => {
   return diffMinutes >= 0 ? `${buildText()} sonra` : `${buildText()} önce`
 }
 
-const formatAgo = (date, reference) => formatRelative(date, reference).replace('sonra', 'önce')
-
-const formatDuration = (minutes) => {
-  if (!minutes || Number.isNaN(minutes)) {
-    return '-'
-  }
-  const hours = Math.floor(minutes / 60)
-  const mins = Math.round(minutes % 60)
-  if (hours === 0) {
-    return `${mins} dk`
-  }
-  if (mins === 0) {
-    return `${hours} saat`
-  }
-  return `${hours} saat ${mins} dk`
+const formatAgo = (date, reference) => {
+  const raw = formatRelative(date, reference)
+  return raw.replace('sonra', 'önce')
 }
 
-const minutesAgo = (minutes) => new Date(freshBatchNow.value.getTime() - minutes * 60000)
-
-const batchHistory = ref([
-  { id: 'batch-0', receivedAt: minutesAgo(75), meterCount: 15428, coverage: 0.92 },
-  { id: 'batch-1', receivedAt: minutesAgo(320), meterCount: 15206, coverage: 0.9 },
-  { id: 'batch-2', receivedAt: minutesAgo(645), meterCount: 15102, coverage: 0.88 },
-  { id: 'batch-3', receivedAt: minutesAgo(980), meterCount: 15688, coverage: 0.94 },
-  { id: 'batch-4', receivedAt: minutesAgo(1320), meterCount: 14974, coverage: 0.87 }
-])
-
-const lastBatchReceived = computed(() => batchHistory.value[0]?.receivedAt ?? freshBatchNow.value)
-
-const batchIntervals = computed(() => {
-  const items = batchHistory.value
-  const result = []
-  for (let index = 0; index < items.length - 1; index += 1) {
-    const current = items[index]
-    const next = items[index + 1]
-    if (current && next) {
-      result.push(Math.abs((current.receivedAt.getTime() - next.receivedAt.getTime()) / 60000))
-    }
-  }
-  return result
-})
-
-const averageIntervalMinutes = computed(() => {
-  const intervals = batchIntervals.value
-  if (!intervals.length) {
-    return 0
-  }
-  const total = intervals.reduce((sum, value) => sum + value, 0)
-  return total / intervals.length
-})
-
-const batchesInLastDay = computed(
-  () => batchHistory.value.filter((batch) => freshBatchNow.value.getTime() - batch.receivedAt.getTime() <= 24 * 60 * 60000).length
-)
-
-const averageIntervalLabel = computed(() => formatDuration(averageIntervalMinutes.value))
-
-const cadenceSummary = computed(() => {
-  if (!batchHistory.value.length) {
-    return 'Henüz parti alınmadı.'
-  }
-  return `Son 24 saatte ${batchesInLastDay.value} parti • Ortalama aralık ${averageIntervalLabel.value}`
-})
-
-const lastUpdateLabel = computed(() => formatTime(lastBatchReceived.value))
-const lastUpdateAgo = computed(() => formatAgo(lastBatchReceived.value, freshBatchNow.value))
-
-const freshnessChip = computed(() => {
-  const lastBatch = lastBatchReceived.value
-  const now = freshBatchNow.value
+const getFreshnessChip = (lastBatch, now) => {
   const diffMinutes = Math.max(0, (now.getTime() - lastBatch.getTime()) / 60000)
-  const baseline = averageIntervalMinutes.value || 240
-  const watchThreshold = baseline * 1.5
-  const actionThreshold = baseline * 2.4
-
-  if (diffMinutes <= watchThreshold) {
+  if (diffMinutes <= 180) {
     return {
-      label: 'Beklenen aralıkta',
+      label: 'Takvimde',
       color: 'success',
       helper: `Son parti ${formatAgo(lastBatch, now)} alındı`
     }
   }
-  if (diffMinutes <= actionThreshold) {
+  if (diffMinutes <= 360) {
     return {
-      label: 'Kontrol edilmeli',
+      label: '1 çevrim gecikti',
       color: 'amber-darken-2',
       helper: `Son parti ${formatAgo(lastBatch, now)} alındı`
     }
   }
   return {
-    label: 'Müdahale gerekli',
+    label: '2+ çevrim gecikti',
     color: 'red-darken-2',
     helper: `Son parti ${formatAgo(lastBatch, now)} alındı`
   }
+}
+
+const getWindowDate = (base, hour) => {
+  const result = new Date(base)
+  if (hour === 24) {
+    result.setDate(result.getDate() + 1)
+    result.setHours(0, 0, 0, 0)
+  } else {
+    result.setHours(hour, 0, 0, 0)
+  }
+  return result
+}
+
+const scheduleTimeline = computed(() => {
+  return scheduleWindows.map((hour) => {
+    const now = freshBatchNow.value
+    const windowDate = getWindowDate(now, hour)
+    const lastBatch = lastBatchReceived.value
+    let status = 'upcoming'
+    let statusLabel = 'Bekleniyor'
+    let note = `${formatTime(windowDate)} hedef`
+
+    if (lastBatch.getTime() >= windowDate.getTime()) {
+      status = 'completed'
+      statusLabel = 'Tamamlandı'
+      note = `${formatAgo(windowDate, lastBatch)} içerisinde alındı`
+    } else if (now.getTime() >= windowDate.getTime()) {
+      status = 'delayed'
+      statusLabel = 'Gecikti'
+      note = 'Son parti bekleniyor'
+    }
+
+    return {
+      key: `${hour}-${status}`,
+      time: hour === 24 ? '24:00' : `${hour.toString().padStart(2, '0')}:00`,
+      status,
+      statusLabel,
+      note
+    }
+  })
 })
 
-const recentBatches = computed(() =>
-  batchHistory.value.slice(0, 4).map((batch, index) => ({
-    id: batch.id,
-    timeLabel: formatTime(batch.receivedAt),
-    agoLabel: formatAgo(batch.receivedAt, freshBatchNow.value),
-    coverageLabel: `${formatNumber(batch.meterCount)} sayaç • %${Math.round(batch.coverage * 100)}`,
-    isLatest: index === 0
-  }))
-)
+const nextWindow = computed(() => {
+  const now = freshBatchNow.value
+  for (const hour of scheduleWindows) {
+    const candidate = getWindowDate(now, hour)
+    if (candidate.getTime() > now.getTime()) {
+      return candidate
+    }
+  }
+  const tomorrow = new Date(now)
+  tomorrow.setDate(now.getDate() + 1)
+  tomorrow.setHours(scheduleWindows[0], 0, 0, 0)
+  return tomorrow
+})
+
+const nextWindowLabel = computed(() => `${formatTime(nextWindow.value)}`)
+const nextWindowCountdown = computed(() => formatRelative(freshBatchNow.value, nextWindow.value))
+const lastUpdateLabel = computed(() => formatTime(lastBatchReceived.value))
+const freshnessChip = computed(() => getFreshnessChip(lastBatchReceived.value, freshBatchNow.value))
 
 const activeMeterRatio = computed(() => {
   const ratio = (activeMeters / totalMeters) * 100
@@ -399,15 +376,15 @@ const overviewMetrics = [
     value: formatNumber(activeMeters),
     caption: 'Son parti içinde veri gönderen sayaç',
     trend: '+124 sayaç',
-    trendLabel: 'Önceki partiye göre',
+    trendLabel: 'Önceki pencereye göre',
     trendPositive: true,
     icon: 'mdi-water',
     accent: 'linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(56, 189, 248, 0.32))'
   },
   {
-    title: 'Kontrol gerektiren',
+    title: 'Geciken sayaç',
     value: formatNumber(482),
-    caption: 'Ortalama aralığı aşan sayaç',
+    caption: '1 çevrim ve üzeri gecikme yaşayan sayaç',
     trend: '58 kritik',
     trendLabel: 'Saha kontrolü gerekli',
     trendPositive: false,
@@ -417,7 +394,7 @@ const overviewMetrics = [
   {
     title: 'İletim başarısı',
     value: '93%',
-    caption: 'Son partide paket iletim oranı',
+    caption: 'Bugünkü pencerelerde alınan paket oranı',
     trend: '+2 puan',
     trendLabel: 'Haftalık ortalama',
     trendPositive: true,
@@ -428,8 +405,8 @@ const overviewMetrics = [
     title: 'Açık alarm',
     value: '12',
     caption: '4 kritik, 8 takipte',
-    trend: 'Son partide 3 yeni',
-    trendLabel: 'Geciken sayaçlardan',
+    trend: 'Son parti: 3 yeni',
+    trendLabel: '12:00 verisine göre',
     trendPositive: false,
     icon: 'mdi-bell-alert',
     accent: 'linear-gradient(135deg, rgba(59, 130, 246, 0.18), rgba(96, 165, 250, 0.32))'
@@ -439,50 +416,40 @@ const overviewMetrics = [
 const consumptionTrend = ref([18.6, 19.4, 19.1, 20.2, 21.5, 21.2, 22.4, 21.9, 22.6])
 
 const trendSummaries = [
-  { label: 'Son parti', value: '22.6 bin m³', hint: 'Güncel toplu veri', highlight: true },
-  { label: 'Son 24 saat', value: '44.5 bin m³', hint: 'Gelen üç partinin toplamı' },
+  { label: 'Son parti', value: '22.6 bin m³', hint: '12:00 verisi', highlight: true },
+  { label: 'Bugün toplam', value: '44.5 bin m³', hint: '08:00 + 12:00' },
   { label: 'Dün', value: '43.8 bin m³', hint: '%1.6 artış' },
-  { label: 'Haftalık', value: '302 bin m³', hint: 'Son 7 gün ortalaması' }
+  { label: 'Haftalık', value: '302 bin m³', hint: '3 parti gecikmeli' }
 ]
 
 const cadenceDescription = computed(() => {
-  if (!batchHistory.value.length) {
-    return 'Veri bekleniyor'
-  }
   const diff = Math.abs(Math.round((freshBatchNow.value - lastBatchReceived.value) / 60000))
-  const baseline = averageIntervalMinutes.value || 240
-  if (diff <= baseline * 1.5) {
-    return 'Beklenen aralıkta'
-  }
-  if (diff <= baseline * 2.4) {
-    return 'Kontrol edilmeli'
-  }
-  return 'Müdahale gerekli'
+  return diff <= 180 ? 'Takvimde' : diff <= 360 ? '1 çevrim gecikmeli' : '2+ çevrim gecikmeli'
 })
 
 const freshnessBreakdown = [
   {
-    label: 'Beklenen aralıkta',
+    label: 'Takvimde',
     value: formatNumber(15138),
-    hint: 'Ortalama aralık içinde güncellendi',
+    hint: 'Son 12 saatte veri gönderdi',
     percentage: '%89',
     color: 'rgba(34, 197, 94, 0.35)',
     chipColor: 'success'
   },
   {
-    label: 'Kontrol edilmeli',
+    label: '1 çevrim gecikmeli',
     value: formatNumber(964),
-    hint: 'Ortalama aralığı aştı',
+    hint: 'Son pencere kaçırıldı',
     percentage: '%6',
-    color: 'rgba(245, 158, 11, 0.28)',
+    color: 'rgba(245, 158, 11, 0.35)',
     chipColor: 'amber-darken-2'
   },
   {
-    label: 'Müdahale gerekli',
-    value: formatNumber(740),
-    hint: 'Uzayan gecikme nedeniyle alarmda',
+    label: '2+ çevrim gecikmeli',
+    value: formatNumber(296),
+    hint: '24 saati aştı',
     percentage: '%5',
-    color: 'rgba(248, 113, 113, 0.28)',
+    color: 'rgba(248, 113, 113, 0.35)',
     chipColor: 'red-darken-2'
   }
 ]
@@ -491,55 +458,63 @@ const criticalAlerts = 4
 
 const alerts = [
   {
-    title: 'Basınç düşüşü',
-    subtitle: 'İvedik terfi hattında veri 5 saattir gelmedi',
-    icon: 'mdi-gauge-low',
-    color: 'red-darken-2',
-    count: 2
+    title: 'DMA-3 basınç düşüşü',
+    subtitle: 'Son veri 12:00 paketinde geldi',
+    count: 'Acil',
+    icon: 'mdi-alert-decagram-outline',
+    color: 'red-darken-1'
   },
   {
-    title: 'İletişim kaybı',
-    subtitle: 'Altındağ bölgesinde 3 sayaç cevap vermiyor',
+    title: 'Kapalı vana uyarısı',
+    subtitle: 'Çankaya vana-12 • 2 pencere gecikmeli',
+    count: '2',
+    icon: 'mdi-valve',
+    color: 'orange-darken-2'
+  },
+  {
+    title: 'Gateway bağlantısı koptu',
+    subtitle: 'Keçiören 5G-02 • 6 saattir offline',
+    count: '6 sa',
     icon: 'mdi-access-point-network-off',
     color: 'amber-darken-2',
     count: 3
   },
   {
-    title: 'Kaçak ihtimali',
-    subtitle: 'Polatlı hattında tüketim ortalaması yükseldi',
-    icon: 'mdi-water-alert',
-    color: 'primary',
-    count: 7
+    title: 'Klor seviyesi yükseldi',
+    subtitle: 'Mamak kalite istasyonu • 08:00 partisi',
+    count: '1',
+    icon: 'mdi-flask-alert',
+    color: 'blue-darken-1'
   }
 ]
 
 const topRegions = [
   {
     rank: '1',
-    name: 'Çankaya DMA-3',
-    subtitle: '1.204 aktif sayaç • 42 gateway',
-    value: '22.6 bin m³',
-    trend: '+2.4%',
+    name: 'Çankaya - Merkez DMA',
+    subtitle: '1.842 aktif sayaç • 86 gateway',
+    value: '28.4 bin m³',
+    trend: '+5.2%',
     trendPositive: true,
-    hint: 'Son parti referansı'
+    hint: 'Son parti 12:00'
   },
   {
     rank: '2',
-    name: 'Yenimahalle sanayi',
-    subtitle: '884 aktif sayaç • 31 gateway',
-    value: '19.7 bin m³',
-    trend: '-0.8%',
-    trendPositive: false,
-    hint: 'Kontrol bekleyen 4 sayaç'
+    name: 'Keçiören - Kuzey hattı',
+    subtitle: '1.264 aktif sayaç • 54 gateway',
+    value: '24.1 bin m³',
+    trend: '+3.4%',
+    trendPositive: true,
+    hint: 'Son parti 12:00'
   },
   {
     rank: '3',
-    name: 'Keçiören konut hattı',
-    subtitle: '1.342 aktif sayaç • 54 gateway',
-    value: '18.4 bin m³',
-    trend: '+1.2%',
-    trendPositive: true,
-    hint: 'Son parti tamlandı'
+    name: 'Yenimahalle sanayi bölgesi',
+    subtitle: '932 aktif sayaç • 31 gateway',
+    value: '19.7 bin m³',
+    trend: '−1.1%',
+    trendPositive: false,
+    hint: 'Son parti 08:00'
   },
   {
     rank: '4',
@@ -548,7 +523,7 @@ const topRegions = [
     value: '17.9 bin m³',
     trend: '+0.9%',
     trendPositive: true,
-    hint: 'Son parti 75 dk önce'
+    hint: 'Son parti 12:00'
   },
   {
     rank: '5',
@@ -557,14 +532,14 @@ const topRegions = [
     value: '15.8 bin m³',
     trend: '+0.4%',
     trendPositive: true,
-    hint: 'Müdahale gerekli 2 sayaç'
+    hint: 'Son parti 08:00'
   }
 ]
 
 const operationNotes = [
   {
     title: 'Gateway kontrol listesi',
-    description: '5 saatten uzun süredir veri göndermeyen sayaçlar için saha taraması planlandı.',
+    description: '6 saati aşan gecikmeli sayaçlar için saha devresi taraması planlandı.',
     icon: 'mdi-router-network',
     badge: 'Saha ziyareti',
     badgeColor: 'primary',
@@ -572,7 +547,7 @@ const operationNotes = [
   },
   {
     title: 'Bakım planı',
-    description: 'Batarya seviyesi düşük sayaçlar bir sonraki partide tekrar doğrulanacak.',
+    description: 'Batarya seviyesi düşük sayaçlar 12:00 partisinde tekrar doğrulanacak.',
     icon: 'mdi-battery-alert',
     badge: 'Yenilendi',
     badgeColor: 'teal',
@@ -601,7 +576,7 @@ const operationNotes = [
   row-gap: 28px;
 }
 
-.hero-card {
+.intro-card {
   display: flex;
   flex-wrap: wrap;
   gap: 32px;
@@ -613,7 +588,7 @@ const operationNotes = [
   box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
 }
 
-.hero-main {
+.intro-left {
   flex: 1 1 360px;
   max-width: 640px;
   display: flex;
@@ -635,26 +610,27 @@ const operationNotes = [
   letter-spacing: 0.5px;
 }
 
-.hero-title {
+.intro-title {
   font-size: 32px;
   font-weight: 800;
   color: var(--heading-color);
   margin: 0;
 }
 
-.hero-text {
+.intro-subtitle {
   font-size: 16px;
   color: var(--muted-text);
   margin: 0;
   line-height: 1.6;
 }
 
-.hero-meta {
-  display: grid;
-  gap: 18px;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+.intro-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 32px;
+  align-items: center;
   padding: 18px 20px;
-  background: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.6);
   border-radius: 20px;
   border: 1px solid var(--border-soft);
 }
@@ -667,16 +643,21 @@ const operationNotes = [
 
 .meta-label {
   font-size: 12px;
-  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--muted-text);
+  font-weight: 600;
 }
 
 .meta-value {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--heading-color);
+}
+
+.meta-chip {
+  margin-top: 2px;
+  align-self: flex-start;
 }
 
 .meta-hint {
@@ -684,82 +665,95 @@ const operationNotes = [
   color: var(--muted-text);
 }
 
-.meta-chip {
-  align-self: flex-start;
-}
-
-.hero-actions {
+.intro-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
 }
 
-.hero-side {
-  flex: 1 1 280px;
-  max-width: 360px;
+.intro-right {
+  flex: 0 1 320px;
   display: flex;
-  align-items: stretch;
+  justify-content: center;
 }
 
-.batch-card {
-  flex: 1;
+.cadence-card {
+  width: 100%;
+  max-width: 320px;
+  background: var(--surface-card);
+  border-radius: 22px;
+  border: 1px solid var(--border-soft);
+  padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 26px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.75);
-  border: 1px solid var(--border-soft);
 }
 
-.batch-title {
+.cadence-title {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--heading-color);
 }
 
-.batch-subtitle {
+.cadence-subtitle {
   font-size: 13px;
   color: var(--muted-text);
+  line-height: 1.5;
 }
 
-.batch-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.cadence-timeline {
+  list-style: none;
   margin: 0;
   padding: 0;
-  list-style: none;
-}
-
-.batch-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: rgba(15, 23, 42, 0.04);
+  gap: 14px;
 }
 
-.batch-time {
-  font-weight: 600;
+.timeline-item {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.timeline-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.4);
+  border: 3px solid rgba(148, 163, 184, 0.45);
+}
+
+.timeline-item.completed .timeline-dot {
+  background: rgba(34, 197, 94, 0.45);
+  border-color: rgba(34, 197, 94, 0.6);
+}
+
+.timeline-item.delayed .timeline-dot {
+  background: rgba(245, 158, 11, 0.45);
+  border-color: rgba(245, 158, 11, 0.6);
+}
+
+.timeline-item.upcoming .timeline-dot {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.timeline-time {
+  font-weight: 700;
   color: var(--heading-color);
 }
 
-.batch-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.timeline-status {
   font-size: 13px;
   color: var(--muted-text);
 }
 
-.batch-footer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
+.timeline-note {
+  grid-column: 2 / 3;
+  font-size: 12px;
   color: var(--muted-text);
 }
 
@@ -806,7 +800,7 @@ const operationNotes = [
 .metric-body {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .metric-caption {
@@ -833,29 +827,31 @@ const operationNotes = [
   color: #b91c1c;
 }
 
-.trend-label {
-  font-weight: 600;
+.metric-trend .trend-label {
+  font-weight: 500;
+  color: var(--muted-text);
 }
 
 .panel-card {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 22px;
   padding: 26px;
-  border-radius: 24px;
   background: var(--surface-card);
+  border-radius: 24px;
   border: 1px solid var(--border-soft);
 }
 
 .panel-card.compact {
-  gap: 16px;
+  gap: 18px;
+  padding: 24px;
 }
 
 .panel-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 16px;
 }
 
 .panel-header h2 {
@@ -871,7 +867,14 @@ const operationNotes = [
 }
 
 .panel-chip {
-  align-self: flex-start;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.panel-chip.warning {
+  background: rgba(248, 113, 113, 0.14);
+  color: #b91c1c;
 }
 
 .panel-body {
@@ -887,6 +890,7 @@ const operationNotes = [
 .panel-legend {
   display: flex;
   gap: 18px;
+  flex-wrap: wrap;
   font-size: 13px;
   color: var(--muted-text);
 }
@@ -897,18 +901,18 @@ const operationNotes = [
   gap: 6px;
 }
 
-.dot {
+.legend-item .dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
 }
 
-.dot.primary {
-  background: rgba(14, 165, 233, 0.8);
+.legend-item .dot.primary {
+  background: #0ea5e9;
 }
 
-.dot.secondary {
-  background: rgba(99, 102, 241, 0.65);
+.legend-item .dot.secondary {
+  background: rgba(2, 132, 199, 0.35);
 }
 
 .panel-summary {
@@ -918,18 +922,14 @@ const operationNotes = [
 .summary-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px;
-  border-radius: 16px;
-  background: rgba(15, 23, 42, 0.03);
+  gap: 6px;
 }
 
 .summary-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--muted-text);
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.4px;
+  color: var(--muted-text);
 }
 
 .summary-value {
@@ -956,8 +956,7 @@ const operationNotes = [
 .freshness-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
+  gap: 16px;
 }
 
 .freshness-left {
@@ -967,20 +966,20 @@ const operationNotes = [
 }
 
 .freshness-dot {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
 }
 
 .freshness-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .freshness-label {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--heading-color);
 }
 
@@ -993,7 +992,12 @@ const operationNotes = [
   display: flex;
   align-items: center;
   gap: 10px;
-  font-weight: 600;
+}
+
+.freshness-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--heading-color);
 }
 
 .freshness-footer {
@@ -1002,6 +1006,8 @@ const operationNotes = [
   gap: 8px;
   font-size: 13px;
   color: var(--muted-text);
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-soft);
 }
 
 .alert-list {
@@ -1017,7 +1023,7 @@ const operationNotes = [
 .region-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .region-item {
@@ -1027,7 +1033,10 @@ const operationNotes = [
 .region-rank {
   width: 32px;
   height: 32px;
-  display: inline-flex;
+  border-radius: 12px;
+  background: rgba(15, 118, 110, 0.12);
+  color: #0f766e;
+  display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 12px;
@@ -1044,21 +1053,19 @@ const operationNotes = [
 }
 
 .region-value {
+  font-size: 16px;
   font-weight: 700;
   color: var(--heading-color);
 }
 
-.region-trend {
-  font-size: 13px;
+.region-trend.positive {
+  color: #059669;
   font-weight: 600;
 }
 
-.region-trend.positive {
-  color: #047857;
-}
-
 .region-trend.negative {
-  color: #b91c1c;
+  color: #dc2626;
+  font-weight: 600;
 }
 
 .region-hint {
@@ -1072,49 +1079,56 @@ const operationNotes = [
 
 .note-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 14px;
-  padding: 18px;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.02);
   border-radius: 18px;
-  background: rgba(15, 23, 42, 0.03);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  min-height: 132px;
 }
 
 .note-icon {
-  color: #0f172a;
+  color: var(--accent-color);
 }
 
 .note-body {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .note-title {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--heading-color);
 }
 
 .note-desc {
   font-size: 13px;
   color: var(--muted-text);
+  line-height: 1.5;
 }
 
 .notes-footer {
+  margin-top: 20px;
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
   color: var(--muted-text);
-  margin-top: 12px;
 }
 
 @media (max-width: 960px) {
-  .hero-card {
-    padding: 28px;
+  .intro-card {
+    flex-direction: column;
   }
 
-  .hero-side {
+  .intro-right {
+    width: 100%;
+  }
+
+  .cadence-card {
     max-width: 100%;
   }
 }
