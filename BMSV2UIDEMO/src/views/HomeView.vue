@@ -1,52 +1,54 @@
 <template>
-  <v-container fluid class="dashboard-shell" tag="section">
-    <v-row class="g-4" no-gutters>
+  <v-container fluid class="home-shell" tag="section">
+    <v-row class="g-6" no-gutters>
       <v-col cols="12">
-        <v-card class="dashboard-hero" elevation="0">
-          <div class="hero-left">
-            <div class="hero-badge">Baylan Su Yönetimi</div>
-            <h1 class="hero-title">Şehir şebekesinde su dağıtım görünümü</h1>
-            <p class="hero-subtitle">
-              ASKİ, İSKİ ve benzeri operatörler için son 24 saatte online olan sayaçlar, aktiflik oranı, vana ve gateway durumlarıyla su tüketiminizi tek ekranda özetliyoruz. Detaylar için ilgili modüllere geçebilirsiniz.
+        <v-card class="intro-card" elevation="0">
+          <div class="intro-left">
+            <div class="org-chip">{{ organizationName }}</div>
+            <h1 class="intro-title">Su sayaçları operasyon merkezi</h1>
+            <p class="intro-subtitle">
+              {{ organizationRegion }} için LoRa ve GPRS sayaçlarından gelen toplu ölçümleri takip ediyoruz.
+              Sistem günde üç defa veri alır; son çekilen parti üzerinden tüm göstergeler güncellenir.
             </p>
-            <div class="hero-meta">
+            <div class="intro-meta">
               <div class="meta-block">
-                <span class="meta-label">Bugün</span>
-                <span class="meta-value">{{ formattedDate }}</span>
+                <span class="meta-label">Son veri alımı</span>
+                <span class="meta-value">{{ lastUpdateLabel }}</span>
+                <v-chip :color="freshnessChip.color" class="meta-chip" size="small" variant="tonal">
+                  {{ freshnessChip.label }}
+                </v-chip>
+                <span class="meta-hint">{{ freshnessChip.helper }}</span>
               </div>
-              <v-divider vertical class="mx-4" />
+              <v-divider vertical class="mx-5 d-none d-md-flex" />
               <div class="meta-block">
-                <span class="meta-label">Toplam sayaç</span>
-                <span class="meta-value">{{ totalMeters }}</span>
+                <span class="meta-label">Bir sonraki pencere</span>
+                <span class="meta-value">{{ nextWindowLabel }}</span>
+                <span class="meta-hint">{{ nextWindowCountdown }}</span>
               </div>
-              <v-divider vertical class="mx-4" />
+              <v-divider vertical class="mx-5 d-none d-md-flex" />
               <div class="meta-block">
-                <span class="meta-label">Son 24 saatte online</span>
-                <span class="meta-value">{{ last24hOnline }}</span>
+                <span class="meta-label">Kapsam</span>
+                <span class="meta-value">{{ formatNumber(totalMeters) }} sayaç</span>
+                <span class="meta-hint">{{ activeMeterRatio }}</span>
               </div>
-              <v-divider vertical class="mx-4" />
-              <div class="meta-block">
-                <span class="meta-label">Aktiflik oranı</span>
-                <span class="meta-value">{{ connectionRate }}</span>
-              </div>
+            </div>
+            <div class="intro-actions">
+              <v-btn color="primary" prepend-icon="mdi-format-list-bulleted" variant="flat">Sensör listesine git</v-btn>
+              <v-btn color="primary" prepend-icon="mdi-file-download" variant="text">Günlük özet indir</v-btn>
             </div>
           </div>
-          <div class="hero-right">
-            <div class="hero-highlight">
-              <span class="highlight-label">Anlık debi</span>
-              <span class="highlight-value">4.2 m³/sn</span>
-              <span class="highlight-change positive">+3.1% • son 15 dk</span>
-            </div>
-            <div class="hero-spark">
-              <v-sparkline
-                :model-value="heroTrend"
-                :line-width="3"
-                :smooth="16"
-                auto-draw
-                auto-line-width
-                class="hero-sparkline"
-              />
-              <div class="hero-caption">Hat basıncı stabil • Kapasitenin %68'i kullanılıyor</div>
+          <div class="intro-right">
+            <div class="cadence-card">
+              <h2 class="cadence-title">Günlük iletim pencereleri</h2>
+              <span class="cadence-subtitle">Beklenen üç toplu iletim; tamamlananlar gri, gecikenler kehribar tonunda gösterilir.</span>
+              <ul class="cadence-timeline">
+                <li v-for="window in scheduleTimeline" :key="window.key" :class="['timeline-item', window.status]">
+                  <div class="timeline-dot" />
+                  <div class="timeline-time">{{ window.time }}</div>
+                  <div class="timeline-status">{{ window.statusLabel }}</div>
+                  <div class="timeline-note">{{ window.note }}</div>
+                </li>
+              </ul>
             </div>
           </div>
         </v-card>
@@ -64,20 +66,12 @@
             </div>
           </div>
           <div class="metric-body">
+            <span class="metric-caption">{{ metric.caption }}</span>
             <div class="metric-trend" :class="metric.trendPositive ? 'positive' : 'negative'">
-              <v-icon size="18">{{ metric.trendPositive ? 'mdi-arrow-up' : 'mdi-arrow-down' }}</v-icon>
+              <v-icon size="18">{{ metric.trendPositive ? 'mdi-check-circle' : 'mdi-alert' }}</v-icon>
               <span>{{ metric.trend }}</span>
               <span class="trend-label">{{ metric.trendLabel }}</span>
             </div>
-            <v-sparkline
-              :model-value="metric.sparkline"
-              :smooth="12"
-              :line-width="3"
-              :gradient="metric.gradient"
-              auto-draw
-              auto-line-width
-              class="metric-sparkline"
-            />
           </div>
         </v-card>
       </v-col>
@@ -86,53 +80,40 @@
         <v-card class="panel-card" elevation="0">
           <div class="panel-header">
             <div>
-              <h2>Su tüketim eğilimleri</h2>
-              <span class="panel-hint">Son 7 güne ait toplam tüketim (m³)</span>
+              <h2>Parti bazlı tüketim eğrisi</h2>
+              <span class="panel-hint">Son dokuz iletim penceresine ait tüketim toplamı (m³)</span>
             </div>
-            <v-chip prepend-icon="mdi-calendar-range" class="panel-chip" variant="flat">7 gün</v-chip>
+            <v-chip prepend-icon="mdi-calendar-clock" class="panel-chip" size="small" variant="flat">
+              {{ cadenceDescription }}
+            </v-chip>
           </div>
           <div class="panel-body">
             <v-sparkline
-              :model-value="consumptionTrend"
-              :smooth="10"
               :line-width="4"
+              :model-value="consumptionTrend"
+              :smooth="12"
+              :gradient="trendGradient"
               auto-draw
               auto-line-width
               class="trend-chart"
+              fill
             />
             <div class="panel-legend">
               <div class="legend-item">
                 <span class="dot primary"></span>
-                <span>Planlanan</span>
+                <span>Gerçekleşen tüketim</span>
               </div>
               <div class="legend-item">
                 <span class="dot secondary"></span>
-                <span>Gerçekleşen</span>
+                <span>Planlanan hedef</span>
               </div>
             </div>
             <v-row class="panel-summary" dense>
-              <v-col cols="12" sm="6" md="3">
+              <v-col v-for="summary in trendSummaries" :key="summary.label" cols="12" sm="6" md="3">
                 <div class="summary-item">
-                  <span class="summary-label">24 saat toplam</span>
-                  <span class="summary-value">182.4 bin m³</span>
-                </div>
-              </v-col>
-              <v-col cols="12" sm="6" md="3">
-                <div class="summary-item">
-                  <span class="summary-label">1 hafta toplam</span>
-                  <span class="summary-value">1.24 milyon m³</span>
-                </div>
-              </v-col>
-              <v-col cols="12" sm="6" md="3">
-                <div class="summary-item">
-                  <span class="summary-label">1 ay toplam</span>
-                  <span class="summary-value">5.3 milyon m³</span>
-                </div>
-              </v-col>
-              <v-col cols="12" sm="6" md="3">
-                <div class="summary-item">
-                  <span class="summary-label">1 yıl toplam</span>
-                  <span class="summary-value positive">61.2 milyon m³</span>
+                  <span class="summary-label">{{ summary.label }}</span>
+                  <span class="summary-value" :class="summary.highlight ? 'positive' : ''">{{ summary.value }}</span>
+                  <span class="summary-hint">{{ summary.hint }}</span>
                 </div>
               </v-col>
             </v-row>
@@ -144,30 +125,28 @@
         <v-card class="panel-card compact" elevation="0">
           <div class="panel-header">
             <div>
-              <h2>Durum özetleri</h2>
-              <span class="panel-hint">Basınç, kalite ve vana operasyonlarına ait anlık durum</span>
+              <h2>Veri tazeliği izleme</h2>
+              <span class="panel-hint">Son iki gün için sayaçların parti katılım durumları</span>
             </div>
           </div>
-          <div class="status-grid">
-            <div
-              v-for="status in statusCards"
-              :key="status.title"
-              class="status-card"
-            >
-              <div class="status-header">
-                <v-avatar size="36" class="status-icon" :style="{ background: status.accent }">
-                  <v-icon size="20">{{ status.icon }}</v-icon>
-                </v-avatar>
-                <v-chip :color="status.badgeColor" class="status-chip" size="small" variant="tonal">
-                  {{ status.badge }}
-                </v-chip>
+          <div class="freshness-stats">
+            <div v-for="freshness in freshnessBreakdown" :key="freshness.label" class="freshness-row">
+              <div class="freshness-left">
+                <div class="freshness-dot" :style="{ background: freshness.color }" />
+                <div class="freshness-text">
+                  <span class="freshness-label">{{ freshness.label }}</span>
+                  <span class="freshness-hint">{{ freshness.hint }}</span>
+                </div>
               </div>
-              <div class="status-body">
-                <span class="status-title">{{ status.title }}</span>
-                <span class="status-value">{{ status.value }}</span>
-                <span class="status-desc">{{ status.description }}</span>
+              <div class="freshness-values">
+                <span class="freshness-value">{{ freshness.value }}</span>
+                <v-chip :color="freshness.chipColor" size="small" variant="tonal">{{ freshness.percentage }}</v-chip>
               </div>
             </div>
+          </div>
+          <div class="freshness-footer">
+            <v-icon size="18" color="primary">mdi-information-outline</v-icon>
+            <span>Geciken sayaçlar otomatik olarak iş emri listesine aktarılır.</span>
           </div>
         </v-card>
       </v-col>
@@ -177,9 +156,11 @@
           <div class="panel-header">
             <div>
               <h2>Alarm özeti</h2>
-              <span class="panel-hint">Şu anki kritik ve önemli uyarılar</span>
+              <span class="panel-hint">Kritik uyarılar parti bazında değerlendirilir</span>
             </div>
-            <v-chip prepend-icon="mdi-bell-alert" class="panel-chip warning" variant="flat">{{ criticalAlerts24h }} kritik</v-chip>
+            <v-chip prepend-icon="mdi-bell-alert" class="panel-chip warning" size="small" variant="flat">
+              {{ criticalAlerts }} kritik
+            </v-chip>
           </div>
           <v-list class="alert-list" density="compact">
             <v-list-item v-for="alert in alerts" :key="alert.title" class="alert-item">
@@ -202,10 +183,10 @@
         <v-card class="panel-card compact" elevation="0">
           <div class="panel-header">
             <div>
-              <h2>En fazla su tüketen bölgeler</h2>
-              <span class="panel-hint">İlk 5 bölge • Son 24 saat</span>
+              <h2>En fazla tüketen bölgeler</h2>
+              <span class="panel-hint">Son iki toplu gönderim ortalaması</span>
             </div>
-            <v-chip prepend-icon="mdi-map-marker" class="panel-chip" variant="flat">DMA görünümü</v-chip>
+            <v-chip prepend-icon="mdi-map-marker-path" class="panel-chip" size="small" variant="flat">DMA görünümü</v-chip>
           </div>
           <v-list class="region-list" density="compact">
             <v-list-item v-for="region in topRegions" :key="region.name" class="region-item">
@@ -217,13 +198,41 @@
               <template #append>
                 <div class="region-meta">
                   <span class="region-value">{{ region.value }}</span>
-                  <span class="region-trend" :class="region.trendPositive ? 'positive' : 'negative'">
-                    {{ region.trend }}
-                  </span>
+                  <span class="region-trend" :class="region.trendPositive ? 'positive' : 'negative'">{{ region.trend }}</span>
+                  <span class="region-hint">{{ region.hint }}</span>
                 </div>
               </template>
             </v-list-item>
           </v-list>
+        </v-card>
+      </v-col>
+
+      <v-col cols="12">
+        <v-card class="panel-card compact" elevation="0">
+          <div class="panel-header">
+            <div>
+              <h2>Operasyon notları</h2>
+              <span class="panel-hint">Parti gecikmesi yaşayan sayaçlar için önerilen aksiyonlar</span>
+            </div>
+          </div>
+          <v-row class="notes-grid" dense>
+            <v-col v-for="note in operationNotes" :key="note.title" cols="12" md="4">
+              <div class="note-card">
+                <v-avatar size="36" class="note-icon" :style="{ background: note.accent }">
+                  <v-icon size="20">{{ note.icon }}</v-icon>
+                </v-avatar>
+                <div class="note-body">
+                  <span class="note-title">{{ note.title }}</span>
+                  <span class="note-desc">{{ note.description }}</span>
+                </div>
+                <v-chip size="small" :color="note.badgeColor" variant="tonal">{{ note.badge }}</v-chip>
+              </div>
+            </v-col>
+          </v-row>
+          <div class="notes-footer">
+            <v-icon size="18" color="primary">mdi-book-information-variant</v-icon>
+            <span>Veri paylaşımı kurum bazında yapılır; farklı kurumların sayaçları bu ekranda görünmez.</span>
+          </div>
         </v-card>
       </v-col>
     </v-row>
@@ -233,127 +242,245 @@
 <script setup>
 import { computed, ref } from 'vue'
 
-const totalMeters = '16.842'
-const last24hOnline = '15.620'
-const connectionRate = '92.7%'
+const organizationName = 'ASKİ Su Operasyon Merkezi'
+const organizationRegion = 'Ankara hizmet bölgesi'
+const totalMeters = 16842
+const activeMeters = 15620
+const freshBatchNow = ref(new Date())
+const lastBatchReceived = ref(new Date(Date.now() - 1000 * 60 * 165))
+const scheduleWindows = [8, 12, 24]
+const trendGradient = ['rgba(14,165,233,0.18)', 'rgba(14,165,233,0.05)']
 
-const heroTrend = ref([3.6, 3.8, 3.9, 4.1, 4.3, 4.2, 4.4, 4.7, 4.5, 4.8, 4.6])
+const formatNumber = (value) => value.toLocaleString('tr-TR')
+
+const formatTime = (date) =>
+  new Intl.DateTimeFormat('tr-TR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: 'numeric',
+    month: 'long'
+  }).format(date)
+
+const formatRelative = (from, to) => {
+  const diffMinutes = Math.round((to.getTime() - from.getTime()) / 60000)
+  const absMinutes = Math.abs(diffMinutes)
+  const hours = Math.floor(absMinutes / 60)
+  const minutes = absMinutes % 60
+  const buildText = () => {
+    if (hours === 0) {
+      return `${minutes} dk`
+    }
+    if (minutes === 0) {
+      return `${hours} saat`
+    }
+    return `${hours} saat ${minutes} dk`
+  }
+  return diffMinutes >= 0 ? `${buildText()} sonra` : `${buildText()} önce`
+}
+
+const formatAgo = (date, reference) => {
+  const raw = formatRelative(date, reference)
+  return raw.replace('sonra', 'önce')
+}
+
+const getFreshnessChip = (lastBatch, now) => {
+  const diffMinutes = Math.max(0, (now.getTime() - lastBatch.getTime()) / 60000)
+  if (diffMinutes <= 180) {
+    return {
+      label: 'Takvimde',
+      color: 'success',
+      helper: `Son parti ${formatAgo(lastBatch, now)} alındı`
+    }
+  }
+  if (diffMinutes <= 360) {
+    return {
+      label: '1 çevrim gecikti',
+      color: 'amber-darken-2',
+      helper: `Son parti ${formatAgo(lastBatch, now)} alındı`
+    }
+  }
+  return {
+    label: '2+ çevrim gecikti',
+    color: 'red-darken-2',
+    helper: `Son parti ${formatAgo(lastBatch, now)} alındı`
+  }
+}
+
+const getWindowDate = (base, hour) => {
+  const result = new Date(base)
+  if (hour === 24) {
+    result.setDate(result.getDate() + 1)
+    result.setHours(0, 0, 0, 0)
+  } else {
+    result.setHours(hour, 0, 0, 0)
+  }
+  return result
+}
+
+const scheduleTimeline = computed(() => {
+  return scheduleWindows.map((hour) => {
+    const now = freshBatchNow.value
+    const windowDate = getWindowDate(now, hour)
+    const lastBatch = lastBatchReceived.value
+    let status = 'upcoming'
+    let statusLabel = 'Bekleniyor'
+    let note = `${formatTime(windowDate)} hedef`
+
+    if (lastBatch.getTime() >= windowDate.getTime()) {
+      status = 'completed'
+      statusLabel = 'Tamamlandı'
+      note = `${formatAgo(windowDate, lastBatch)} içerisinde alındı`
+    } else if (now.getTime() >= windowDate.getTime()) {
+      status = 'delayed'
+      statusLabel = 'Gecikti'
+      note = 'Son parti bekleniyor'
+    }
+
+    return {
+      key: `${hour}-${status}`,
+      time: hour === 24 ? '24:00' : `${hour.toString().padStart(2, '0')}:00`,
+      status,
+      statusLabel,
+      note
+    }
+  })
+})
+
+const nextWindow = computed(() => {
+  const now = freshBatchNow.value
+  for (const hour of scheduleWindows) {
+    const candidate = getWindowDate(now, hour)
+    if (candidate.getTime() > now.getTime()) {
+      return candidate
+    }
+  }
+  const tomorrow = new Date(now)
+  tomorrow.setDate(now.getDate() + 1)
+  tomorrow.setHours(scheduleWindows[0], 0, 0, 0)
+  return tomorrow
+})
+
+const nextWindowLabel = computed(() => `${formatTime(nextWindow.value)}`)
+const nextWindowCountdown = computed(() => formatRelative(freshBatchNow.value, nextWindow.value))
+const lastUpdateLabel = computed(() => formatTime(lastBatchReceived.value))
+const freshnessChip = computed(() => getFreshnessChip(lastBatchReceived.value, freshBatchNow.value))
+
+const activeMeterRatio = computed(() => {
+  const ratio = (activeMeters / totalMeters) * 100
+  return `${formatNumber(activeMeters)} aktif • %${ratio.toFixed(1)}`
+})
 
 const overviewMetrics = [
   {
-    title: 'Son 24 saat tüketim',
-    value: '182.400 m³',
-    trend: '+4.6%',
-    trendLabel: 'önceki güne göre',
+    title: 'Aktif sayaç',
+    value: formatNumber(activeMeters),
+    caption: 'Son parti içinde veri gönderen sayaç',
+    trend: '+124 sayaç',
+    trendLabel: 'Önceki pencereye göre',
     trendPositive: true,
     icon: 'mdi-water',
-    accent: 'linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(56, 189, 248, 0.35))',
-    gradient: ['rgba(14, 165, 233, 0)', 'rgba(14, 165, 233, 0.35)', 'rgba(56, 189, 248, 0.45)'],
-    sparkline: [162.1, 168.3, 170.4, 175.8, 178.6, 181.2, 182.4]
+    accent: 'linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(56, 189, 248, 0.32))'
   },
   {
-    title: 'Aktif sayaç oranı',
-    value: '92.7 %',
-    trend: '+1.2%',
-    trendLabel: 'son 7 gün',
-    trendPositive: true,
-    icon: 'mdi-counter',
-    accent: 'linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(16, 185, 129, 0.35))',
-    gradient: ['rgba(16, 185, 129, 0)', 'rgba(16, 185, 129, 0.3)', 'rgba(5, 150, 105, 0.45)'],
-    sparkline: [88.2, 89.5, 90.1, 91.3, 92, 92.4, 92.7]
-  },
-  {
-    title: 'Aktif gateway',
-    value: '128 / 134',
-    trend: '+4',
-    trendLabel: 'son bakım turu',
-    trendPositive: true,
-    icon: 'mdi-router-network',
-    accent: 'linear-gradient(135deg, rgba(249, 115, 22, 0.18), rgba(234, 88, 12, 0.35))',
-    gradient: ['rgba(234, 88, 12, 0)', 'rgba(249, 115, 22, 0.3)', 'rgba(251, 146, 60, 0.45)'],
-    sparkline: [119, 121, 123, 124, 126, 127, 128]
-  },
-  {
-    title: 'Açık vana sayısı',
-    value: '1.284',
-    trend: '−18',
-    trendLabel: 'planlı operasyon',
+    title: 'Geciken sayaç',
+    value: formatNumber(482),
+    caption: '1 çevrim ve üzeri gecikme yaşayan sayaç',
+    trend: '58 kritik',
+    trendLabel: 'Saha kontrolü gerekli',
     trendPositive: false,
-    icon: 'mdi-valve',
-    accent: 'linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(45, 212, 191, 0.35))',
-    gradient: ['rgba(59, 130, 246, 0)', 'rgba(59, 130, 246, 0.22)', 'rgba(45, 212, 191, 0.4)'],
-    sparkline: [1324, 1310, 1298, 1288, 1286, 1282, 1284]
+    icon: 'mdi-timer-sand',
+    accent: 'linear-gradient(135deg, rgba(249, 115, 22, 0.18), rgba(234, 88, 12, 0.32))'
+  },
+  {
+    title: 'İletim başarısı',
+    value: '93%',
+    caption: 'Bugünkü pencerelerde alınan paket oranı',
+    trend: '+2 puan',
+    trendLabel: 'Haftalık ortalama',
+    trendPositive: true,
+    icon: 'mdi-swap-vertical',
+    accent: 'linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(16, 185, 129, 0.28))'
+  },
+  {
+    title: 'Açık alarm',
+    value: '12',
+    caption: '4 kritik, 8 takipte',
+    trend: 'Son parti: 3 yeni',
+    trendLabel: '12:00 verisine göre',
+    trendPositive: false,
+    icon: 'mdi-bell-alert',
+    accent: 'linear-gradient(135deg, rgba(59, 130, 246, 0.18), rgba(96, 165, 250, 0.32))'
   }
 ]
 
-const consumptionTrend = ref([26.4, 27.8, 28.1, 29.6, 30.8, 31.1, 28.9])
+const consumptionTrend = ref([18.6, 19.4, 19.1, 20.2, 21.5, 21.2, 22.4, 21.9, 22.6])
 
-const statusCards = [
+const trendSummaries = [
+  { label: 'Son parti', value: '22.6 bin m³', hint: '12:00 verisi', highlight: true },
+  { label: 'Bugün toplam', value: '44.5 bin m³', hint: '08:00 + 12:00' },
+  { label: 'Dün', value: '43.8 bin m³', hint: '%1.6 artış' },
+  { label: 'Haftalık', value: '302 bin m³', hint: '3 parti gecikmeli' }
+]
+
+const cadenceDescription = computed(() => {
+  const diff = Math.abs(Math.round((freshBatchNow.value - lastBatchReceived.value) / 60000))
+  return diff <= 180 ? 'Takvimde' : diff <= 360 ? '1 çevrim gecikmeli' : '2+ çevrim gecikmeli'
+})
+
+const freshnessBreakdown = [
   {
-    title: 'Şebeke basıncı',
-    value: '6.2 bar',
-    description: 'Ana hat basıncı güvenli aralıkta.',
-    icon: 'mdi-water-pump',
-    badge: 'Stabil',
-    badgeColor: 'primary',
-    accent: 'rgba(59, 130, 246, 0.18)'
+    label: 'Takvimde',
+    value: formatNumber(15138),
+    hint: 'Son 12 saatte veri gönderdi',
+    percentage: '%89',
+    color: 'rgba(34, 197, 94, 0.35)',
+    chipColor: 'success'
   },
   {
-    title: 'Rezervuar doluluk',
-    value: '78 %',
-    description: 'Merkez depoları kritik seviyenin üzerinde.',
-    icon: 'mdi-tank',
-    badge: 'Yeterli',
-    badgeColor: 'teal',
-    accent: 'rgba(13, 148, 136, 0.18)'
+    label: '1 çevrim gecikmeli',
+    value: formatNumber(964),
+    hint: 'Son pencere kaçırıldı',
+    percentage: '%6',
+    color: 'rgba(245, 158, 11, 0.35)',
+    chipColor: 'amber-darken-2'
   },
   {
-    title: 'Kalite ölçümleri',
-    value: '0.3 mg/L',
-    description: 'Klor seviyesi ulusal standartlarda.',
-    icon: 'mdi-flask-outline',
-    badge: 'Normal',
-    badgeColor: 'blue-darken-1',
-    accent: 'rgba(37, 99, 235, 0.18)'
-  },
-  {
-    title: 'Kaçak takibi',
-    value: '12 olay',
-    description: 'Saha ekiplerine yönlendirildi.',
-    icon: 'mdi-pipe-leak',
-    badge: 'Takipte',
-    badgeColor: 'amber-darken-2',
-    accent: 'rgba(245, 158, 11, 0.18)'
+    label: '2+ çevrim gecikmeli',
+    value: formatNumber(296),
+    hint: '24 saati aştı',
+    percentage: '%5',
+    color: 'rgba(248, 113, 113, 0.35)',
+    chipColor: 'red-darken-2'
   }
 ]
 
-const criticalAlerts24h = 7
+const criticalAlerts = 4
 
 const alerts = [
   {
     title: 'DMA-3 basınç düşüşü',
-    subtitle: 'Çankaya DMA-3 • 04:26',
+    subtitle: 'Son veri 12:00 paketinde geldi',
     count: 'Acil',
     icon: 'mdi-alert-decagram-outline',
     color: 'red-darken-1'
   },
   {
     title: 'Kapalı vana uyarısı',
-    subtitle: 'Altındağ vana-12 • saha ziyareti gerekiyor',
+    subtitle: 'Çankaya vana-12 • 2 pencere gecikmeli',
     count: '2',
     icon: 'mdi-valve',
     color: 'orange-darken-2'
   },
   {
     title: 'Gateway bağlantısı koptu',
-    subtitle: 'Keçiören 5G-02 • 18 dk offline',
-    count: '18 dk',
+    subtitle: 'Keçiören 5G-02 • 6 saattir offline',
+    count: '6 sa',
     icon: 'mdi-access-point-network-off',
     color: 'amber-darken-2'
   },
   {
     title: 'Klor seviyesi yükseldi',
-    subtitle: 'Mamak kalite noktası • 1.6 mg/L',
+    subtitle: 'Mamak kalite istasyonu • 08:00 partisi',
     count: '1',
     icon: 'mdi-flask-alert',
     color: 'blue-darken-1'
@@ -367,7 +494,8 @@ const topRegions = [
     subtitle: '1.842 aktif sayaç • 86 gateway',
     value: '28.4 bin m³',
     trend: '+5.2%',
-    trendPositive: true
+    trendPositive: true,
+    hint: 'Son parti 12:00'
   },
   {
     rank: '2',
@@ -375,7 +503,8 @@ const topRegions = [
     subtitle: '1.264 aktif sayaç • 54 gateway',
     value: '24.1 bin m³',
     trend: '+3.4%',
-    trendPositive: true
+    trendPositive: true,
+    hint: 'Son parti 12:00'
   },
   {
     rank: '3',
@@ -383,7 +512,8 @@ const topRegions = [
     subtitle: '932 aktif sayaç • 31 gateway',
     value: '19.7 bin m³',
     trend: '−1.1%',
-    trendPositive: false
+    trendPositive: false,
+    hint: 'Son parti 08:00'
   },
   {
     rank: '4',
@@ -391,7 +521,8 @@ const topRegions = [
     subtitle: '1.506 aktif sayaç • 47 gateway',
     value: '17.9 bin m³',
     trend: '+0.9%',
-    trendPositive: true
+    trendPositive: true,
+    hint: 'Son parti 12:00'
   },
   {
     rank: '5',
@@ -399,167 +530,229 @@ const topRegions = [
     subtitle: '684 aktif sayaç • 22 gateway',
     value: '15.8 bin m³',
     trend: '+0.4%',
-    trendPositive: true
+    trendPositive: true,
+    hint: 'Son parti 08:00'
   }
 ]
 
-const formattedDate = computed(() => {
-  return new Date().toLocaleDateString('tr-TR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long'
-  })
-})
+const operationNotes = [
+  {
+    title: 'Gateway kontrol listesi',
+    description: '6 saati aşan gecikmeli sayaçlar için saha devresi taraması planlandı.',
+    icon: 'mdi-router-network',
+    badge: 'Saha ziyareti',
+    badgeColor: 'primary',
+    accent: 'rgba(59, 130, 246, 0.18)'
+  },
+  {
+    title: 'Bakım planı',
+    description: 'Batarya seviyesi düşük sayaçlar 12:00 partisinde tekrar doğrulanacak.',
+    icon: 'mdi-battery-alert',
+    badge: 'Yenilendi',
+    badgeColor: 'teal',
+    accent: 'rgba(45, 212, 191, 0.18)'
+  },
+  {
+    title: 'Veri kalite kontrolü',
+    description: 'İletim başarısı %90 altına düşen bölgeler için doğrulama kuralı eklendi.',
+    icon: 'mdi-clipboard-check',
+    badge: 'Aktif',
+    badgeColor: 'success',
+    accent: 'rgba(34, 197, 94, 0.18)'
+  }
+]
 </script>
 
 <style scoped>
-.dashboard-shell {
+.home-shell {
   padding: 28px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 28px;
 }
 
-.dashboard-shell :deep(.v-row.g-4) {
-  row-gap: 24px;
+.home-shell :deep(.v-row.g-6) {
+  row-gap: 28px;
 }
 
-.dashboard-hero {
+.intro-card {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: stretch;
   gap: 32px;
+  justify-content: space-between;
   padding: 32px 36px;
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(45, 212, 191, 0.12));
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(45, 212, 191, 0.12));
   border-radius: 26px;
   border: 1px solid var(--border-soft);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
 }
 
-.hero-left {
+.intro-left {
   flex: 1 1 360px;
-  max-width: 560px;
+  max-width: 640px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
 }
 
-.hero-badge {
-  align-self: flex-start;
-  padding: 6px 14px;
+.org-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 118, 110, 0.12);
+  padding: 6px 12px;
   border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+  font-weight: 600;
+  color: #0f766e;
+  font-size: 13px;
   text-transform: uppercase;
-  background: rgba(14, 165, 233, 0.15);
-  color: var(--accent-color);
+  letter-spacing: 0.5px;
 }
 
-.hero-title {
-  margin: 0;
+.intro-title {
   font-size: 32px;
   font-weight: 800;
   color: var(--heading-color);
-  line-height: 1.15;
-}
-
-.hero-subtitle {
   margin: 0;
-  color: var(--muted-text);
-  font-size: 16px;
-  line-height: 1.55;
 }
 
-.hero-meta {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  font-size: 14px;
+.intro-subtitle {
+  font-size: 16px;
   color: var(--muted-text);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.intro-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 32px;
+  align-items: center;
+  padding: 18px 20px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 20px;
+  border: 1px solid var(--border-soft);
 }
 
 .meta-block {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .meta-label {
-  font-weight: 600;
-  color: var(--muted-text);
+  font-size: 12px;
   text-transform: uppercase;
-  font-size: 11px;
   letter-spacing: 0.5px;
+  color: var(--muted-text);
+  font-weight: 600;
 }
 
 .meta-value {
+  font-size: 22px;
   font-weight: 700;
   color: var(--heading-color);
 }
 
-.hero-right {
-  flex: 1 1 280px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 24px;
-  min-width: 280px;
+.meta-chip {
+  margin-top: 2px;
+  align-self: flex-start;
 }
 
-.hero-highlight {
-  background: var(--surface-card);
-  border-radius: 20px;
-  padding: 22px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  border: 1px solid var(--border-soft);
-}
-
-.highlight-label {
-  font-size: 12px;
-  text-transform: uppercase;
+.meta-hint {
+  font-size: 13px;
   color: var(--muted-text);
-  letter-spacing: 0.5px;
-  font-weight: 600;
 }
 
-.highlight-value {
-  font-size: 36px;
-  font-weight: 800;
+.intro-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.intro-right {
+  flex: 0 1 320px;
+  display: flex;
+  justify-content: center;
+}
+
+.cadence-card {
+  width: 100%;
+  max-width: 320px;
+  background: var(--surface-card);
+  border-radius: 22px;
+  border: 1px solid var(--border-soft);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cadence-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
   color: var(--heading-color);
 }
 
-.highlight-change {
+.cadence-subtitle {
   font-size: 13px;
-  font-weight: 600;
+  color: var(--muted-text);
+  line-height: 1.5;
+}
+
+.cadence-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.timeline-item {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.timeline-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.4);
+  border: 3px solid rgba(148, 163, 184, 0.45);
+}
+
+.timeline-item.completed .timeline-dot {
+  background: rgba(34, 197, 94, 0.45);
+  border-color: rgba(34, 197, 94, 0.6);
+}
+
+.timeline-item.delayed .timeline-dot {
+  background: rgba(245, 158, 11, 0.45);
+  border-color: rgba(245, 158, 11, 0.6);
+}
+
+.timeline-item.upcoming .timeline-dot {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.timeline-time {
+  font-weight: 700;
+  color: var(--heading-color);
+}
+
+.timeline-status {
+  font-size: 13px;
   color: var(--muted-text);
 }
 
-.highlight-change.positive {
-  color: #059669;
-}
-
-.hero-spark {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background: var(--surface-card);
-  border-radius: 20px;
-  padding: 22px;
-  border: 1px solid var(--border-soft);
-}
-
-.hero-sparkline {
-  height: 120px;
-  --v-theme-surface-variant: rgba(14, 165, 233, 0.16);
-  color: #0ea5e9;
-}
-
-.hero-caption {
-  font-size: 13px;
+.timeline-note {
+  grid-column: 2 / 3;
+  font-size: 12px;
   color: var(--muted-text);
 }
 
@@ -614,7 +807,12 @@ const formattedDate = computed(() => {
 .metric-body {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
+}
+
+.metric-caption {
+  font-size: 14px;
+  color: var(--muted-text);
 }
 
 .metric-trend {
@@ -639,29 +837,26 @@ const formattedDate = computed(() => {
   color: var(--muted-text);
 }
 
-.metric-sparkline {
-  height: 70px;
-}
-
 .panel-card {
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 24px 26px;
+  gap: 22px;
+  padding: 26px;
   background: var(--surface-card);
-  border-radius: 26px;
+  border-radius: 24px;
   border: 1px solid var(--border-soft);
 }
 
 .panel-card.compact {
-  gap: 16px;
+  gap: 18px;
+  padding: 24px;
 }
 
 .panel-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: flex-start;
   gap: 16px;
 }
 
@@ -673,22 +868,19 @@ const formattedDate = computed(() => {
 }
 
 .panel-hint {
-  display: block;
   font-size: 13px;
   color: var(--muted-text);
-  margin-top: 4px;
 }
 
 .panel-chip {
-  border-radius: 999px;
-  background: rgba(14, 165, 233, 0.16);
-  color: var(--accent-color);
-  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .panel-chip.warning {
-  background: rgba(248, 113, 113, 0.16);
-  color: #dc2626;
+  background: rgba(248, 113, 113, 0.14);
+  color: #b91c1c;
 }
 
 .panel-body {
@@ -705,6 +897,7 @@ const formattedDate = computed(() => {
 .panel-legend {
   display: flex;
   gap: 18px;
+  flex-wrap: wrap;
   font-size: 13px;
   color: var(--muted-text);
 }
@@ -715,36 +908,35 @@ const formattedDate = computed(() => {
   gap: 8px;
 }
 
-.dot {
+.legend-item .dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  display: inline-block;
 }
 
-.dot.primary {
-  background: #38bdf8;
+.legend-item .dot.primary {
+  background: #0ea5e9;
 }
 
-.dot.secondary {
-  background: #2dd4bf;
+.legend-item .dot.secondary {
+  background: rgba(2, 132, 199, 0.35);
 }
 
 .panel-summary {
-  margin-top: 12px;
+  margin-top: 6px;
 }
 
 .summary-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .summary-label {
   font-size: 12px;
   text-transform: uppercase;
+  letter-spacing: 0.4px;
   color: var(--muted-text);
-  font-weight: 600;
 }
 
 .summary-value {
@@ -757,99 +949,101 @@ const formattedDate = computed(() => {
   color: #059669;
 }
 
-.status-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 18px;
+.summary-hint {
+  font-size: 12px;
+  color: var(--muted-text);
 }
 
-.status-card {
-  background: var(--surface-card);
-  border-radius: 20px;
-  padding: 18px;
-  border: 1px solid var(--border-soft);
+.freshness-stats {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 
-.status-header {
+.freshness-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
 }
 
-.status-icon {
-  color: var(--accent-color);
+.freshness-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.status-chip {
+.freshness-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+.freshness-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.freshness-label {
+  font-size: 14px;
   font-weight: 600;
-  text-transform: none;
+  color: var(--heading-color);
 }
 
-.status-body {
+.freshness-hint {
+  font-size: 13px;
+  color: var(--muted-text);
+}
+
+.freshness-values {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.freshness-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--heading-color);
+}
+
+.freshness-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted-text);
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-soft);
+}
+
+.alert-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.status-title {
-  font-size: 14px;
-  color: var(--muted-text);
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  font-weight: 600;
-}
-
-.status-value {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--heading-color);
-}
-
-.status-desc {
-  font-size: 13px;
-  color: var(--muted-text);
-}
-
-.alert-list {
-  padding: 0;
-  margin: 0;
-}
-
 .alert-item {
   border-radius: 16px;
-  margin-bottom: 8px;
-  padding: 12px;
-  background: rgba(148, 163, 184, 0.08);
-}
-
-.alert-item:last-child {
-  margin-bottom: 0;
 }
 
 .region-list {
-  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .region-item {
   border-radius: 16px;
-  margin-bottom: 10px;
-  padding: 12px 16px;
-  background: rgba(148, 163, 184, 0.08);
-}
-
-.region-item:last-child {
-  margin-bottom: 0;
 }
 
 .region-rank {
   width: 32px;
   height: 32px;
   border-radius: 12px;
-  background: rgba(14, 165, 233, 0.14);
-  color: var(--accent-color);
+  background: rgba(15, 118, 110, 0.12);
+  color: #0f766e;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -864,64 +1058,83 @@ const formattedDate = computed(() => {
 }
 
 .region-value {
+  font-size: 16px;
   font-weight: 700;
   color: var(--heading-color);
 }
 
-.region-trend {
-  font-size: 12px;
-  font-weight: 600;
-}
-
 .region-trend.positive {
   color: #059669;
+  font-weight: 600;
 }
 
 .region-trend.negative {
   color: #dc2626;
+  font-weight: 600;
 }
 
-@media (max-width: 1280px) {
-  .dashboard-shell {
-    padding: 22px;
-  }
+.region-hint {
+  font-size: 12px;
+  color: var(--muted-text);
+}
 
-  .hero-title {
-    font-size: 28px;
-  }
+.notes-grid {
+  margin-top: 4px;
+}
+
+.note-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.02);
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  min-height: 132px;
+}
+
+.note-icon {
+  color: var(--accent-color);
+}
+
+.note-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.note-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--heading-color);
+}
+
+.note-desc {
+  font-size: 13px;
+  color: var(--muted-text);
+  line-height: 1.5;
+}
+
+.notes-footer {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted-text);
 }
 
 @media (max-width: 960px) {
-  .dashboard-hero {
-    padding: 26px;
-  }
-
-  .hero-meta {
+  .intro-card {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-}
-
-@media (max-width: 600px) {
-  .dashboard-shell {
-    padding: 18px 16px 60px;
   }
 
-  .dashboard-hero {
-    padding: 22px;
+  .intro-right {
+    width: 100%;
   }
 
-  .hero-title {
-    font-size: 24px;
-  }
-
-  .metric-card {
-    padding: 20px;
-  }
-
-  .panel-card {
-    padding: 22px;
+  .cadence-card {
+    max-width: 100%;
   }
 }
 </style>
