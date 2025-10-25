@@ -62,6 +62,7 @@ const menuItems = [
   { title: 'Su', icon: 'water_drop', to: '/water' },
   { title: 'Elektrik', icon: 'bolt', to: '/electricity' },
   { title: 'Sensör', icon: 'sensors', to: '/sensor' },
+  { title: 'Raporlar', icon: 'monitoring', to: '/reports' },
   { title: 'Ayarlar', icon: 'settings', to: '/settings' },
 ]
 </script>
