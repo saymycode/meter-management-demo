@@ -182,6 +182,45 @@ const aiReports = [
     action: 'Öneri: AI tarafından açıklanan kök sebepleri eğitim modülüne ekleyip personel onboarding süresini kısaltın.',
   },
 ]
+
+const aiRecoverySummary = [
+  {
+    meter: 'AK311-10077',
+    filledRows: 5,
+    explanation:
+      'Son 45 günlük gece tüketim profili referans alınarak eksik LoRa paketleri AI tarafından tahmin edilip tabloya "AI doldurma" etiketiyle işlendi.',
+  },
+  {
+    meter: 'BYT11-22064',
+    filledRows: 3,
+    explanation:
+      'Elektrik sayaç patern modeli 15 dakikalık pencereyi kullanıp pik saatlerde kaybolan veriyi yeniden kurdu; raporda satırlar AI imzasıyla işaretlendi.',
+  },
+  {
+    meter: 'BYT11-22214',
+    filledRows: 4,
+    explanation:
+      'Geçmiş 60 günlük OSB yük eğrisiyle korele edilerek iki saatlik boşluklar tamamlandı, manuel ekip doğrulaması gereksiz hale geldi.',
+  },
+]
+
+const aiForecastInsights = [
+  {
+    title: 'Önümüzdeki günlerde tüketim artışı',
+    detail:
+      'Transformer tabanlı tahmin motoru Ostim OSB hattında 72 saat içinde %11 tüketim artışı öngörüyor; yük kaydırma senaryosu devreye alınmalı.',
+  },
+  {
+    title: 'Su hattı tüketimi normalin altında',
+    detail:
+      'AK311-10103 sayacının günlük ortalaması beklenen bandın %18 altında, AI bunu geçmiş kış periyotlarına göre anomali olarak işaretledi.',
+  },
+  {
+    title: 'AI veri tamamlama raporu',
+    detail:
+      'Son 24 saatte 3 sayaçta toplam 12 satır eksik veri AI tarafından dolduruldu; rapor özetinde her satır "AI ile tamamlandı" notuyla gösteriliyor.',
+  },
+]
 </script>
 
 <template>
@@ -373,6 +412,56 @@ const aiReports = [
           </v-card>
         </v-col>
       </v-row>
+      <div class="ai-data-grid">
+        <v-card class="ai-data-card" elevation="0">
+          <div class="ai-data-card__header">
+            <div class="ai-data-chip">AI veri tamamlama özeti</div>
+            <p>
+              Eksik paketler geçmiş tüketim desenleriyle yeniden hesaplandı. Tablo satırlarında "AI doldurma"
+              etiketi gösterilerek manuel ve tahmini veriler ayrıştırıldı.
+            </p>
+          </div>
+          <v-table class="ai-data-table" density="comfortable">
+            <thead>
+              <tr>
+                <th>Sayaç</th>
+                <th>Doldurulan satır</th>
+                <th>Açıklama</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in aiRecoverySummary" :key="item.meter">
+                <td>
+                  <div class="ai-meter-id">{{ item.meter }}</div>
+                  <v-chip size="x-small" color="primary" variant="tonal">AI doldurma</v-chip>
+                </td>
+                <td class="ai-filled-rows">{{ item.filledRows }} satır</td>
+                <td>{{ item.explanation }}</td>
+              </tr>
+            </tbody>
+          </v-table>
+        </v-card>
+        <v-card class="ai-forecast-card" elevation="0">
+          <div class="ai-forecast-card__header">
+            <div class="ai-data-chip ai-data-chip--forecast">AI tahminleri</div>
+            <p>
+              Model çıktılarına göre saha ekipleri için ileriye dönük aksiyon maddeleri belirlendi. Her içgörü geçmiş
+              veri ile karşılaştırılarak güven puanı hesaplandı.
+            </p>
+          </div>
+          <v-list class="ai-forecast-list" density="comfortable">
+            <v-list-item v-for="insight in aiForecastInsights" :key="insight.title">
+              <template #prepend>
+                <v-avatar size="32" color="secondary" variant="tonal">
+                  <v-icon size="18">insights</v-icon>
+                </v-avatar>
+              </template>
+              <v-list-item-title>{{ insight.title }}</v-list-item-title>
+              <v-list-item-subtitle>{{ insight.detail }}</v-list-item-subtitle>
+            </v-list-item>
+          </v-list>
+        </v-card>
+      </div>
     </section>
 
     <section class="reports-bottom">
@@ -811,6 +900,105 @@ const aiReports = [
   border-radius: 12px;
   padding: 12px 16px;
   line-height: 1.5;
+}
+
+
+.ai-data-grid {
+  margin-top: 8px;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  align-items: stretch;
+}
+
+.ai-data-card,
+.ai-forecast-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+  background: var(--surface-card);
+  border-radius: 18px;
+  border: 1px solid rgba(8, 145, 178, 0.15);
+  box-shadow: var(--card-shadow);
+}
+
+.ai-data-card__header,
+.ai-forecast-card__header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ai-data-card__header p,
+.ai-forecast-card__header p {
+  margin: 0;
+  color: var(--muted-text);
+  line-height: 1.5;
+}
+
+.ai-data-chip {
+  align-self: flex-start;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  background: rgba(8, 145, 178, 0.12);
+  color: #036672;
+}
+
+.ai-data-chip--forecast {
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+}
+
+.ai-data-table thead th {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted-text);
+}
+
+.ai-data-table tbody td {
+  vertical-align: top;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  color: var(--text-color);
+}
+
+.ai-meter-id {
+  font-weight: 600;
+  color: var(--heading-color);
+  margin-bottom: 6px;
+}
+
+.ai-filled-rows {
+  font-weight: 600;
+  color: #0f766e;
+}
+
+.ai-forecast-list {
+  background: transparent;
+  padding: 0;
+}
+
+.ai-forecast-list .v-list-item {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.ai-forecast-list .v-list-item-title {
+  font-weight: 600;
+  color: var(--heading-color);
+}
+
+.ai-forecast-list .v-list-item-subtitle {
+  white-space: normal;
+  line-height: 1.5;
+  color: var(--muted-text);
 }
 
 .reports-bottom {
