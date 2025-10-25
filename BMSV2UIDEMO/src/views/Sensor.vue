@@ -706,23 +706,35 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 28px;
-  background: linear-gradient(180deg, rgba(10, 14, 26, 0.95) 0%, rgba(12, 19, 32, 0.82) 100%);
+  background: var(--content-background);
+  transition: background var(--transition-speed) ease;
 }
 
 .sensor-header {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   gap: 32px;
   padding: 28px 32px;
   border-radius: 26px;
-  background:
-    radial-gradient(circle at top right, rgba(56, 189, 248, 0.2), transparent 45%),
-    rgba(13, 20, 34, 0.86);
-  border: 1px solid rgba(59, 130, 246, 0.18);
-  box-shadow: 0 26px 54px rgba(2, 12, 24, 0.55);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+.sensor-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.18), transparent 55%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .header-left {
+  position: relative;
+  z-index: 1;
   flex: 1 1 420px;
   display: flex;
   flex-direction: column;
@@ -733,8 +745,8 @@ onBeforeUnmount(() => {
   align-self: flex-start;
   padding: 6px 14px;
   border-radius: 999px;
-  background: rgba(45, 212, 191, 0.16);
-  color: rgba(226, 232, 240, 0.9);
+  background: var(--accent-surface);
+  color: var(--accent-highlight);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -743,13 +755,13 @@ onBeforeUnmount(() => {
 .header-left h1 {
   margin: 0;
   font-size: clamp(26px, 4vw, 34px);
-  color: rgba(248, 250, 252, 0.98);
+  color: var(--heading-color);
 }
 
 .header-left p {
   margin: 0;
   font-size: 15px;
-  color: rgba(148, 163, 184, 0.86);
+  color: var(--muted-text);
   line-height: 1.6;
   max-width: 640px;
 }
@@ -770,8 +782,8 @@ onBeforeUnmount(() => {
   min-width: 150px;
   padding: 14px 16px;
   border-radius: 18px;
-  background: rgba(10, 18, 32, 0.7);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -781,29 +793,32 @@ onBeforeUnmount(() => {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  color: rgba(148, 163, 184, 0.75);
+  color: var(--muted-text);
 }
 
 .meta-value {
   font-size: 22px;
   font-weight: 700;
-  color: rgba(248, 250, 252, 0.95);
+  color: var(--heading-color);
 }
 
 .meta-hint {
   font-size: 13px;
-  color: rgba(148, 163, 184, 0.78);
+  color: var(--muted-text);
 }
 
 .header-right {
+  position: relative;
+  z-index: 1;
   flex: 1 1 220px;
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding: 18px;
   border-radius: 22px;
-  background: rgba(10, 18, 32, 0.7);
-  border: 1px solid rgba(45, 212, 191, 0.16);
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--card-shadow);
 }
 
 .summary-item,
@@ -817,13 +832,13 @@ onBeforeUnmount(() => {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  color: rgba(148, 163, 184, 0.75);
+  color: var(--muted-text);
 }
 
 .summary-value {
   font-size: 20px;
   font-weight: 700;
-  color: rgba(248, 250, 252, 0.95);
+  color: var(--heading-color);
 }
 
 .summary-split {
@@ -837,7 +852,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: rgba(148, 163, 184, 0.78);
+  color: var(--muted-text);
 }
 
 .sensor-content {
@@ -854,9 +869,12 @@ onBeforeUnmount(() => {
 .plan-card {
   padding: 24px;
   border-radius: 24px;
-  background: rgba(10, 18, 32, 0.78);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  box-shadow: 0 20px 40px rgba(2, 12, 24, 0.45);
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--card-shadow);
+  transition:
+    background var(--transition-speed) ease,
+    border-color var(--transition-speed) ease;
 }
 
 .filter-header {
@@ -870,7 +888,7 @@ onBeforeUnmount(() => {
 .plan-header h2 {
   margin: 0;
   font-size: 18px;
-  color: rgba(248, 250, 252, 0.94);
+  color: var(--heading-color);
 }
 
 .filter-group {
@@ -878,7 +896,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 10px;
   padding: 12px 0;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .filter-group:last-of-type {
@@ -888,7 +906,7 @@ onBeforeUnmount(() => {
 .filter-title {
   font-size: 13px;
   text-transform: uppercase;
-  color: rgba(148, 163, 184, 0.75);
+  color: var(--muted-text);
   letter-spacing: 0.3px;
 }
 
@@ -898,7 +916,7 @@ onBeforeUnmount(() => {
 
 .plan-header span {
   font-size: 13px;
-  color: rgba(148, 163, 184, 0.78);
+  color: var(--muted-text);
 }
 
 .plan-list {
@@ -916,12 +934,15 @@ onBeforeUnmount(() => {
 .map-card {
   padding: 24px;
   border-radius: 26px;
-  background: rgba(10, 18, 32, 0.78);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: 0 24px 44px rgba(2, 12, 24, 0.45);
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--card-shadow);
   display: flex;
   flex-direction: column;
   gap: 20px;
+  transition:
+    background var(--transition-speed) ease,
+    border-color var(--transition-speed) ease;
 }
 
 .list-toolbar {
@@ -959,8 +980,8 @@ onBeforeUnmount(() => {
 .grid-wrapper {
   border-radius: 20px;
   overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid var(--border-soft);
+  background: var(--surface-elevated);
 }
 
 .sensor-data-table {
@@ -973,11 +994,11 @@ onBeforeUnmount(() => {
 }
 
 .sensor-data-table :deep(thead tr) {
-  background: rgba(15, 23, 42, 0.85);
+  background: var(--surface-elevated);
 }
 
 .sensor-data-table :deep(th) {
-  color: rgba(226, 232, 240, 0.85);
+  color: var(--muted-text);
   font-weight: 600;
   text-transform: uppercase;
   font-size: 12px;
@@ -985,12 +1006,12 @@ onBeforeUnmount(() => {
 }
 
 .sensor-data-table :deep(td) {
-  color: rgba(241, 245, 249, 0.92);
+  color: var(--text-color);
   font-size: 14px;
 }
 
 .sensor-data-table :deep(tbody tr:hover) {
-  background: rgba(59, 130, 246, 0.08);
+  background: rgba(56, 189, 248, 0.12);
 }
 
 .cell-primary {
@@ -1002,11 +1023,12 @@ onBeforeUnmount(() => {
 .cell-id {
   font-weight: 700;
   font-size: 15px;
+  color: var(--heading-color);
 }
 
 .cell-zone {
   font-size: 12px;
-  color: rgba(148, 163, 184, 0.75);
+  color: var(--muted-text);
   letter-spacing: 0.3px;
   text-transform: uppercase;
 }
@@ -1019,13 +1041,13 @@ onBeforeUnmount(() => {
 
 .cell-secondary small {
   font-size: 12px;
-  color: rgba(148, 163, 184, 0.78);
+  color: var(--muted-text);
 }
 
 .no-data {
   padding: 24px;
   text-align: center;
-  color: rgba(148, 163, 184, 0.9);
+  color: var(--muted-text);
 }
 
 .card-grid {
@@ -1038,11 +1060,12 @@ onBeforeUnmount(() => {
   gap: 14px;
   padding: 18px;
   border-radius: 22px;
-  border: 1px solid rgba(59, 130, 246, 0.18);
-  background: rgba(10, 16, 28, 0.78);
+  border: 1px solid var(--border-soft);
+  background: var(--surface-elevated);
   transition:
     transform 0.18s ease,
-    box-shadow 0.18s ease;
+    box-shadow 0.18s ease,
+    border-color var(--transition-speed) ease;
 }
 
 .sensor-card.on-time {
@@ -1059,7 +1082,7 @@ onBeforeUnmount(() => {
 
 .sensor-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.45);
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.35);
 }
 
 .sensor-card-header {
@@ -1070,13 +1093,13 @@ onBeforeUnmount(() => {
 
 .sensor-id {
   font-weight: 700;
-  color: rgba(248, 250, 252, 0.96);
+  color: var(--heading-color);
 }
 
 .sensor-zone {
   display: block;
   font-size: 13px;
-  color: rgba(148, 163, 184, 0.78);
+  color: var(--muted-text);
 }
 
 .sensor-card-body {
@@ -1093,14 +1116,14 @@ onBeforeUnmount(() => {
 
 .sensor-label {
   font-size: 13px;
-  color: rgba(148, 163, 184, 0.75);
+  color: var(--muted-text);
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
 
 .sensor-value {
   font-size: 14px;
-  color: rgba(226, 232, 240, 0.9);
+  color: var(--heading-color);
   text-align: right;
 }
 
@@ -1117,13 +1140,13 @@ onBeforeUnmount(() => {
 .map-header h2 {
   margin: 0;
   font-size: 18px;
-  color: rgba(248, 250, 252, 0.94);
+  color: var(--heading-color);
 }
 
 .map-subtitle {
   display: block;
   font-size: 13px;
-  color: rgba(148, 163, 184, 0.78);
+  color: var(--muted-text);
 }
 
 .map-container {
@@ -1136,7 +1159,7 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 16px;
   font-size: 13px;
-  color: rgba(148, 163, 184, 0.78);
+  color: var(--muted-text);
 }
 
 .legend-item {
@@ -1172,7 +1195,7 @@ onBeforeUnmount(() => {
 
 .drawer-summary {
   font-size: 14px;
-  color: rgba(148, 163, 184, 0.8);
+  color: var(--muted-text);
   margin-bottom: 16px;
 }
 
