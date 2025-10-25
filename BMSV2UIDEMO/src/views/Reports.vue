@@ -143,6 +143,45 @@ const sustainabilityReports = [
       'Araç filosu dönüşümü ile 8 tCO₂e düşüş sağlandı. Isı pompaları için pilot proje başlatıldı.',
   },
 ]
+
+const aiReports = [
+  {
+    title: 'Sayaç Anomalisi AI Radarı',
+    confidence: '%97 güven skoru',
+    narrative:
+      'Generatif model, 1,4 milyon telemetri satırını 6 dakikada tarayarak fazlar arası kaymayı insan ekipten 18 saat önce yakaladı.',
+    highlights: [
+      'Basınç dalgalanması 36 saat önceden kestirildi, kritik vana otomatik modda kalibre edildi.',
+      'Ses analizi ile kaçak lokasyonu 12 metre hassasiyetle tespit edildi.',
+      'AI asistanı bakım ekibine WhatsApp botu üzerinden aksiyon listesi paylaştı.',
+    ],
+    action: 'Öneri: Dijital ikiz senaryolarını AI tahminleriyle eşleştirerek kalıcı alarm gürültüsünü %42 azaltın.',
+  },
+  {
+    title: 'Enerji Tahmin Stüdyosu',
+    confidence: '%94 isabet oranı',
+    narrative:
+      'Transformer tabanlı zaman serisi modeli, iki hafta sonraki pik tüketimi +-1,8 MW hata ile öngörüp yük kaydırma planını otomatik başlattı.',
+    highlights: [
+      'Gündüz vardiyasında ihtiyaç fazlası 3,2 MWh enerji depoya yönlendirildi.',
+      'AI, HVAC senaryolarından 7 tanesini "yüksek risk" olarak işaretleyerek manuel müdahale ihtiyacını sıfırladı.',
+      'Talep yanıtı sözleşmesinden 48.000₺ ek gelir potansiyeli çıkarıldı.',
+    ],
+    action: 'Öneri: AI tahminlerini SCADA planına bağlayıp mikrogrid optimizasyonunu dakikalık döngüye çekin.',
+  },
+  {
+    title: 'Su Kalitesi Dijital Dedektifi',
+    confidence: '%91 açıklanabilirlik skoru',
+    narrative:
+      'LLM destekli açıklama motoru, bulanıklık sensörlerinden gelen anomalileri açıklayıp hangi sondaj kuyusunun sistemi kirlettiğini hikayeleştirdi.',
+    highlights: [
+      'Kimyasal dozaj grafiğinde AI tarafından bulunan gizli korelasyon saha ekibi tarafından doğrulandı.',
+      'Önleyici filtre değişimi önerisiyle 9 saatlik kesinti tamamen önlendi.',
+      "İçilebilir su standardı KPI'ı AI raporlarının devreye alınmasından sonra %7 yükseldi.",
+    ],
+    action: 'Öneri: AI tarafından açıklanan kök sebepleri eğitim modülüne ekleyip personel onboarding süresini kısaltın.',
+  },
+]
 </script>
 
 <template>
@@ -303,6 +342,38 @@ const sustainabilityReports = [
         </v-window-item>
       </v-window>
     </v-card>
+
+    <section class="ai-section">
+      <div class="ai-section__intro">
+        <div class="ai-chip">AI destekli raporlar</div>
+        <h2>Yapay zekâ kürasyonu ile sahada şov yapan öngörüler</h2>
+        <p>
+          Büyük dil modelleri 3,2 milyar satırlık sensör telemetrisi üzerinde gece gündüz tarama yaparak insan
+          uzmanların radarına bile takılmadan geçen senaryoları aydınlatıyor. AI, sadece anormallikleri bulmakla
+          kalmıyor; hikâyeleştirip hangi ekip ne zaman sahaya çıkmalı sorusuna dakik cevap veriyor.
+        </p>
+      </div>
+      <v-row>
+        <v-col v-for="report in aiReports" :key="report.title" cols="12" md="4">
+          <v-card class="ai-card" elevation="0">
+            <div class="ai-card__header">
+              <v-avatar size="40" color="primary" variant="tonal">
+                <v-icon size="22">auto_awesome</v-icon>
+              </v-avatar>
+              <div>
+                <div class="ai-card__title">{{ report.title }}</div>
+                <div class="ai-card__confidence">{{ report.confidence }}</div>
+              </div>
+            </div>
+            <p class="ai-card__narrative">{{ report.narrative }}</p>
+            <ul class="ai-card__list">
+              <li v-for="item in report.highlights" :key="item">{{ item }}</li>
+            </ul>
+            <div class="ai-card__action">{{ report.action }}</div>
+          </v-card>
+        </v-col>
+      </v-row>
+    </section>
 
     <section class="reports-bottom">
       <v-card class="matrix-card" elevation="0">
@@ -644,6 +715,102 @@ const sustainabilityReports = [
   font-size: 12px;
   text-transform: uppercase;
   color: var(--muted-text);
+}
+
+.ai-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.ai-section__intro {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.16), rgba(14, 116, 144, 0.08));
+  border: 1px solid rgba(8, 145, 178, 0.2);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: var(--card-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ai-chip {
+  align-self: flex-start;
+  background: rgba(8, 145, 178, 0.12);
+  color: #036672;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+
+.ai-section__intro h2 {
+  margin: 0;
+  font-size: 24px;
+  color: var(--heading-color);
+}
+
+.ai-section__intro p {
+  margin: 0;
+  color: var(--muted-text);
+  line-height: 1.6;
+}
+
+.ai-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  background: var(--surface-card);
+  border-radius: 18px;
+  border: 1px solid rgba(8, 145, 178, 0.15);
+  box-shadow: var(--card-shadow);
+}
+
+.ai-card__header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ai-card__title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--heading-color);
+}
+
+.ai-card__confidence {
+  font-size: 13px;
+  color: #0891b2;
+  font-weight: 600;
+}
+
+.ai-card__narrative {
+  margin: 0;
+  color: var(--text-color);
+  line-height: 1.6;
+}
+
+.ai-card__list {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--muted-text);
+}
+
+.ai-card__action {
+  margin-top: auto;
+  font-weight: 600;
+  color: #0f766e;
+  background: rgba(15, 118, 110, 0.08);
+  border-radius: 12px;
+  padding: 12px 16px;
+  line-height: 1.5;
 }
 
 .reports-bottom {
