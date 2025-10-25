@@ -788,23 +788,36 @@ const goToSensors = (filter) => {
   display: flex;
   flex-direction: column;
   gap: 28px;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.92) 0%, rgba(15, 23, 42, 0.75) 100%);
+  background: var(--content-background);
+  transition: background var(--transition-speed) ease;
 }
 
 .dashboard-hero {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   gap: 32px;
   padding: 32px;
   border-radius: 28px;
-  background:
-    radial-gradient(circle at top right, rgba(56, 189, 248, 0.16), transparent 45%),
-    rgba(13, 21, 38, 0.86);
-  border: 1px solid rgba(45, 212, 191, 0.18);
-  box-shadow: 0 28px 60px rgba(2, 12, 24, 0.55);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+.dashboard-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top right, var(--accent-surface) 0%, transparent 55%);
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .hero-copy {
+  position: relative;
+  z-index: 1;
   flex: 1 1 380px;
   display: flex;
   flex-direction: column;
@@ -815,8 +828,8 @@ const goToSensors = (filter) => {
   align-self: flex-start;
   padding: 6px 14px;
   border-radius: 999px;
-  background: rgba(45, 212, 191, 0.16);
-  color: rgba(226, 232, 240, 0.9);
+  background: var(--accent-surface);
+  color: var(--accent-highlight);
   font-weight: 600;
   letter-spacing: 0.3px;
   text-transform: uppercase;
@@ -825,12 +838,12 @@ const goToSensors = (filter) => {
 .hero-copy h1 {
   font-size: clamp(28px, 4vw, 38px);
   margin: 0;
-  color: rgba(248, 250, 252, 0.98);
+  color: var(--heading-color);
 }
 
 .hero-copy p {
   margin: 0;
-  color: rgba(148, 163, 184, 0.88);
+  color: var(--muted-text);
   font-size: 15px;
   line-height: 1.6;
   max-width: 620px;
@@ -846,8 +859,8 @@ const goToSensors = (filter) => {
   min-width: 160px;
   padding: 14px 16px;
   border-radius: 18px;
-  background: rgba(15, 23, 42, 0.55);
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -856,22 +869,24 @@ const goToSensors = (filter) => {
 .metric-label {
   font-size: 13px;
   text-transform: uppercase;
-  color: rgba(148, 163, 184, 0.75);
+  color: var(--muted-text);
   letter-spacing: 0.4px;
 }
 
 .metric-value {
   font-size: 24px;
   font-weight: 700;
-  color: rgba(248, 250, 252, 0.95);
+  color: var(--heading-color);
 }
 
 .metric-hint {
   font-size: 13px;
-  color: rgba(148, 163, 184, 0.8);
+  color: var(--muted-text);
 }
 
 .hero-side {
+  position: relative;
+  z-index: 1;
   flex: 1 1 260px;
   display: flex;
   flex-direction: column;
@@ -883,27 +898,27 @@ const goToSensors = (filter) => {
   gap: 12px;
   padding: 18px;
   border-radius: 20px;
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid var(--border-soft);
+  background: var(--surface-card);
 }
 
 .window-label {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  color: rgba(148, 163, 184, 0.75);
+  color: var(--muted-text);
 }
 
 .window-value {
   display: block;
   font-size: 18px;
   font-weight: 700;
-  color: rgba(248, 250, 252, 0.95);
+  color: var(--heading-color);
 }
 
 .window-hint {
   font-size: 13px;
-  color: rgba(148, 163, 184, 0.8);
+  color: var(--muted-text);
 }
 
 .dashboard-grid {
@@ -945,13 +960,17 @@ const goToSensors = (filter) => {
 
 .dashboard-card {
   padding: 26px;
-  background: rgba(15, 23, 42, 0.72);
+  background: var(--surface-card);
   border-radius: 26px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: 0 24px 44px rgba(2, 12, 24, 0.45);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--card-shadow);
   display: flex;
   flex-direction: column;
   gap: 20px;
+  transition:
+    background var(--transition-speed) ease,
+    border-color var(--transition-speed) ease,
+    color var(--transition-speed) ease;
 }
 
 .card-header {
@@ -969,9 +988,10 @@ const goToSensors = (filter) => {
 }
 
 .card-toggle {
-  background: rgba(15, 23, 42, 0.72);
+  background: var(--surface-elevated);
   border-radius: 999px;
   padding: 4px;
+  border: 1px solid var(--border-soft);
 }
 
 .card-toggle :deep(.v-btn) {
@@ -980,7 +1000,7 @@ const goToSensors = (filter) => {
   font-weight: 600;
   text-transform: none;
   letter-spacing: 0.2px;
-  color: rgba(148, 163, 184, 0.85);
+  color: var(--muted-text);
   transition:
     background 0.2s ease,
     color 0.2s ease;
@@ -991,8 +1011,8 @@ const goToSensors = (filter) => {
 }
 
 .card-toggle :deep(.v-btn--active) {
-  background: rgba(56, 189, 248, 0.14);
-  color: rgba(248, 250, 252, 0.95);
+  background: var(--accent-surface);
+  color: var(--accent-highlight);
 }
 
 .card-toggle :deep(.v-btn--active .v-icon) {
@@ -1002,13 +1022,13 @@ const goToSensors = (filter) => {
 .card-header h2 {
   margin: 0;
   font-size: 20px;
-  color: rgba(248, 250, 252, 0.96);
+  color: var(--heading-color);
 }
 
 .card-subtitle {
   display: block;
   font-size: 14px;
-  color: rgba(148, 163, 184, 0.78);
+  color: var(--muted-text);
   margin-top: 4px;
 }
 
@@ -1031,8 +1051,11 @@ const goToSensors = (filter) => {
   align-items: center;
   padding: 16px 18px;
   border-radius: 18px;
-  background: rgba(10, 16, 28, 0.68);
-  border: 1px solid rgba(45, 212, 191, 0.12);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-soft);
+  transition:
+    background var(--transition-speed) ease,
+    border-color var(--transition-speed) ease;
 }
 
 .consumption-icon {
@@ -1041,7 +1064,7 @@ const goToSensors = (filter) => {
   border-radius: 16px;
   display: grid;
   place-items: center;
-  color: rgba(248, 250, 252, 0.9);
+  color: var(--heading-color);
 }
 
 .consumption-body {
@@ -1053,13 +1076,13 @@ const goToSensors = (filter) => {
 .consumption-label {
   font-size: 14px;
   text-transform: uppercase;
-  color: rgba(148, 163, 184, 0.78);
+  color: var(--muted-text);
 }
 
 .consumption-value {
   font-size: 22px;
   font-weight: 700;
-  color: rgba(248, 250, 252, 0.95);
+  color: var(--heading-color);
 }
 
 .consumption-trend {
@@ -1069,20 +1092,23 @@ const goToSensors = (filter) => {
   font-size: 13px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.72);
-  color: rgba(248, 250, 252, 0.88);
+  background: var(--surface-card);
+  color: var(--text-color);
+  border: 1px solid var(--border-soft);
 }
 
 .consumption-trend.positive {
-  border: 1px solid rgba(45, 212, 191, 0.4);
+  border-color: var(--positive-pill-color);
+  color: var(--positive-pill-color);
 }
 
 .consumption-trend.negative {
-  border: 1px solid rgba(248, 113, 113, 0.45);
+  border-color: var(--negative-pill-color);
+  color: var(--negative-pill-color);
 }
 
 .consumption-hint {
-  color: rgba(148, 163, 184, 0.75);
+  color: var(--muted-text);
 }
 
 .consumption-details {
@@ -1097,16 +1123,16 @@ const goToSensors = (filter) => {
   display: flex;
   justify-content: space-between;
   font-size: 13px;
-  color: rgba(203, 213, 225, 0.82);
+  color: var(--text-color);
 }
 
 .consumption-detail .detail-label {
-  color: rgba(148, 163, 184, 0.78);
+  color: var(--muted-text);
 }
 
 .consumption-detail .detail-value {
   font-weight: 600;
-  color: rgba(248, 250, 252, 0.92);
+  color: var(--heading-color);
 }
 
 .consumption-sparkline {
@@ -1119,12 +1145,13 @@ const goToSensors = (filter) => {
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: rgba(148, 163, 184, 0.78);
+  color: var(--muted-text);
 }
 
 .alerts {
-  border: 1px solid rgba(248, 113, 113, 0.28);
-  background: rgba(30, 10, 16, 0.72);
+  border: 1px solid var(--border-soft);
+  background: var(--warning-soft-bg);
+  color: var(--warning-soft-color);
 }
 
 .alert-list {
@@ -1154,8 +1181,8 @@ const goToSensors = (filter) => {
   align-items: center;
   padding: 14px 16px;
   border-radius: 16px;
-  border: 1px solid rgba(59, 130, 246, 0.18);
-  background: rgba(10, 18, 32, 0.68);
+  border: 1px solid var(--border-soft);
+  background: var(--surface-elevated);
 }
 
 .consumer-icon {
@@ -1164,11 +1191,11 @@ const goToSensors = (filter) => {
   border-radius: 14px;
   display: grid;
   place-items: center;
-  color: rgba(248, 250, 252, 0.92);
+  color: var(--heading-color);
 }
 
 .consumer-icon.water {
-  background: rgba(45, 212, 191, 0.22);
+  background: var(--accent-surface);
 }
 
 .consumer-icon.electric {
@@ -1183,12 +1210,12 @@ const goToSensors = (filter) => {
 
 .consumer-id {
   font-weight: 600;
-  color: rgba(248, 250, 252, 0.92);
+  color: var(--heading-color);
 }
 
 .consumer-location {
   font-size: 13px;
-  color: rgba(148, 163, 184, 0.78);
+  color: var(--muted-text);
 }
 
 .consumer-value {
@@ -1197,12 +1224,12 @@ const goToSensors = (filter) => {
   align-items: flex-end;
   gap: 4px;
   font-weight: 600;
-  color: rgba(248, 250, 252, 0.95);
+  color: var(--heading-color);
 }
 
 .consumer-hint {
   font-size: 13px;
-  color: rgba(148, 163, 184, 0.75);
+  color: var(--muted-text);
 }
 
 .scope-panel {
@@ -1214,8 +1241,8 @@ const goToSensors = (filter) => {
 .scope-item {
   padding: 16px;
   border-radius: 18px;
-  border: 1px solid rgba(45, 212, 191, 0.18);
-  background: rgba(10, 18, 32, 0.68);
+  border: 1px solid var(--border-soft);
+  background: var(--surface-elevated);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1224,13 +1251,13 @@ const goToSensors = (filter) => {
 .scope-label {
   font-size: 13px;
   text-transform: uppercase;
-  color: rgba(148, 163, 184, 0.75);
+  color: var(--muted-text);
 }
 
 .scope-value {
   font-size: 22px;
   font-weight: 700;
-  color: rgba(248, 250, 252, 0.96);
+  color: var(--heading-color);
 }
 
 .scope-note {
@@ -1240,8 +1267,8 @@ const goToSensors = (filter) => {
   gap: 10px;
   padding: 14px 16px;
   border-radius: 16px;
-  background: rgba(45, 212, 191, 0.12);
-  color: rgba(226, 232, 240, 0.9);
+  background: var(--accent-surface);
+  color: var(--accent-highlight);
 }
 
 @media (max-width: 1280px) {
