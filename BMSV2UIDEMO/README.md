@@ -42,3 +42,13 @@ npm run build
 ```sh
 npm run lint
 ```
+
+### Deploy to GitHub Pages
+
+The project ships with a helper that builds the production bundle and publishes it to the `gh-pages` branch.
+
+```sh
+npm run deploy
+```
+
+Use the optional `VITE_APP_BASE_PATH` environment variable if you need to override the default repository sub-path while building for a different deployment target.
