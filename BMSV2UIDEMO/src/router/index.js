@@ -9,6 +9,7 @@ import Reports from '../views/Reports.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    { path: '/', redirect: '/homeview' },
     { path: '/homeview', name: 'homeview', component: HomeView },
     { path: '/electricity', name: 'electricity', component: Electricity },
     { path: '/water', name: 'water', component: Water },
