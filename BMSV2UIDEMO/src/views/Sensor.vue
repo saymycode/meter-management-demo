@@ -62,20 +62,20 @@
                 v-for="status in statusOptions"
                 :key="status"
                 class="filter-chip"
-                :class="chipStateClass(statusFilters, status)"
-                :color="chipColor('primary', statusFilters, status)"
-                :variant="chipVariant(statusFilters, status)"
-                @click="cycleChipState(statusFilters, status)"
-                :title="chipTitle(statusFilters, status)"
+                :class="statusChips.stateClass(status)"
+                :color="statusChips.color('primary', status)"
+                :variant="statusChips.variant(status)"
+                @click="statusChips.cycle(status)"
+                :title="statusChips.title(status)"
               >
                 <v-icon
-                  v-if="isChipInclude(statusFilters, status)"
+                  v-if="statusChips.isInclude(status)"
                   icon="check"
                   size="16"
                   class="filter-chip-icon"
                 />
                 <v-icon
-                  v-else-if="isChipExclude(statusFilters, status)"
+                  v-else-if="statusChips.isExclude(status)"
                   icon="remove"
                   size="16"
                   class="filter-chip-icon"
@@ -91,20 +91,20 @@
                 v-for="option in freshnessOptions"
                 :key="option"
                 class="filter-chip"
-                :class="chipStateClass(freshnessFilters, option)"
-                :color="chipColor('teal', freshnessFilters, option)"
-                :variant="chipVariant(freshnessFilters, option)"
-                @click="cycleChipState(freshnessFilters, option)"
-                :title="chipTitle(freshnessFilters, option)"
+                :class="freshnessChips.stateClass(option)"
+                :color="freshnessChips.color('teal', option)"
+                :variant="freshnessChips.variant(option)"
+                @click="freshnessChips.cycle(option)"
+                :title="freshnessChips.title(option)"
               >
                 <v-icon
-                  v-if="isChipInclude(freshnessFilters, option)"
+                  v-if="freshnessChips.isInclude(option)"
                   icon="check"
                   size="16"
                   class="filter-chip-icon"
                 />
                 <v-icon
-                  v-else-if="isChipExclude(freshnessFilters, option)"
+                  v-else-if="freshnessChips.isExclude(option)"
                   icon="remove"
                   size="16"
                   class="filter-chip-icon"
@@ -120,20 +120,20 @@
                 v-for="comm in communicationOptions"
                 :key="comm"
                 class="filter-chip"
-                :class="chipStateClass(communicationFilters, comm)"
-                :color="chipColor('blue', communicationFilters, comm)"
-                :variant="chipVariant(communicationFilters, comm)"
-                @click="cycleChipState(communicationFilters, comm)"
-                :title="chipTitle(communicationFilters, comm)"
+                :class="communicationChips.stateClass(comm)"
+                :color="communicationChips.color('blue', comm)"
+                :variant="communicationChips.variant(comm)"
+                @click="communicationChips.cycle(comm)"
+                :title="communicationChips.title(comm)"
               >
                 <v-icon
-                  v-if="isChipInclude(communicationFilters, comm)"
+                  v-if="communicationChips.isInclude(comm)"
                   icon="check"
                   size="16"
                   class="filter-chip-icon"
                 />
                 <v-icon
-                  v-else-if="isChipExclude(communicationFilters, comm)"
+                  v-else-if="communicationChips.isExclude(comm)"
                   icon="remove"
                   size="16"
                   class="filter-chip-icon"
@@ -149,20 +149,20 @@
                 v-for="type in typeOptions"
                 :key="type"
                 class="filter-chip"
-                :class="chipStateClass(typeFilters, type)"
-                :color="chipColor('purple', typeFilters, type)"
-                :variant="chipVariant(typeFilters, type)"
-                @click="cycleChipState(typeFilters, type)"
-                :title="chipTitle(typeFilters, type)"
+                :class="typeChips.stateClass(type)"
+                :color="typeChips.color('purple', type)"
+                :variant="typeChips.variant(type)"
+                @click="typeChips.cycle(type)"
+                :title="typeChips.title(type)"
               >
                 <v-icon
-                  v-if="isChipInclude(typeFilters, type)"
+                  v-if="typeChips.isInclude(type)"
                   icon="check"
                   size="16"
                   class="filter-chip-icon"
                 />
                 <v-icon
-                  v-else-if="isChipExclude(typeFilters, type)"
+                  v-else-if="typeChips.isExclude(type)"
                   icon="remove"
                   size="16"
                   class="filter-chip-icon"
@@ -237,20 +237,20 @@
                 v-for="zone in zoneOptions"
                 :key="zone"
                 class="filter-chip"
-                :class="chipStateClass(zoneFilters, zone)"
-                :color="chipColor('amber', zoneFilters, zone)"
-                :variant="chipVariant(zoneFilters, zone)"
-                @click="cycleChipState(zoneFilters, zone)"
-                :title="chipTitle(zoneFilters, zone)"
+                :class="zoneChips.stateClass(zone)"
+                :color="zoneChips.color('amber', zone)"
+                :variant="zoneChips.variant(zone)"
+                @click="zoneChips.cycle(zone)"
+                :title="zoneChips.title(zone)"
               >
                 <v-icon
-                  v-if="isChipInclude(zoneFilters, zone)"
+                  v-if="zoneChips.isInclude(zone)"
                   icon="check"
                   size="16"
                   class="filter-chip-icon"
                 />
                 <v-icon
-                  v-else-if="isChipExclude(zoneFilters, zone)"
+                  v-else-if="zoneChips.isExclude(zone)"
                   icon="remove"
                   size="16"
                   class="filter-chip-icon"
@@ -679,7 +679,8 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import DataFreshnessIndicator from '@/components/common/DataFreshnessIndicator.vue'
 import { meterSnapshots, organizationProfile, referenceNow } from '@/data/mockMeters'
-import { TRI_STATE, getTriStateValue, matchesTriState, nextTriState, setTriStateValue } from '@/utils/triStateFilter'
+import { createTriStateChipHelpers } from '@/utils/triStateChipHelpers'
+import { TRI_STATE, matchesTriState, setTriStateValue } from '@/utils/triStateFilter'
 import { formatAbsolute, formatClock, formatRelativeAgo, hoursBetween } from '@/utils/time'
 
 const organization = organizationProfile
@@ -826,38 +827,11 @@ const serialFilter = ref('')
 const serialRangeStart = ref('')
 const serialRangeEnd = ref('')
 
-const getChipState = (stateRef, option) => getTriStateValue(stateRef.value, option)
-
-const cycleChipState = (stateRef, option) => {
-  const current = getChipState(stateRef, option)
-  const next = nextTriState(current)
-  stateRef.value = setTriStateValue(stateRef.value, option, next)
-}
-
-const isChipInclude = (stateRef, option) => getChipState(stateRef, option) === TRI_STATE.INCLUDE
-const isChipExclude = (stateRef, option) => getChipState(stateRef, option) === TRI_STATE.EXCLUDE
-
-const chipVariant = (stateRef, option) =>
-  getChipState(stateRef, option) === TRI_STATE.OFF ? 'outlined' : 'tonal'
-
-const chipColor = (baseColor, stateRef, option) => {
-  const state = getChipState(stateRef, option)
-  if (state === TRI_STATE.INCLUDE) return baseColor
-  if (state === TRI_STATE.EXCLUDE) return 'error'
-  return undefined
-}
-
-const chipStateClass = (stateRef, option) => ({
-  'filter-chip--include': isChipInclude(stateRef, option),
-  'filter-chip--exclude': isChipExclude(stateRef, option),
-})
-
-const chipTitle = (stateRef, option) => {
-  const state = getChipState(stateRef, option)
-  if (state === TRI_STATE.INCLUDE) return 'Dahil ediliyor • tekrar tıklayınca hariç tutar'
-  if (state === TRI_STATE.EXCLUDE) return 'Hariç tutuluyor • tekrar tıklayınca temizler'
-  return 'Tıklayınca dahil eder'
-}
+const statusChips = createTriStateChipHelpers(statusFilters)
+const freshnessChips = createTriStateChipHelpers(freshnessFilters)
+const communicationChips = createTriStateChipHelpers(communicationFilters)
+const typeChips = createTriStateChipHelpers(typeFilters)
+const zoneChips = createTriStateChipHelpers(zoneFilters)
 const searchTerm = ref('')
 const viewMode = ref('table')
 const searchTokens = computed(() => parseSearchTokens(searchTerm.value))
