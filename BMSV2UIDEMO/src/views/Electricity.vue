@@ -139,7 +139,7 @@
           </div>
         </v-card>
 
-        <v-card class="plan-card" elevation="0">
+        <!-- <v-card class="plan-card" elevation="0">
           <div class="plan-header">
             <h2>Enerji yönetim notları</h2>
             <span>Su ve sensör panelleriyle aynı arayüz dili korunur.</span>
@@ -158,7 +158,7 @@
               <v-list-item-title>• Hover gölgeleri ve animasyon süreleri 160ms olarak kalır.</v-list-item-title>
             </v-list-item>
           </v-list>
-        </v-card>
+        </v-card> -->
       </v-col>
 
       <v-col cols="12" md="9" class="list-column">

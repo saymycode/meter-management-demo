@@ -139,7 +139,7 @@
           </div>
         </v-card>
 
-        <v-card class="plan-card" elevation="0">
+        <!-- <v-card class="plan-card" elevation="0">
           <div class="plan-header">
             <h2>Su şebekesi prensipleri</h2>
             <span>Sensör görünümü ile aynı görsel dili koru.</span>
@@ -158,7 +158,7 @@
               <v-list-item-title>• Hover gölgeleri ve 160ms animasyon eğrileri korunur.</v-list-item-title>
             </v-list-item>
           </v-list>
-        </v-card>
+        </v-card> -->
       </v-col>
 
       <v-col cols="12" md="9" class="list-column">
@@ -198,41 +198,13 @@
           </div>
 
           <v-tabs v-model="activeMainTab" class="content-tabs" density="comfortable" grow>
-            <v-tab value="alerts" prepend-icon="warning">Uyarılar</v-tab>
             <v-tab value="meters" prepend-icon="water_drop">Sayaçlar</v-tab>
+            <v-tab value="alerts" prepend-icon="warning">Uyarılar</v-tab>
             <v-tab value="workOrders" prepend-icon="assignment_turned_in">İş Emirleri</v-tab>
             <v-tab value="locations" prepend-icon="map">Konumlar</v-tab>
           </v-tabs>
 
           <v-window v-model="activeMainTab" class="tab-content">
-            <v-window-item value="alerts">
-              <v-data-table
-                :headers="alertHeaders"
-                :items="globalAlerts"
-                :items-per-page="8"
-                class="alerts-table"
-                density="comfortable"
-                hover
-              >
-                <template #item.severity="{ item }">
-                  <v-chip :color="severityColor(item.severity)" size="small" variant="tonal">
-                    {{ item.severity }}
-                  </v-chip>
-                </template>
-                <template #item.timestamp="{ item }">
-                  <div class="cell-secondary">
-                    <span>{{ item.timestamp }}</span>
-                    <small>{{ item.relative }}</small>
-                  </div>
-                </template>
-                <template #item.actions="{ item }">
-                  <v-btn variant="text" size="small" @click="focusSensor(item.sensorId)">Detay</v-btn>
-                </template>
-                <template #no-data>
-                  <div class="no-data">Bu filtrelerle eşleşen uyarı bulunmuyor.</div>
-                </template>
-              </v-data-table>
-            </v-window-item>
 
             <v-window-item value="meters">
               <div class="list-meta">
@@ -350,7 +322,34 @@
                 </v-row>
               </div>
             </v-window-item>
-
+<v-window-item value="alerts">
+              <v-data-table
+                :headers="alertHeaders"
+                :items="globalAlerts"
+                :items-per-page="8"
+                class="alerts-table"
+                density="comfortable"
+                hover
+              >
+                <template #item.severity="{ item }">
+                  <v-chip :color="severityColor(item.severity)" size="small" variant="tonal">
+                    {{ item.severity }}
+                  </v-chip>
+                </template>
+                <template #item.timestamp="{ item }">
+                  <div class="cell-secondary">
+                    <span>{{ item.timestamp }}</span>
+                    <small>{{ item.relative }}</small>
+                  </div>
+                </template>
+                <template #item.actions="{ item }">
+                  <v-btn variant="text" size="small" @click="focusSensor(item.sensorId)">Detay</v-btn>
+                </template>
+                <template #no-data>
+                  <div class="no-data">Bu filtrelerle eşleşen uyarı bulunmuyor.</div>
+                </template>
+              </v-data-table>
+            </v-window-item>
             <v-window-item value="workOrders">
               <v-data-table
                 :headers="workOrderHeaders"

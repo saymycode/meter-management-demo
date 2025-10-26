@@ -152,7 +152,7 @@
           </div>
         </v-card>
 
-        <v-card class="plan-card" elevation="0">
+        <!-- <v-card class="plan-card" elevation="0">
           <div class="plan-header">
             <h2>Arayüz tutarlılık planı</h2>
             <span>Sensor ekranı için görsel prensipler</span>
@@ -171,7 +171,7 @@
               <v-list-item-title>• Kart geçişlerinde hafif gölge ve hover ışımaları kullanılır; animasyonlar 160ms.</v-list-item-title>
             </v-list-item>
           </v-list>
-        </v-card>
+        </v-card> -->
       </v-col>
 
       <v-col cols="12" md="9" class="list-column">
