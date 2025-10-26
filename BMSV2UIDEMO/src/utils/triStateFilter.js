@@ -10,6 +10,7 @@ export const nextTriState = (current) => {
   return TRI_STATE.INCLUDE
 }
 
+
 export const getTriStateValue = (stateMap, key) => stateMap[key] ?? TRI_STATE.OFF
 
 export const setTriStateValue = (stateMap, key, value) => {
@@ -23,6 +24,7 @@ export const setTriStateValue = (stateMap, key, value) => {
 }
 
 export const matchesTriState = (stateMap, candidate) => {
+
   const includeEntries = Object.entries(stateMap).filter(([, state]) => state === TRI_STATE.INCLUDE)
   const excludeEntries = Object.entries(stateMap).filter(([, state]) => state === TRI_STATE.EXCLUDE)
 
