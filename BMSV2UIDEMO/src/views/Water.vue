@@ -1407,7 +1407,7 @@ onBeforeUnmount(() => {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.18), transparent 55%);
+  background: radial-gradient(circle at top right, var(--accent-glow) 0%, transparent 55%);
   pointer-events: none;
   z-index: 0;
 }
