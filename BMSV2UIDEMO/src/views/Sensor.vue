@@ -172,6 +172,29 @@
             </div>
           </div>
           <div class="filter-group">
+            <span class="filter-title">Son veri aralığı</span>
+            <v-text-field
+              v-model="lastSeenStart"
+              class="filter-date-field"
+              type="date"
+              density="compact"
+              hide-details
+              label="Başlangıç"
+              variant="outlined"
+              clearable
+            />
+            <v-text-field
+              v-model="lastSeenEnd"
+              class="filter-date-field"
+              type="date"
+              density="compact"
+              hide-details
+              label="Bitiş"
+              variant="outlined"
+              clearable
+            />
+          </div>
+          <div class="filter-group">
             <span class="filter-title">Bölgeler</span>
             <div class="filter-chip-grid">
               <v-chip
@@ -248,7 +271,7 @@
               class="toolbar-search"
               density="comfortable"
               hide-details
-              label="Sensör, sayaç veya bölge ara"
+              label="Sensör, sayaç seri no veya bölge ara"
               prepend-inner-icon="search"
               variant="outlined"
               clearable
@@ -627,6 +650,74 @@ const organization = organizationProfile
 const now = ref(new Date(referenceNow))
 const route = useRoute()
 
+const normalizeSearchHaystack = (value) => value?.toString().toLowerCase() ?? ''
+
+const parseSearchTokens = (input) => {
+  const tokens = input
+    .split(/\s+/)
+    .map((token) => token.trim().toLowerCase())
+    .filter(Boolean)
+
+  const include = []
+  const exclude = []
+
+  tokens.forEach((token) => {
+    if (token.startsWith('-') && token.length > 1) {
+      exclude.push(token.slice(1))
+    } else if (token !== '-') {
+      include.push(token.startsWith('+') ? token.slice(1) : token)
+    }
+  })
+
+  return { include, exclude }
+}
+
+const matchesTokenizedSearch = (haystack, tokens) => {
+  if (!tokens.include.length && !tokens.exclude.length) {
+    return true
+  }
+
+  if (tokens.exclude.some((token) => haystack.includes(token))) {
+    return false
+  }
+
+  if (!tokens.include.length) {
+    return true
+  }
+
+  return tokens.include.every((token) => haystack.includes(token))
+}
+
+const parseDateInput = (value, endOfDay = false) => {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  if (endOfDay) {
+    date.setHours(23, 59, 59, 999)
+  } else {
+    date.setHours(0, 0, 0, 0)
+  }
+  return date
+}
+
+const matchesDateRange = (target, start, end) => {
+  if (!start && !end) return true
+  const value = target instanceof Date ? target : new Date(target)
+  if (Number.isNaN(value.getTime())) return false
+
+  let rangeStart = start
+  let rangeEnd = end
+
+  if (rangeStart && rangeEnd && rangeStart > rangeEnd) {
+    rangeStart = rangeEnd
+    rangeEnd = start
+  }
+
+  if (rangeStart && value < rangeStart) return false
+  if (rangeEnd && value > rangeEnd) return false
+  return true
+}
+
 const activeMainTab = ref('sensors')
 const detailPanel = ref(false)
 const detailSensor = ref(null)
@@ -665,6 +756,8 @@ const communicationFilters = ref({})
 const typeFilters = ref({})
 const zoneFilters = ref({})
 const selectedGroupBy = ref([])
+const lastSeenStart = ref(null)
+const lastSeenEnd = ref(null)
 
 const getChipState = (stateRef, option) => getTriStateValue(stateRef.value, option)
 
@@ -700,6 +793,9 @@ const chipTitle = (stateRef, option) => {
 }
 const searchTerm = ref('')
 const viewMode = ref('table')
+const searchTokens = computed(() => parseSearchTokens(searchTerm.value))
+const lastSeenStartDate = computed(() => parseDateInput(lastSeenStart.value))
+const lastSeenEndDate = computed(() => parseDateInput(lastSeenEnd.value, true))
 
 const sensorProfiles = {
   soil: [
@@ -1166,15 +1262,14 @@ const lastPacketAgo = computed(() =>
 )
 
 const filteredSensors = computed(() => {
-  const search = searchTerm.value.trim().toLowerCase()
+  const tokens = searchTokens.value
   return sensorRecords.value.filter((sensor) => {
     const matchesStatus = matchesTriState(statusFilters.value, sensor.status)
     const matchesFreshness = matchesTriState(freshnessFilters.value, sensor.freshnessBucket)
     const matchesComm = matchesTriState(communicationFilters.value, sensor.commMethod)
     const matchesType = matchesTriState(typeFilters.value, sensor.typeLabel)
     const matchesZone = matchesTriState(zoneFilters.value, sensor.zone)
-    const matchesSearch =
-      !search ||
+    const haystack = normalizeSearchHaystack(
       [
         sensor.sensorId,
         sensor.meterId,
@@ -1183,13 +1278,19 @@ const filteredSensors = computed(() => {
         sensor.commMethod,
         sensor.status,
         sensor.measurementLabel,
-      ]
-        .join(' ')
-        .toLowerCase()
-        .includes(search)
+      ].join(' '),
+    )
+    const matchesSearch = matchesTokenizedSearch(haystack, tokens)
+    const matchesLastSeen = matchesDateRange(sensor.lastPacketAt, lastSeenStartDate.value, lastSeenEndDate.value)
 
     return (
-      matchesStatus && matchesFreshness && matchesComm && matchesType && matchesZone && matchesSearch
+      matchesStatus &&
+      matchesFreshness &&
+      matchesComm &&
+      matchesType &&
+      matchesZone &&
+      matchesLastSeen &&
+      matchesSearch
     )
   })
 })
@@ -1229,6 +1330,8 @@ const resetFilters = () => {
   communicationFilters.value = {}
   typeFilters.value = {}
   zoneFilters.value = {}
+  lastSeenStart.value = null
+  lastSeenEnd.value = null
   selectedGroupBy.value = []
 }
 
