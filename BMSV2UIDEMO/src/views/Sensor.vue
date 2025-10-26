@@ -54,85 +54,151 @@
             <h2>Filtreler</h2>
             <v-btn density="comfortable" variant="text" @click="resetFilters">Temizle</v-btn>
           </div>
+          <div class="filter-hint">Çiplere tıklayın: dahil et → hariç tut → temizle.</div>
           <div class="filter-group">
             <span class="filter-title">Durum</span>
-            <v-chip-group v-model="selectedStatuses" column multiple>
+            <div class="filter-chip-grid">
               <v-chip
                 v-for="status in statusOptions"
                 :key="status"
-                :value="status"
                 class="filter-chip"
-                color="primary"
-                filter
-                variant="tonal"
+                :class="chipStateClass(statusFilters, status)"
+                :color="chipColor('primary', statusFilters, status)"
+                :variant="chipVariant(statusFilters, status)"
+                @click="cycleChipState(statusFilters, status)"
+                :title="chipTitle(statusFilters, status)"
               >
+                <v-icon
+                  v-if="isChipInclude(statusFilters, status)"
+                  icon="check"
+                  size="16"
+                  class="filter-chip-icon"
+                />
+                <v-icon
+                  v-else-if="isChipExclude(statusFilters, status)"
+                  icon="remove"
+                  size="16"
+                  class="filter-chip-icon"
+                />
                 {{ status }}
               </v-chip>
-            </v-chip-group>
+            </div>
           </div>
           <div class="filter-group">
             <span class="filter-title">Veri tazeliği</span>
-            <v-chip-group v-model="selectedFreshness" column multiple>
+            <div class="filter-chip-grid">
               <v-chip
                 v-for="option in freshnessOptions"
                 :key="option"
-                :value="option"
                 class="filter-chip"
-                color="teal"
-                filter
-                variant="tonal"
+                :class="chipStateClass(freshnessFilters, option)"
+                :color="chipColor('teal', freshnessFilters, option)"
+                :variant="chipVariant(freshnessFilters, option)"
+                @click="cycleChipState(freshnessFilters, option)"
+                :title="chipTitle(freshnessFilters, option)"
               >
+                <v-icon
+                  v-if="isChipInclude(freshnessFilters, option)"
+                  icon="check"
+                  size="16"
+                  class="filter-chip-icon"
+                />
+                <v-icon
+                  v-else-if="isChipExclude(freshnessFilters, option)"
+                  icon="remove"
+                  size="16"
+                  class="filter-chip-icon"
+                />
                 {{ option }}
               </v-chip>
-            </v-chip-group>
+            </div>
           </div>
           <div class="filter-group">
             <span class="filter-title">İletişim</span>
-            <v-chip-group v-model="selectedComm" column multiple>
+            <div class="filter-chip-grid">
               <v-chip
                 v-for="comm in communicationOptions"
                 :key="comm"
-                :value="comm"
                 class="filter-chip"
-                color="blue"
-                filter
-                variant="tonal"
+                :class="chipStateClass(communicationFilters, comm)"
+                :color="chipColor('blue', communicationFilters, comm)"
+                :variant="chipVariant(communicationFilters, comm)"
+                @click="cycleChipState(communicationFilters, comm)"
+                :title="chipTitle(communicationFilters, comm)"
               >
+                <v-icon
+                  v-if="isChipInclude(communicationFilters, comm)"
+                  icon="check"
+                  size="16"
+                  class="filter-chip-icon"
+                />
+                <v-icon
+                  v-else-if="isChipExclude(communicationFilters, comm)"
+                  icon="remove"
+                  size="16"
+                  class="filter-chip-icon"
+                />
                 {{ comm }}
               </v-chip>
-            </v-chip-group>
+            </div>
           </div>
           <div class="filter-group">
             <span class="filter-title">Sensör tipi</span>
-            <v-chip-group v-model="selectedTypes" column multiple>
+            <div class="filter-chip-grid">
               <v-chip
                 v-for="type in typeOptions"
                 :key="type"
-                :value="type"
                 class="filter-chip"
-                color="purple"
-                filter
-                variant="tonal"
+                :class="chipStateClass(typeFilters, type)"
+                :color="chipColor('purple', typeFilters, type)"
+                :variant="chipVariant(typeFilters, type)"
+                @click="cycleChipState(typeFilters, type)"
+                :title="chipTitle(typeFilters, type)"
               >
+                <v-icon
+                  v-if="isChipInclude(typeFilters, type)"
+                  icon="check"
+                  size="16"
+                  class="filter-chip-icon"
+                />
+                <v-icon
+                  v-else-if="isChipExclude(typeFilters, type)"
+                  icon="remove"
+                  size="16"
+                  class="filter-chip-icon"
+                />
                 {{ type }}
               </v-chip>
-            </v-chip-group>
+            </div>
           </div>
           <div class="filter-group">
             <span class="filter-title">Bölgeler</span>
-            <v-chip-group v-model="selectedZones" column multiple>
+            <div class="filter-chip-grid">
               <v-chip
                 v-for="zone in zoneOptions"
                 :key="zone"
-                :value="zone"
                 class="filter-chip"
-                color="amber"
-                filter
-                variant="tonal"
+                :class="chipStateClass(zoneFilters, zone)"
+                :color="chipColor('amber', zoneFilters, zone)"
+                :variant="chipVariant(zoneFilters, zone)"
+                @click="cycleChipState(zoneFilters, zone)"
+                :title="chipTitle(zoneFilters, zone)"
               >
+                <v-icon
+                  v-if="isChipInclude(zoneFilters, zone)"
+                  icon="check"
+                  size="16"
+                  class="filter-chip-icon"
+                />
+                <v-icon
+                  v-else-if="isChipExclude(zoneFilters, zone)"
+                  icon="remove"
+                  size="16"
+                  class="filter-chip-icon"
+                />
                 {{ zone }}
               </v-chip>
-            </v-chip-group>
+            </div>
           </div>
           <div class="filter-group">
             <span class="filter-title">Gruplama</span>
@@ -554,6 +620,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import DataFreshnessIndicator from '@/components/common/DataFreshnessIndicator.vue'
 import { meterSnapshots, organizationProfile, referenceNow } from '@/data/mockMeters'
+import { TRI_STATE, getTriStateValue, matchesTriState, nextTriState, setTriStateValue } from '@/utils/triStateFilter'
 import { formatAbsolute, formatClock, formatRelativeAgo, hoursBetween } from '@/utils/time'
 
 const organization = organizationProfile
@@ -592,12 +659,45 @@ const sensorTypeCatalog = {
 
 const typeOptions = Object.values(sensorTypeCatalog).map((item) => item.label)
 
-const selectedStatuses = ref([])
-const selectedFreshness = ref([])
-const selectedComm = ref([])
-const selectedTypes = ref([])
-const selectedZones = ref([])
+const statusFilters = ref({})
+const freshnessFilters = ref({})
+const communicationFilters = ref({})
+const typeFilters = ref({})
+const zoneFilters = ref({})
 const selectedGroupBy = ref([])
+
+const getChipState = (stateRef, option) => getTriStateValue(stateRef.value, option)
+
+const cycleChipState = (stateRef, option) => {
+  const current = getChipState(stateRef, option)
+  const next = nextTriState(current)
+  stateRef.value = setTriStateValue(stateRef.value, option, next)
+}
+
+const isChipInclude = (stateRef, option) => getChipState(stateRef, option) === TRI_STATE.INCLUDE
+const isChipExclude = (stateRef, option) => getChipState(stateRef, option) === TRI_STATE.EXCLUDE
+
+const chipVariant = (stateRef, option) =>
+  getChipState(stateRef, option) === TRI_STATE.OFF ? 'outlined' : 'tonal'
+
+const chipColor = (baseColor, stateRef, option) => {
+  const state = getChipState(stateRef, option)
+  if (state === TRI_STATE.INCLUDE) return baseColor
+  if (state === TRI_STATE.EXCLUDE) return 'error'
+  return undefined
+}
+
+const chipStateClass = (stateRef, option) => ({
+  'filter-chip--include': isChipInclude(stateRef, option),
+  'filter-chip--exclude': isChipExclude(stateRef, option),
+})
+
+const chipTitle = (stateRef, option) => {
+  const state = getChipState(stateRef, option)
+  if (state === TRI_STATE.INCLUDE) return 'Dahil ediliyor • tekrar tıklayınca hariç tutar'
+  if (state === TRI_STATE.EXCLUDE) return 'Hariç tutuluyor • tekrar tıklayınca temizler'
+  return 'Tıklayınca dahil eder'
+}
 const searchTerm = ref('')
 const viewMode = ref('table')
 
@@ -1006,7 +1106,7 @@ const typeBreakdown = computed(() =>
 )
 
 const typeSummaryList = computed(() =>
-  Object.entries(sensorTypeCatalog).map(([key, meta]) => ({
+  Object.values(sensorTypeCatalog).map((meta) => ({
     label: meta.summaryLabel,
     value: (typeBreakdown.value[meta.label] ?? 0).toLocaleString('tr-TR'),
   })),
@@ -1027,10 +1127,6 @@ const headerMetrics = computed(() => {
   const active = sensorRecords.value.filter((sensor) => sensor.status === 'Aktif').length
   const pending = sensorRecords.value.filter((sensor) => sensor.status === 'Beklemede').length
   const inactive = sensorRecords.value.filter((sensor) => sensor.status === 'Pasif').length
-  const lowBattery = sensorRecords.value.filter((sensor) => {
-    const value = parsePercent(sensor.battery)
-    return value != null && value < 55
-  }).length
   const uniqueMeters = new Set(sensorRecords.value.map((sensor) => sensor.meterId)).size
 
   return [
@@ -1072,16 +1168,11 @@ const lastPacketAgo = computed(() =>
 const filteredSensors = computed(() => {
   const search = searchTerm.value.trim().toLowerCase()
   return sensorRecords.value.filter((sensor) => {
-    const matchesStatus =
-      !selectedStatuses.value.length || selectedStatuses.value.includes(sensor.status)
-    const matchesFreshness =
-      !selectedFreshness.value.length || selectedFreshness.value.includes(sensor.freshnessBucket)
-    const matchesComm =
-      !selectedComm.value.length || selectedComm.value.includes(sensor.commMethod)
-    const matchesType =
-      !selectedTypes.value.length || selectedTypes.value.includes(sensor.typeLabel)
-    const matchesZone =
-      !selectedZones.value.length || selectedZones.value.includes(sensor.zone)
+    const matchesStatus = matchesTriState(statusFilters.value, sensor.status)
+    const matchesFreshness = matchesTriState(freshnessFilters.value, sensor.freshnessBucket)
+    const matchesComm = matchesTriState(communicationFilters.value, sensor.commMethod)
+    const matchesType = matchesTriState(typeFilters.value, sensor.typeLabel)
+    const matchesZone = matchesTriState(zoneFilters.value, sensor.zone)
     const matchesSearch =
       !search ||
       [
@@ -1133,11 +1224,11 @@ const globalAlerts = computed(() =>
 )
 
 const resetFilters = () => {
-  selectedStatuses.value = []
-  selectedFreshness.value = []
-  selectedComm.value = []
-  selectedTypes.value = []
-  selectedZones.value = []
+  statusFilters.value = {}
+  freshnessFilters.value = {}
+  communicationFilters.value = {}
+  typeFilters.value = {}
+  zoneFilters.value = {}
   selectedGroupBy.value = []
 }
 
@@ -1161,10 +1252,22 @@ const focusSensor = (sensorId) => {
 
 const applyRoutePrefill = () => {
   const { status, communication, zone, type } = route.query
-  if (status && statusOptions.includes(status)) selectedStatuses.value = [status]
-  if (communication && communicationOptions.includes(communication)) selectedComm.value = [communication]
-  if (zone) selectedZones.value = [zone]
-  if (type && typeOptions.includes(type)) selectedTypes.value = [type]
+  if (status && statusOptions.includes(status)) {
+    statusFilters.value = setTriStateValue(statusFilters.value, status, TRI_STATE.INCLUDE)
+  }
+  if (communication && communicationOptions.includes(communication)) {
+    communicationFilters.value = setTriStateValue(
+      communicationFilters.value,
+      communication,
+      TRI_STATE.INCLUDE,
+    )
+  }
+  if (zone) {
+    zoneFilters.value = setTriStateValue(zoneFilters.value, zone, TRI_STATE.INCLUDE)
+  }
+  if (type && typeOptions.includes(type)) {
+    typeFilters.value = setTriStateValue(typeFilters.value, type, TRI_STATE.INCLUDE)
+  }
 }
 
 const mapState = {
@@ -1446,6 +1549,18 @@ onBeforeUnmount(() => {
   border-bottom: none;
 }
 
+.filter-hint {
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: var(--muted-text);
+}
+
+.filter-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .filter-title {
   font-size: 13px;
   text-transform: uppercase;
@@ -1455,6 +1570,23 @@ onBeforeUnmount(() => {
 
 .filter-chip {
   margin-bottom: 6px;
+  transition: transform 140ms ease;
+}
+
+.filter-chip:hover {
+  transform: translateY(-1px);
+}
+
+.filter-chip-icon {
+  margin-right: 6px;
+}
+
+.filter-chip--include {
+  box-shadow: 0 2px 6px rgba(34, 197, 94, 0.18);
+}
+
+.filter-chip--exclude {
+  box-shadow: 0 2px 6px rgba(248, 113, 113, 0.22);
 }
 
 .plan-header span {
