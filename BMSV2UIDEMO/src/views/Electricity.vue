@@ -169,6 +169,42 @@
             />
           </div>
           <div class="filter-group">
+            <span class="filter-title">Seri numarası</span>
+            <v-text-field
+              v-model="serialFilter"
+              class="filter-text-field"
+              density="compact"
+              hide-details
+              label="Seri no ara"
+              variant="outlined"
+              clearable
+              placeholder="Örn. BYT11-22017"
+            />
+            <div class="filter-range-row">
+              <v-text-field
+                v-model="serialRangeStart"
+                class="filter-range-field"
+                density="compact"
+                hide-details
+                label="Başlangıç"
+                variant="outlined"
+                clearable
+                placeholder="Seri başlangıcı"
+              />
+              <v-text-field
+                v-model="serialRangeEnd"
+                class="filter-range-field"
+                density="compact"
+                hide-details
+                label="Bitiş"
+                variant="outlined"
+                clearable
+                placeholder="Seri bitişi"
+              />
+            </div>
+            <div class="filter-subtext">Harften sonra gelen rakamlara göre sıralar.</div>
+          </div>
+          <div class="filter-group">
             <span class="filter-title">Bölgeler</span>
             <div class="filter-chip-grid">
               <v-chip
@@ -675,6 +711,8 @@ const organization = organizationProfile
 const now = ref(new Date(referenceNow))
 
 const normalizeSearchHaystack = (value) => value?.toString().toLowerCase() ?? ''
+const normalizeSerialInput = (value) => value?.toString().trim().toUpperCase() ?? ''
+const compareSerial = (a, b) => a.localeCompare(b, 'tr', { sensitivity: 'base', numeric: true })
 
 const parseSearchTokens = (input) => {
   const tokens = input
@@ -742,6 +780,23 @@ const matchesDateRange = (target, start, end) => {
   return true
 }
 
+const matchesSerialQuery = (candidate) => {
+  const query = serialQuery.value
+  if (!query) return true
+  const serial = normalizeSerialInput(candidate)
+  return serial.includes(query)
+}
+
+const matchesSerialRange = (candidate) => {
+  const serial = normalizeSerialInput(candidate)
+  const { start, end } = serialRangeNormalized.value
+  if (start && compareSerial(serial, start) < 0) return false
+  if (end && compareSerial(serial, end) > 0) return false
+  return true
+}
+
+const matchesSerialFilters = (sensor) => matchesSerialRange(sensor.sensorId) && matchesSerialQuery(sensor.sensorId)
+
 const activeMainTab = ref('meters')
 const detailPanel = ref(false)
 const detailSensor = ref(null)
@@ -758,6 +813,9 @@ const zoneFilters = ref({})
 const selectedGroupBy = ref([])
 const lastSeenStart = ref(null)
 const lastSeenEnd = ref(null)
+const serialFilter = ref('')
+const serialRangeStart = ref('')
+const serialRangeEnd = ref('')
 
 const getChipState = (stateRef, option) => getTriStateValue(stateRef.value, option)
 
@@ -795,6 +853,17 @@ const searchTerm = ref('')
 const searchTokens = computed(() => parseSearchTokens(searchTerm.value))
 const lastSeenStartDate = computed(() => parseDateInput(lastSeenStart.value))
 const lastSeenEndDate = computed(() => parseDateInput(lastSeenEnd.value, true))
+const serialQuery = computed(() => normalizeSerialInput(serialFilter.value))
+const serialRangeStartNormalized = computed(() => normalizeSerialInput(serialRangeStart.value))
+const serialRangeEndNormalized = computed(() => normalizeSerialInput(serialRangeEnd.value))
+const serialRangeNormalized = computed(() => {
+  let start = serialRangeStartNormalized.value
+  let end = serialRangeEndNormalized.value
+  if (start && end && compareSerial(start, end) > 0) {
+    ;[start, end] = [end, start]
+  }
+  return { start, end }
+})
 const selectedRows = ref([])
 const viewMode = ref('table')
 
@@ -1127,6 +1196,7 @@ const filteredSensors = computed(() => {
     )
     const matchesSearch = matchesTokenizedSearch(haystack, tokens)
     const matchesLastSeen = matchesDateRange(sensor.lastPacketAt, lastSeenStartDate.value, lastSeenEndDate.value)
+    const matchesSerial = matchesSerialFilters(sensor)
 
     return (
       matchesStatus &&
@@ -1134,6 +1204,7 @@ const filteredSensors = computed(() => {
       matchesComm &&
       matchesZone &&
       matchesLastSeen &&
+      matchesSerial &&
       matchesSearch
     )
   })
@@ -1186,6 +1257,9 @@ const resetFilters = () => {
   zoneFilters.value = {}
   lastSeenStart.value = null
   lastSeenEnd.value = null
+  serialFilter.value = ''
+  serialRangeStart.value = ''
+  serialRangeEnd.value = ''
   selectedGroupBy.value = []
 }
 
@@ -1521,6 +1595,25 @@ onBeforeUnmount(() => {
   margin-bottom: 4px;
   font-size: 12px;
   color: var(--muted-text);
+}
+
+.filter-text-field {
+  margin-top: 4px;
+}
+
+.filter-range-row {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-range-field {
+  flex: 1;
+}
+
+.filter-subtext {
+  font-size: 12px;
+  color: var(--muted-text);
+  margin-top: -2px;
 }
 
 .filter-chip-grid {
