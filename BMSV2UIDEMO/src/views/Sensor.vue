@@ -3,12 +3,12 @@
   <v-container fluid class="sensor-dashboard" tag="section">
     <section class="sensor-header">
       <div class="header-left">
-        <div class="header-chip">{{ organization.scope }} • Sensör listesi</div>
-        <h1>Kurumsal sayaç yönetimi</h1>
+        <div class="header-chip">{{ organization.scope }} • Sulama sensörleri</div>
+        <h1>Sahadaki sensör ağı</h1>
         <p>
-          ASKİ'ye bağlı su ve elektrik sayaçları gün içinde rastgele saatlerde paket gönderir. Bu ekran
-          yalnızca kurumunuza ait LoRa ve GPRS sayaçlarını gösterir; farklı organizasyonların verileri
-          görünmez.
+          ASKİ sulama sahalarına kurulan su sayaçlarıyla ilişkili toprak nemi, meteoroloji ve yağmur
+          sensörleri bu panelde birlikte izlenir. Sensör tanımları fiziksel bağlantıdan bağımsız olarak
+          sayaçlar üzerinden yönetildiği için her kayıt ilgili sayaç ve parsel bilgisiyle gelir.
         </p>
         <div class="header-meta">
           <DataFreshnessIndicator
@@ -29,22 +29,20 @@
       </div>
       <div class="header-right">
         <div class="summary-item">
-          <span class="summary-label">Toplam sayaç</span>
+          <span class="summary-label">Toplam sensör</span>
           <span class="summary-value">{{ totalSensors.toLocaleString('tr-TR') }}</span>
         </div>
         <div class="summary-split">
-          <div>
-            <span class="summary-label">LoRa</span>
-            <span class="summary-value">{{ communicationBreakdown.LoRa.toLocaleString('tr-TR') }}</span>
-          </div>
-          <div>
-            <span class="summary-label">GPRS</span>
-            <span class="summary-value">{{ communicationBreakdown.GPRS.toLocaleString('tr-TR') }}</span>
+          <div v-for="typeSummary in typeSummaryList" :key="typeSummary.label">
+            <span class="summary-label">{{ typeSummary.label }}</span>
+            <span class="summary-value">{{ typeSummary.value }}</span>
           </div>
         </div>
         <div class="summary-note">
           <v-icon icon="bolt" size="18" />
-          <span>Veriler canlı değil; her sayaç 24 saatlik pencere içinde rastgele saatlerde görünür.</span>
+          <span>
+            Veriler sayaçlardan beslenen sensör tanımlarından gelir ve 24 saatlik pencereyle güncellenir.
+          </span>
         </div>
       </div>
     </section>
@@ -105,7 +103,7 @@
             </v-chip-group>
           </div>
           <div class="filter-group">
-            <span class="filter-title">Sayaç tipi</span>
+            <span class="filter-title">Sensör tipi</span>
             <v-chip-group v-model="selectedTypes" column multiple>
               <v-chip
                 v-for="type in typeOptions"
@@ -184,43 +182,30 @@
               class="toolbar-search"
               density="comfortable"
               hide-details
-              label="Sayaç, bölge veya adres ara"
+              label="Sensör, sayaç veya bölge ara"
               prepend-inner-icon="search"
               variant="outlined"
               clearable
             />
-            <div class="toolbar-actions">
-              <v-btn variant="text" @click="selectAllRows">Tümünü seç</v-btn>
-              <v-btn
-                color="primary"
-                variant="flat"
-                prepend-icon="assignment"
-                :disabled="selectedRows.length === 0"
-                @click="openWorkOrder"
-              >
-                İş emri planla
-              </v-btn>
-              <v-btn-toggle
-                v-model="viewMode"
-                class="view-toggle"
-                density="comfortable"
-                mandatory
-                :disabled="activeMainTab !== 'meters'"
-              >
-                <v-btn value="table" icon="table" />
-                <v-btn value="cards" icon="grid_view" />
-              </v-btn-toggle>
-            </div>
+            <v-btn-toggle
+              v-model="viewMode"
+              class="view-toggle"
+              density="comfortable"
+              mandatory
+              :disabled="activeMainTab !== 'sensors'"
+            >
+              <v-btn value="table" icon="table" />
+              <v-btn value="cards" icon="grid_view" />
+            </v-btn-toggle>
           </div>
 
-          <v-tabs v-model="activeMainTab" class="content-tabs" density="comfortable" grow>
-            <v-tab value="alerts" prepend-icon="warning">Uyarılar</v-tab>
-            <v-tab value="meters" prepend-icon="widgets">Sayaçlar</v-tab>
-            <v-tab value="workOrders" prepend-icon="assignment_turned_in">İş Emirleri</v-tab>
-            <v-tab value="locations" prepend-icon="map">Konumlar</v-tab>
-          </v-tabs>
+        <v-tabs v-model="activeMainTab" class="content-tabs" density="comfortable" grow>
+          <v-tab value="alerts" prepend-icon="warning">Uyarılar</v-tab>
+          <v-tab value="sensors" prepend-icon="widgets">Sensörler</v-tab>
+          <v-tab value="locations" prepend-icon="map">Konumlar</v-tab>
+        </v-tabs>
 
-          <v-window v-model="activeMainTab" class="tab-content">
+        <v-window v-model="activeMainTab" class="tab-content">
             <v-window-item value="alerts">
               <v-data-table
                 :headers="alertHeaders"
@@ -230,10 +215,29 @@
                 density="comfortable"
                 hover
               >
+                <template #item.sensorId="{ item }">
+                  <div class="cell-primary">
+                    <span class="cell-id">{{ item.sensorId }}</span>
+                    <span class="cell-zone">{{ item.zone }}</span>
+                  </div>
+                </template>
+                <template #item.meterId="{ item }">
+                  <div class="cell-secondary">
+                    <span>{{ item.meterId }}</span>
+                    <small>{{ item.meterLocation }}</small>
+                  </div>
+                </template>
                 <template #item.severity="{ item }">
                   <v-chip :color="severityColor(item.severity)" size="small" variant="tonal">
                     {{ item.severity }}
                   </v-chip>
+                </template>
+                <template #item.typeLabel="{ item }">
+                  <div class="chip-inline">
+                    <v-chip :color="typeChipColor(item.typeKey)" size="small" variant="tonal">
+                      {{ item.typeLabel }}
+                    </v-chip>
+                  </div>
                 </template>
                 <template #item.timestamp="{ item }">
                   <div class="cell-secondary">
@@ -250,7 +254,7 @@
               </v-data-table>
             </v-window-item>
 
-            <v-window-item value="meters">
+            <v-window-item value="sensors">
               <div class="list-meta">
                 <v-chip class="meta-chip" color="primary" variant="tonal"
                   >Toplam: {{ filteredStats.total }}</v-chip
@@ -264,11 +268,16 @@
                 <v-chip class="meta-chip" color="red-darken-2" variant="tonal"
                   >Pasif: {{ filteredStats.inactive }}</v-chip
                 >
+                <v-chip class="meta-chip" color="cyan" variant="tonal"
+                  >LoRa: {{ communicationBreakdown.LoRa.toLocaleString('tr-TR') }}</v-chip
+                >
+                <v-chip class="meta-chip" color="blue-darken-2" variant="tonal"
+                  >GPRS: {{ communicationBreakdown.GPRS.toLocaleString('tr-TR') }}</v-chip
+                >
               </div>
 
               <div v-if="viewMode === 'table'" class="grid-wrapper">
                 <v-data-table
-                  v-model:selected="selectedRows"
                   :headers="tableHeaders"
                   :items="filteredSensors"
                   :group-by="tableGroupBy"
@@ -278,7 +287,6 @@
                   density="comfortable"
                   item-value="sensorId"
                   return-object
-                  show-select
                   hover
                   fixed-header
                   @click:row="handleRowClick"
@@ -289,13 +297,15 @@
                       <span class="cell-zone">{{ item.zone }}</span>
                     </div>
                   </template>
+                  <template #item.meterId="{ item }">
+                    <div class="cell-secondary">
+                      <span>{{ item.meterId }}</span>
+                      <small>{{ item.meterLocation }}</small>
+                    </div>
+                  </template>
                   <template #item.typeLabel="{ item }">
                     <div class="chip-inline">
-                      <v-chip
-                        :color="item.typeLabel === 'Su' ? 'cyan' : 'yellow-darken-2'"
-                        size="small"
-                        variant="tonal"
-                      >
+                      <v-chip :color="typeChipColor(item.typeKey)" size="small" variant="tonal">
                         {{ item.typeLabel }}
                       </v-chip>
                     </div>
@@ -316,8 +326,14 @@
                       <small>{{ item.location }}</small>
                     </div>
                   </template>
+                  <template #item.lastReading="{ item }">
+                    <div class="cell-secondary">
+                      <span>{{ item.lastReading }}</span>
+                      <small>{{ item.measurementLabel }}</small>
+                    </div>
+                  </template>
                   <template #no-data>
-                    <div class="no-data">Filtrelere uyan sayaç bulunamadı.</div>
+                    <div class="no-data">Filtrelere uyan sensör bulunamadı.</div>
                   </template>
                 </v-data-table>
               </div>
@@ -341,6 +357,14 @@
                           <span class="sensor-value">{{ sensor.typeLabel }} • {{ sensor.commMethod }}</span>
                         </div>
                         <div class="sensor-row">
+                          <span class="sensor-label">Sayaç</span>
+                          <span class="sensor-value">{{ sensor.meterId }} • {{ sensor.meterLocation }}</span>
+                        </div>
+                        <div class="sensor-row">
+                          <span class="sensor-label">Ölçüm</span>
+                          <span class="sensor-value">{{ sensor.lastReading }} • {{ sensor.measurementLabel }}</span>
+                        </div>
+                        <div class="sensor-row">
                           <span class="sensor-label">Son veri</span>
                           <span class="sensor-value">{{ sensor.lastPacketDisplay }}</span>
                         </div>
@@ -349,8 +373,8 @@
                           <span class="sensor-value">{{ sensor.location }}</span>
                         </div>
                         <div class="sensor-row">
-                          <span class="sensor-label">Okuma</span>
-                          <span class="sensor-value">{{ sensor.lastReading }}</span>
+                          <span class="sensor-label">Örnekleme</span>
+                          <span class="sensor-value">{{ sensor.window }}</span>
                         </div>
                         <div class="sensor-row">
                           <span class="sensor-label">Batarya / Sinyal</span>
@@ -369,41 +393,6 @@
                   </v-col>
                 </v-row>
               </div>
-            </v-window-item>
-
-            <v-window-item value="workOrders">
-              <v-data-table
-                :headers="workOrderHeaders"
-                :items="globalWorkOrders"
-                :items-per-page="8"
-                class="workorder-table"
-                density="comfortable"
-                hover
-              >
-                <template #item.payload="{ item }">
-                  <code class="payload-chip">{{ item.payload }}</code>
-                </template>
-                <template #item.response="{ item }">
-                  <span class="response-text">{{ item.response }}</span>
-                </template>
-                <template #item.status="{ item }">
-                  <v-chip :color="workOrderStatusColor(item.status)" size="small" variant="tonal">
-                    {{ item.status }}
-                  </v-chip>
-                </template>
-                <template #item.dispatchedAt="{ item }">
-                  <div class="cell-secondary">
-                    <span>{{ item.dispatchedLabel }}</span>
-                    <small>{{ item.statusDetail }}</small>
-                  </div>
-                </template>
-                <template #item.actions="{ item }">
-                  <v-btn variant="text" size="small" @click="focusSensor(item.sensorId)">Sayaç</v-btn>
-                </template>
-                <template #no-data>
-                  <div class="no-data">Bu filtrelerle eşleşen iş emri bulunmuyor.</div>
-                </template>
-              </v-data-table>
             </v-window-item>
 
             <v-window-item value="locations">
@@ -430,62 +419,6 @@
   </v-container>
 
   <v-navigation-drawer
-    v-model="workOrderPanel"
-    location="right"
-    width="420"
-    temporary
-    scrim="false"
-    elevation="10"
-  >
-    <v-card flat>
-      <v-card-title class="drawer-title">
-        <span>İş emri planla</span>
-        <v-btn icon="close" variant="text" @click="workOrderPanel = false" />
-      </v-card-title>
-      <v-divider />
-      <v-card-text>
-        <div class="drawer-summary">
-          Seçili sayaç sayısı: <strong>{{ selectedRows.length }}</strong>
-        </div>
-        <v-select
-          v-model="selectedWorkOrderType"
-          :items="workOrderTypes"
-          label="İş emri tipi"
-          variant="outlined"
-          density="comfortable"
-          class="mb-3"
-        />
-        <v-select
-          v-model="selectedWorkOrderChannel"
-          :items="workOrderChannels"
-          label="İletişim kanalı"
-          variant="outlined"
-          density="comfortable"
-          class="mb-3"
-        />
-        <v-text-field
-          v-model="workOrderPayload.payload"
-          label="Gönderilecek payload"
-          variant="outlined"
-          density="comfortable"
-          class="mb-3"
-        />
-        <v-textarea
-          v-model="workOrderPayload.description"
-          label="Açıklama"
-          variant="outlined"
-          rows="3"
-        />
-      </v-card-text>
-      <v-divider />
-      <v-card-actions class="justify-end">
-        <v-btn variant="text" @click="workOrderPanel = false">İptal</v-btn>
-        <v-btn color="primary" variant="flat" @click="confirmWorkOrder">Gönder</v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-navigation-drawer>
-
-  <v-navigation-drawer
     v-model="detailPanel"
     location="right"
     width="460"
@@ -510,7 +443,9 @@
           <v-chip :color="detailSensor.freshnessChip" size="small" variant="tonal">
             {{ detailSensor.freshnessBucket }}
           </v-chip>
-          <v-chip size="small" variant="tonal">{{ detailSensor.typeLabel }}</v-chip>
+          <v-chip :color="typeChipColor(detailSensor.typeKey)" size="small" variant="tonal">
+            {{ detailSensor.typeLabel }}
+          </v-chip>
         </div>
         <div class="detail-meta">
           <div class="detail-meta-item">
@@ -524,31 +459,61 @@
             <span class="meta-hint">{{ detailSensor.window }}</span>
           </div>
           <div class="detail-meta-item">
-            <span class="meta-label">Okuma</span>
+            <span class="meta-label">Sayaç</span>
+            <span class="meta-value">{{ detailSensor.meterId }}</span>
+            <span class="meta-hint">{{ detailSensor.meterLocation }}</span>
+          </div>
+          <div class="detail-meta-item">
+            <span class="meta-label">Ölçüm</span>
             <span class="meta-value">{{ detailSensor.lastReading }}</span>
-            <span class="meta-hint">Batarya: {{ detailSensor.battery }} • Sinyal: {{ detailSensor.signal }}</span>
+            <span class="meta-hint">{{ detailSensor.measurementLabel }}</span>
           </div>
         </div>
         <v-tabs v-model="detailTab" class="detail-tabs" density="compact" grow>
           <v-tab value="overview">Genel</v-tab>
           <v-tab value="alerts">Uyarılar</v-tab>
-          <v-tab value="workOrders">İş Emirleri</v-tab>
           <v-tab value="location">Konum</v-tab>
         </v-tabs>
         <v-window v-model="detailTab" class="detail-window">
           <v-window-item value="overview">
             <v-list density="compact" class="detail-list">
               <v-list-item>
-                <v-list-item-title>Adres</v-list-item-title>
-                <v-list-item-subtitle>{{ detailSensor.location }}</v-list-item-subtitle>
+                <v-list-item-title>Bağlı sayaç</v-list-item-title>
+                <v-list-item-subtitle>
+                  {{ detailSensor.meterId }} • {{ detailSensor.meterLocation }}
+                </v-list-item-subtitle>
               </v-list-item>
               <v-list-item>
                 <v-list-item-title>Veri tazeliği</v-list-item-title>
                 <v-list-item-subtitle>{{ detailSensor.freshnessBadge }}</v-list-item-subtitle>
               </v-list-item>
               <v-list-item>
-                <v-list-item-title>Son okuma</v-list-item-title>
-                <v-list-item-subtitle>{{ detailSensor.lastReading }}</v-list-item-subtitle>
+                <v-list-item-title>Ölçüm</v-list-item-title>
+                <v-list-item-subtitle>
+                  {{ detailSensor.lastReading }} • {{ detailSensor.measurementLabel }}
+                </v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item>
+                <v-list-item-title>Sensör konumu</v-list-item-title>
+                <v-list-item-subtitle>{{ detailSensor.location }}</v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item>
+                <v-list-item-title>Örnekleme</v-list-item-title>
+                <v-list-item-subtitle>{{ detailSensor.samplingInterval }}</v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item>
+                <v-list-item-title>Batarya / Sinyal</v-list-item-title>
+                <v-list-item-subtitle>
+                  {{ detailSensor.battery }} • {{ detailSensor.signal }}
+                </v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item v-if="detailSensor.calibrationNote">
+                <v-list-item-title>Kalibrasyon</v-list-item-title>
+                <v-list-item-subtitle>{{ detailSensor.calibrationNote }}</v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item v-if="detailSensor.notes">
+                <v-list-item-title>Notlar</v-list-item-title>
+                <v-list-item-subtitle>{{ detailSensor.notes }}</v-list-item-subtitle>
               </v-list-item>
             </v-list>
           </v-window-item>
@@ -565,28 +530,7 @@
                 <p>{{ alert.message }}</p>
               </div>
             </div>
-            <div v-else class="no-data">Bu sayaca ait açık uyarı yok.</div>
-          </v-window-item>
-          <v-window-item value="workOrders">
-            <div v-if="detailSensor.workOrders.length" class="detail-stack">
-              <div v-for="order in detailSensor.workOrders" :key="order.id" class="detail-alert">
-                <div class="detail-alert-header">
-                  <v-chip :color="workOrderStatusColor(order.status)" size="small" variant="tonal">
-                    {{ order.status }}
-                  </v-chip>
-                  <span class="detail-alert-time">{{ order.dispatchedRelative }}</span>
-                </div>
-                <h3>{{ order.title }}</h3>
-                <p>{{ order.note }}</p>
-                <div class="detail-order-meta">
-                  <div><strong>İletişim:</strong> {{ order.channel }}</div>
-                  <div><strong>Payload:</strong> {{ order.payload }}</div>
-                  <div><strong>Yanıt:</strong> {{ order.response }}</div>
-                </div>
-                <small>{{ order.statusDetail }}</small>
-              </div>
-            </div>
-            <div v-else class="no-data">Bu sayaca ait planlı iş emri yok.</div>
+            <div v-else class="no-data">Bu sensöre ait açık uyarı yok.</div>
           </v-window-item>
           <v-window-item value="location">
             <div class="detail-map">
@@ -610,13 +554,13 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import DataFreshnessIndicator from '@/components/common/DataFreshnessIndicator.vue'
 import { meterSnapshots, organizationProfile, referenceNow } from '@/data/mockMeters'
-import { formatAbsolute, formatClock, formatRelativeAgo, hoursBetween, toDate } from '@/utils/time'
+import { formatAbsolute, formatClock, formatRelativeAgo, hoursBetween } from '@/utils/time'
 
 const organization = organizationProfile
 const now = ref(new Date(referenceNow))
 const route = useRoute()
 
-const activeMainTab = ref('meters')
+const activeMainTab = ref('sensors')
 const detailPanel = ref(false)
 const detailSensor = ref(null)
 const detailTab = ref('overview')
@@ -624,7 +568,29 @@ const detailTab = ref('overview')
 const statusOptions = ['Aktif', 'Beklemede', 'Pasif']
 const freshnessOptions = ['< 24 saat', '24-48 saat', '48+ saat']
 const communicationOptions = ['LoRa', 'GPRS']
-const typeOptions = ['Su', 'Elektrik']
+
+const sensorTypeCatalog = {
+  soil: {
+    label: 'Toprak nem sensörü',
+    summaryLabel: 'Toprak nem',
+    chip: 'teal-darken-2',
+    measurementLabel: 'Kök bölgesi nemi',
+  },
+  meteo: {
+    label: 'Meteoroloji sensörü',
+    summaryLabel: 'Meteoroloji',
+    chip: 'indigo',
+    measurementLabel: 'İstasyon verisi',
+  },
+  rain: {
+    label: 'Yağmur sensörü',
+    summaryLabel: 'Yağmur',
+    chip: 'blue-darken-1',
+    measurementLabel: 'Kümülatif yağış',
+  },
+}
+
+const typeOptions = Object.values(sensorTypeCatalog).map((item) => item.label)
 
 const selectedStatuses = ref([])
 const selectedFreshness = ref([])
@@ -633,92 +599,217 @@ const selectedTypes = ref([])
 const selectedZones = ref([])
 const selectedGroupBy = ref([])
 const searchTerm = ref('')
-const selectedRows = ref([])
 const viewMode = ref('table')
 
-const workOrderPanel = ref(false)
-const workOrderTypes = ['Tüketim geçmişi getir', 'Vana komutu gönder', 'Enerji kes']
-const workOrderChannels = ['LoRa', 'GPRS']
-const selectedWorkOrderType = ref(workOrderTypes[0])
-const selectedWorkOrderChannel = ref(workOrderChannels[0])
-const workOrderPayload = ref({ payload: '00AA11BB', description: '' })
+const sensorProfiles = {
+  soil: [
+    {
+      code: 'TN01',
+      minutesAgo: 42,
+      value: '31%',
+      history: [28, 30, 31, 33, 32],
+      battery: '%82',
+      signal: '-78 dBm',
+      placement: 'Parsel A • Damla hattı 1',
+      measurementLabel: 'Kök derinliği 30 cm',
+      calibration: 'Kasım 2024 saha kalibrasyonu',
+      sampling: '15 dk örnekleme',
+      notes: 'Sulama programı %28 altına düşmeden tetikleniyor.',
+    },
+    {
+      code: 'TN02',
+      minutesAgo: 67,
+      value: '26%',
+      history: [22, 24, 25, 26, 26],
+      battery: '%74',
+      signal: '-86 dBm',
+      placement: 'Parsel B • Hat sonu',
+      measurementLabel: 'Kumlu toprak profili',
+      calibration: 'Temmuz 2024 çubuk kalibrasyonu',
+      sampling: '30 dk örnekleme',
+      notes: 'Kum oranı yüksek, su tutma düşük.',
+    },
+    {
+      code: 'TN03',
+      minutesAgo: 18,
+      value: '34%',
+      history: [29, 31, 33, 34, 34],
+      battery: '%91',
+      signal: '-76 dBm',
+      placement: 'Parsel C • Seralar',
+      measurementLabel: 'Kök derinliği 40 cm',
+      calibration: 'Ocak 2025 sahada güncellendi',
+      sampling: '10 dk örnekleme',
+      notes: 'Serada damla sulama otomatik tetiklenir.',
+    },
+    {
+      code: 'TN04',
+      minutesAgo: 125,
+      value: '22%',
+      history: [30, 28, 25, 23, 22],
+      battery: '%58',
+      signal: '-92 dBm',
+      placement: 'Parsel D • Kanal kenarı',
+      measurementLabel: 'Yüzey 20 cm sensör',
+      calibration: 'Eylül 2024 laboratuvar referansı',
+      sampling: '30 dk örnekleme',
+      notes: 'Akşam saatlerinde hızlı kuruma gözleniyor.',
+    },
+    {
+      code: 'TN05',
+      minutesAgo: 35,
+      value: '29%',
+      history: [25, 26, 27, 28, 29],
+      battery: '%79',
+      signal: '-83 dBm',
+      placement: 'Parsel E • Damla hattı 3',
+      measurementLabel: 'Kök derinliği 25 cm',
+      calibration: 'Kasım 2024 saha kontrolü',
+      sampling: '15 dk örnekleme',
+      notes: 'Gece sulama programı ile dengeleniyor.',
+    },
+    {
+      code: 'TN06',
+      minutesAgo: 54,
+      value: '33%',
+      history: [27, 29, 30, 32, 33],
+      battery: '%87',
+      signal: '-80 dBm',
+      placement: 'Parsel F • Damla hattı 2',
+      measurementLabel: 'Organik toprak profili',
+      calibration: 'Aralık 2024 saha kalibrasyonu',
+      sampling: '20 dk örnekleme',
+      notes: 'Organik materyal nemi tutuyor.',
+    },
+  ],
+  meteo: [
+    {
+      code: 'MT01',
+      minutesAgo: 26,
+      value: '21.4°C • %58 RH',
+      history: [19.6, 20.1, 21.0, 21.7, 21.4],
+      battery: '%76',
+      signal: '-81 dBm',
+      placement: 'Parsel A • Mini istasyon',
+      measurementLabel: 'Sıcaklık & bağıl nem',
+      calibration: 'Ekim 2024 saha kalibrasyonu',
+      sampling: '10 dk örnekleme',
+      notes: 'Rüzgar 18 km/s • Güneydoğu',
+    },
+    {
+      code: 'MT02',
+      minutesAgo: 48,
+      value: '19.2°C • %65 RH',
+      history: [18.4, 18.8, 19.0, 19.2, 19.2],
+      battery: '%68',
+      signal: '-88 dBm',
+      placement: 'Parsel D • Meteoroloji kulesi',
+      measurementLabel: 'Sıcaklık & nem',
+      calibration: 'Ağustos 2024 referans istasyon',
+      sampling: '10 dk örnekleme',
+      notes: 'Basınç 1009 hPa',
+    },
+    {
+      code: 'MT03',
+      minutesAgo: 15,
+      value: '24.6°C • %49 RH',
+      history: [21.8, 22.5, 23.4, 24.1, 24.6],
+      battery: '%83',
+      signal: '-79 dBm',
+      placement: 'Parsel C • Sera üstü',
+      measurementLabel: 'Sıcaklık & rüzgar',
+      calibration: 'Aralık 2024 saha kalibrasyonu',
+      sampling: '5 dk örnekleme',
+      notes: 'Rüzgar zirvesi 24 km/s',
+    },
+  ],
+  rain: [
+    {
+      code: 'YG01',
+      minutesAgo: 58,
+      value: '2.4 mm (24s)',
+      history: [0.0, 0.6, 1.2, 1.8, 2.4],
+      battery: '%88',
+      signal: '-79 dBm',
+      placement: 'Parsel A • Yağmur hunisi',
+      measurementLabel: 'Son 24 saat yağış',
+      calibration: 'Aralık 2024 yağış kalibrasyonu',
+      sampling: '30 dk örnekleme',
+      notes: 'Hunide birikinti temizlendi.',
+    },
+    {
+      code: 'YG02',
+      minutesAgo: 145,
+      value: '0.0 mm (24s)',
+      history: [0, 0, 0, 0, 0],
+      battery: '%72',
+      signal: '-90 dBm',
+      placement: 'Parsel B • Açık alan',
+      measurementLabel: 'Son 24 saat yağış',
+      calibration: 'Ekim 2024 bakım',
+      sampling: '30 dk örnekleme',
+      notes: 'Son yağış 3 gün önce kaydedildi.',
+    },
+    {
+      code: 'YG03',
+      minutesAgo: 32,
+      value: '1.6 mm (24s)',
+      history: [0.0, 0.2, 0.6, 1.0, 1.6],
+      battery: '%84',
+      signal: '-82 dBm',
+      placement: 'Parsel D • Kanal çıkışı',
+      measurementLabel: 'Anlık yağış',
+      calibration: 'Kasım 2024 kalibrasyonu',
+      sampling: '15 dk örnekleme',
+      notes: 'Kanal filtreleri temiz.',
+    },
+    {
+      code: 'YG04',
+      minutesAgo: 210,
+      value: '4.8 mm (24s)',
+      history: [1.2, 2.1, 3.4, 4.2, 4.8],
+      battery: '%61',
+      signal: '-95 dBm',
+      placement: 'Parsel F • Tepelik bölge',
+      measurementLabel: 'Son 24 saat yağış',
+      calibration: 'Ocak 2025 saha kontrolü',
+      sampling: '30 dk örnekleme',
+      notes: 'Dağınık sağanaklar izlendi.',
+    },
+    {
+      code: 'YG05',
+      minutesAgo: 90,
+      value: '0.8 mm (24s)',
+      history: [0.0, 0.0, 0.3, 0.6, 0.8],
+      battery: '%79',
+      signal: '-84 dBm',
+      placement: 'Parsel E • Çatı oluğu',
+      measurementLabel: 'Son 24 saat yağış',
+      calibration: 'Kasım 2024 kalibrasyonu',
+      sampling: '20 dk örnekleme',
+      notes: 'Oluğun eğimi kontrol edildi.',
+    },
+  ],
+}
 
-const rawSensors = ref(meterSnapshots)
+const sensorLayout = [
+  ['soil', 'meteo', 'rain'],
+  ['soil', 'rain'],
+  ['soil', 'meteo'],
+  ['soil', 'rain'],
+  ['soil', 'rain', 'meteo'],
+  ['soil'],
+  ['soil', 'rain'],
+]
 
 const groupByOptions = [
   { title: 'Bölgeler', value: 'zone' },
   { title: 'Durum', value: 'status' },
   { title: 'İletişim', value: 'commMethod' },
-  { title: 'Sayaç tipi', value: 'typeLabel' },
+  { title: 'Sensör tipi', value: 'typeLabel' },
 ]
-
-const zoneOptions = computed(() =>
-  Array.from(new Set(rawSensors.value.map((meter) => meter.zone))).sort(),
-)
-
-const tableHeaders = [
-  { title: 'Sayaç', key: 'sensorId', sortable: true },
-  { title: 'Tip', key: 'typeLabel', sortable: true },
-  { title: 'İletişim', key: 'commMethod', sortable: true },
-  { title: 'Durum', key: 'status', sortable: true },
-  { title: 'Veri tazeliği', key: 'freshnessBucket', sortable: true },
-  { title: 'Son veri', key: 'lastPacketDisplay', sortable: false },
-  { title: 'Okuma', key: 'lastReading', sortable: true },
-  { title: 'Batarya', key: 'battery', sortable: true },
-  { title: 'Sinyal', key: 'signal', sortable: true },
-]
-
-const alertHeaders = [
-  { title: 'Sayaç', key: 'sensorId', sortable: true },
-  { title: 'Tip', key: 'typeLabel', sortable: true },
-  { title: 'Başlık', key: 'title', sortable: false },
-  { title: 'Özet', key: 'message', sortable: false },
-  { title: 'Öncelik', key: 'severity', sortable: true },
-  { title: 'Zaman', key: 'timestamp', sortable: true },
-  { title: '', key: 'actions', sortable: false, width: 80 },
-]
-
-const workOrderHeaders = [
-  { title: 'Sayaç', key: 'sensorId', sortable: true },
-  { title: 'Tip', key: 'typeLabel', sortable: true },
-  { title: 'İletişim', key: 'channel', sortable: true },
-  { title: 'Komut', key: 'title', sortable: false },
-  { title: 'Payload', key: 'payload', sortable: false },
-  { title: 'Durum', key: 'status', sortable: true },
-  { title: 'Yanıt', key: 'response', sortable: false },
-  { title: 'Gönderim', key: 'dispatchedAt', sortable: true },
-  { title: '', key: 'actions', sortable: false, width: 80 },
-]
-
-const tableSortBy = ref([{ key: 'sensorId', order: 'asc' }])
-
-const tableGroupBy = computed(() => selectedGroupBy.value.map((value) => ({ key: value })))
-
-const statusChipColor = (status) => {
-  if (status === 'Aktif') return 'success'
-  if (status === 'Beklemede') return 'amber-darken-2'
-  return 'red-darken-2'
-}
-
-const severityColor = (severity) => {
-  if (severity === 'Kritik') return 'red-darken-2'
-  if (severity === 'Yüksek') return 'amber-darken-2'
-  if (severity === 'Orta') return 'primary'
-  return 'blue-darken-2'
-}
-
-const workOrderStatusColor = (status) => {
-  if (status === 'Tamamlandı') return 'success'
-  if (status === 'Gönderildi') return 'primary'
-  if (status === 'Bekliyor') return 'amber-darken-2'
-  return 'grey-darken-1'
-}
-
-const statusRank = { Bekliyor: 0, Gönderildi: 1, Tamamlandı: 2 }
 
 const minutesAgo = (minutes) => new Date(now.value.getTime() - minutes * 60 * 1000)
-
-const formatDispatchLabel = (date) => `${formatClock(date)} • ${formatRelativeAgo(date, now.value)}`
 
 const classifyStatus = (lastCommunication) => {
   const hours = hoursBetween(lastCommunication, now.value)
@@ -746,6 +837,92 @@ const freshnessMap = {
   '48+ saat': { badge: 'Pasif', chip: 'red-darken-2', level: 'missed' },
 }
 
+const statusChipColor = (status) => {
+  if (status === 'Aktif') return 'success'
+  if (status === 'Beklemede') return 'amber-darken-2'
+  return 'red-darken-2'
+}
+
+const severityColor = (severity) => {
+  if (severity === 'Kritik') return 'red-darken-2'
+  if (severity === 'Yüksek') return 'amber-darken-2'
+  if (severity === 'Orta') return 'primary'
+  return 'blue-darken-2'
+}
+
+const typeChipColor = (typeKey) => sensorTypeCatalog[typeKey]?.chip ?? 'primary'
+
+const buildSensorInventory = () => {
+  const irrigationMeters = meterSnapshots.filter((meter) => meter.type === 'water')
+  const pointers = { soil: 0, meteo: 0, rain: 0 }
+  return irrigationMeters.flatMap((meter, meterIndex) => {
+    const layout = sensorLayout[meterIndex % sensorLayout.length]
+    return layout.map((typeKey) => {
+      const profiles = sensorProfiles[typeKey]
+      const profile = profiles[pointers[typeKey] % profiles.length]
+      pointers[typeKey] += 1
+      const lastCommunication = minutesAgo(profile.minutesAgo)
+      return {
+        sensorId: `${meter.id}-${profile.code}`,
+        typeKey,
+        typeLabel: sensorTypeCatalog[typeKey].label,
+        meterId: meter.id,
+        meterZone: meter.zone,
+        meterLocation: meter.location,
+        commMethod: profile.commMethod ?? meter.communication,
+        lastCommunication,
+        lastReadingRaw: profile.value,
+        measurementLabel: profile.measurementLabel ?? sensorTypeCatalog[typeKey].measurementLabel,
+        battery: profile.battery ?? meter.battery ?? '%78',
+        signal: profile.signal ?? meter.signal ?? '-82 dBm',
+        window: profile.sampling ?? '15 dk örnekleme',
+        placement: profile.placement ?? meter.location,
+        measurementDetail: profile.detail ?? null,
+        samplingInterval: profile.sampling ?? '30 dk örnekleme',
+        calibrationNote: profile.calibration ?? 'Kalibrasyon güncel',
+        notes: profile.notes ?? '',
+        sparkline: profile.history ?? [],
+        lat: meter.lat,
+        lng: meter.lng,
+      }
+    })
+  })
+}
+
+const rawSensors = ref(buildSensorInventory())
+
+const zoneOptions = computed(() =>
+  Array.from(new Set(rawSensors.value.map((sensor) => sensor.meterZone))).sort(),
+)
+
+const tableHeaders = [
+  { title: 'Sensör', key: 'sensorId', sortable: true },
+  { title: 'Bağlı sayaç', key: 'meterId', sortable: true },
+  { title: 'Sensör tipi', key: 'typeLabel', sortable: true },
+  { title: 'İletişim', key: 'commMethod', sortable: true },
+  { title: 'Durum', key: 'status', sortable: true },
+  { title: 'Veri tazeliği', key: 'freshnessBucket', sortable: true },
+  { title: 'Son veri', key: 'lastPacketDisplay', sortable: false },
+  { title: 'Okuma', key: 'lastReading', sortable: false },
+  { title: 'Batarya', key: 'battery', sortable: true },
+  { title: 'Sinyal', key: 'signal', sortable: true },
+]
+
+const alertHeaders = [
+  { title: 'Sensör', key: 'sensorId', sortable: true },
+  { title: 'Bağlı sayaç', key: 'meterId', sortable: true },
+  { title: 'Tip', key: 'typeLabel', sortable: true },
+  { title: 'Başlık', key: 'title', sortable: false },
+  { title: 'Özet', key: 'message', sortable: false },
+  { title: 'Öncelik', key: 'severity', sortable: true },
+  { title: 'Zaman', key: 'timestamp', sortable: true },
+  { title: '', key: 'actions', sortable: false, width: 80 },
+]
+
+const tableSortBy = ref([{ key: 'sensorId', order: 'asc' }])
+
+const tableGroupBy = computed(() => selectedGroupBy.value.map((value) => ({ key: value })))
+
 const buildAlertsForSensor = (sensor) => {
   const alerts = []
   if (sensor.status !== 'Aktif') {
@@ -753,9 +930,10 @@ const buildAlertsForSensor = (sensor) => {
       id: `${sensor.sensorId}-delay`,
       title: 'Veri gecikmesi',
       severity: sensor.status === 'Pasif' ? 'Kritik' : 'Yüksek',
-      message: `${sensor.lastPacketAgo} süredir paket alınmadı`,
+      message: `${sensor.typeLabel} ${sensor.lastPacketAgo} süredir veri göndermedi`,
       timestamp: sensor.lastPacketLabel,
       relative: sensor.lastPacketAgo,
+      meterId: sensor.meterId,
     })
   }
   const battery = parsePercent(sensor.battery)
@@ -764,126 +942,37 @@ const buildAlertsForSensor = (sensor) => {
       id: `${sensor.sensorId}-battery`,
       title: 'Düşük batarya',
       severity: battery < 30 ? 'Kritik' : 'Orta',
-      message: `${sensor.sensorId} bataryası ${sensor.battery}`,
+      message: `${sensor.typeLabel} bataryası ${sensor.battery}`,
       timestamp: sensor.lastPacketLabel,
       relative: 'Bakım planı önerildi',
+      meterId: sensor.meterId,
     })
   }
   return alerts
 }
 
-const buildWorkOrdersForSensor = (sensor) => {
-  const buildOrder = (suffix, config) => {
-    const dispatchedAt = minutesAgo(config.minutesAgo)
-    return {
-      id: `${sensor.sensorId}-${suffix}`,
-      title: config.title,
-      typeLabel: sensor.typeLabel,
-      channel: config.channel ?? sensor.commMethod,
-      status: config.status,
-      payload: config.payload,
-      response: config.response ?? (config.status === 'Tamamlandı' ? 'FF99EE88' : 'Yanıt bekleniyor'),
-      note: config.note,
-      statusDetail: config.statusDetail,
-      dispatchedAt,
-      dispatchedLabel: formatDispatchLabel(dispatchedAt),
-      dispatchedRelative: formatRelativeAgo(dispatchedAt, now.value),
-    }
-  }
-
-  const workOrders = []
-
-  workOrders.push(
-    buildOrder('history', {
-      title: 'Tüketim geçmişi getir',
-      status: 'Tamamlandı',
-      payload: '00AA11BB',
-      response: 'FF99EE88',
-      minutesAgo: 75,
-      note:
-        sensor.typeLabel === 'Su'
-          ? 'Son 7 günlük debi raporu indirildi.'
-          : 'Son 7 günlük enerji raporu paylaşıldı.',
-      statusDetail: 'FF99EE88 yanıtı ile komut tamamlandı.',
-    }),
-  )
-
-  if (sensor.typeLabel === 'Su') {
-    if (sensor.status !== 'Aktif') {
-      workOrders.push(
-        buildOrder('valve-close', {
-          title: 'Vana kapat',
-          status: 'Gönderildi',
-          payload: '11CC22DD',
-          response: 'Yanıt bekleniyor',
-          minutesAgo: 20,
-          note: 'Kaçak şüphesi nedeniyle vana kapatma komutu iletildi.',
-          statusDetail: `${sensor.commMethod} kuyruğunda teyit bekleniyor.`,
-        }),
-      )
-    } else {
-      workOrders.push(
-        buildOrder('valve-open', {
-          title: 'Vana aç',
-          status: 'Bekliyor',
-          payload: '22DD33EE',
-          response: '—',
-          minutesAgo: 6,
-          note: 'Gece basınç testi için vana açma programlandı.',
-          statusDetail: 'Planlanan saatte otomatik tetiklenecek.',
-        }),
-      )
-    }
-  } else {
-    if (sensor.status !== 'Aktif') {
-      workOrders.push(
-        buildOrder('disconnect', {
-          title: 'Enerji kes',
-          status: 'Gönderildi',
-          payload: '33EE44FF',
-          response: 'Yanıt bekleniyor',
-          minutesAgo: 28,
-          note: 'Kaçak kullanım şüphesi nedeniyle enerji kesme komutu gönderildi.',
-          statusDetail: `${sensor.commMethod} üzerinden iletim teyidi bekleniyor.`,
-        }),
-      )
-    } else {
-      workOrders.push(
-        buildOrder('power-factor', {
-          title: 'Reaktif dengeleme',
-          status: 'Bekliyor',
-          payload: '44FF55GG',
-          response: '—',
-          minutesAgo: 10,
-          note: 'Reaktif güç optimizasyonu için uzaktan komut sırada.',
-          statusDetail: 'Saat başında otomatik uygulanacak.',
-        }),
-      )
-    }
-  }
-
-  return workOrders
-}
-
 const sensorRecords = computed(() =>
-  rawSensors.value.map((meter) => {
-    const lastPacket = toDate(meter.lastCommunication)
+  rawSensors.value.map((sensor) => {
+    const lastPacket = sensor.lastCommunication
     const status = classifyStatus(lastPacket)
     const freshness = classifyFreshness(lastPacket)
     const mapping = freshnessMap[freshness]
-    const typeLabel = meter.type === 'water' ? 'Su' : 'Elektrik'
 
     const record = {
-      sensorId: meter.id,
-      zone: meter.zone,
-      location: meter.location,
-      commMethod: meter.communication,
-      type: meter.type,
-      typeLabel,
-      lastReading: meter.lastReading ?? '-',
-      battery: meter.battery ?? '—',
-      signal: meter.signal ?? '—',
-      window: meter.window ?? 'Dinamik 24s',
+      sensorId: sensor.sensorId,
+      typeKey: sensor.typeKey,
+      typeLabel: sensor.typeLabel,
+      meterId: sensor.meterId,
+      meterZone: sensor.meterZone,
+      meterLocation: sensor.meterLocation,
+      zone: sensor.meterZone,
+      location: sensor.placement,
+      commMethod: sensor.commMethod,
+      lastReading: sensor.lastReadingRaw,
+      measurementLabel: sensor.measurementLabel,
+      battery: sensor.battery,
+      signal: sensor.signal,
+      window: sensor.window,
       status,
       freshnessBucket: freshness,
       freshnessBadge: mapping.badge,
@@ -893,19 +982,35 @@ const sensorRecords = computed(() =>
       lastPacketLabel: formatAbsolute(lastPacket),
       lastPacketAgo: formatRelativeAgo(lastPacket, now.value),
       lastPacketDisplay: `${formatClock(lastPacket)} • ${formatRelativeAgo(lastPacket, now.value)}`,
-      sparkline: meter.consumption?.history ?? [],
-      lat: meter.lat,
-      lng: meter.lng,
+      sparkline: sensor.sparkline,
+      lat: sensor.lat,
+      lng: sensor.lng,
+      samplingInterval: sensor.samplingInterval,
+      calibrationNote: sensor.calibrationNote,
+      notes: sensor.notes,
+      measurementDetail: sensor.measurementDetail,
     }
 
     record.alerts = buildAlertsForSensor(record)
-    record.workOrders = buildWorkOrdersForSensor(record)
-
     return record
   }),
 )
 
 const totalSensors = computed(() => sensorRecords.value.length)
+
+const typeBreakdown = computed(() =>
+  sensorRecords.value.reduce((acc, sensor) => {
+    acc[sensor.typeLabel] = (acc[sensor.typeLabel] ?? 0) + 1
+    return acc
+  }, {}),
+)
+
+const typeSummaryList = computed(() =>
+  Object.entries(sensorTypeCatalog).map(([key, meta]) => ({
+    label: meta.summaryLabel,
+    value: (typeBreakdown.value[meta.label] ?? 0).toLocaleString('tr-TR'),
+  })),
+)
 
 const communicationBreakdown = computed(() =>
   sensorRecords.value.reduce(
@@ -926,10 +1031,11 @@ const headerMetrics = computed(() => {
     const value = parsePercent(sensor.battery)
     return value != null && value < 55
   }).length
+  const uniqueMeters = new Set(sensorRecords.value.map((sensor) => sensor.meterId)).size
 
   return [
     {
-      label: 'Aktif sayaç',
+      label: 'Aktif sensör',
       value: active.toLocaleString('tr-TR'),
       hint: `${Math.round((active / total) * 100)}% çevrimiçi`,
     },
@@ -939,14 +1045,14 @@ const headerMetrics = computed(() => {
       hint: '24-48 saat arası gecikme',
     },
     {
-      label: 'Pasif sayaç',
+      label: 'Pasif sensör',
       value: inactive.toLocaleString('tr-TR'),
       hint: '48+ saat veri yok',
     },
     {
-      label: 'Düşük batarya',
-      value: lowBattery.toLocaleString('tr-TR'),
-      hint: 'Bakım planlaması önerilir',
+      label: 'Bağlı sayaç',
+      value: uniqueMeters.toLocaleString('tr-TR'),
+      hint: 'Sulama hattı kapsamı',
     },
   ]
 })
@@ -978,7 +1084,15 @@ const filteredSensors = computed(() => {
       !selectedZones.value.length || selectedZones.value.includes(sensor.zone)
     const matchesSearch =
       !search ||
-      [sensor.sensorId, sensor.zone, sensor.location, sensor.commMethod, sensor.status]
+      [
+        sensor.sensorId,
+        sensor.meterId,
+        sensor.zone,
+        sensor.location,
+        sensor.commMethod,
+        sensor.status,
+        sensor.measurementLabel,
+      ]
         .join(' ')
         .toLowerCase()
         .includes(search)
@@ -1001,32 +1115,20 @@ const severityRank = { Kritik: 0, Yüksek: 1, Orta: 2, Bilgi: 3 }
 const globalAlerts = computed(() =>
   filteredSensors.value
     .flatMap((sensor) =>
-      sensor.alerts.map((alert) => ({
-        ...alert,
-        sensorId: sensor.sensorId,
-        typeLabel: sensor.typeLabel,
-      })),
-    )
+        sensor.alerts.map((alert) => ({
+          ...alert,
+          sensorId: sensor.sensorId,
+          meterId: sensor.meterId,
+          meterLocation: sensor.meterLocation,
+          zone: sensor.zone,
+          typeKey: sensor.typeKey,
+          typeLabel: sensor.typeLabel,
+        })),
+      )
     .sort((a, b) => {
       const rankDiff = (severityRank[a.severity] ?? 9) - (severityRank[b.severity] ?? 9)
       if (rankDiff !== 0) return rankDiff
       return a.sensorId.localeCompare(b.sensorId)
-    }),
-)
-
-const globalWorkOrders = computed(() =>
-  filteredSensors.value
-    .flatMap((sensor) =>
-      sensor.workOrders.map((order) => ({
-        ...order,
-        sensorId: sensor.sensorId,
-        typeLabel: sensor.typeLabel,
-      })),
-    )
-    .sort((a, b) => {
-      const statusDiff = (statusRank[a.status] ?? 9) - (statusRank[b.status] ?? 9)
-      if (statusDiff !== 0) return statusDiff
-      return b.dispatchedAt.getTime() - a.dispatchedAt.getTime()
     }),
 )
 
@@ -1037,24 +1139,6 @@ const resetFilters = () => {
   selectedTypes.value = []
   selectedZones.value = []
   selectedGroupBy.value = []
-}
-
-const selectAllRows = () => {
-  if (activeMainTab.value !== 'meters') return
-  selectedRows.value = [...filteredSensors.value]
-}
-
-const openWorkOrder = () => {
-  if (!selectedRows.value.length) return
-  workOrderPanel.value = true
-}
-
-const confirmWorkOrder = () => {
-  workOrderPanel.value = false
-  selectedRows.value = []
-  workOrderPayload.value = { payload: '00AA11BB', description: '' }
-  selectedWorkOrderChannel.value = workOrderChannels[0]
-  selectedWorkOrderType.value = workOrderTypes[0]
 }
 
 const handleRowClick = (_event, { item }) => {
@@ -1071,7 +1155,7 @@ const focusSensor = (sensorId) => {
   const target = filteredSensors.value.find((sensor) => sensor.sensorId === sensorId)
   if (target) {
     openSensorDetail(target)
-    activeMainTab.value = 'meters'
+    activeMainTab.value = 'sensors'
   }
 }
 
@@ -1126,7 +1210,7 @@ const updateMarkers = () => {
       fillOpacity: 0.85,
     }).addTo(mapState.instance)
     marker.bindPopup(
-      `<strong>${sensor.sensorId}</strong><br/>${sensor.location}<br/>${sensor.lastPacketDisplay}`,
+      `<strong>${sensor.sensorId}</strong><br/>${sensor.meterLocation}<br/>${sensor.lastReading}`,
     )
     return marker
   })
@@ -1136,8 +1220,6 @@ watch(filteredSensors, () => {
   if (activeMainTab.value === 'locations') {
     updateMarkers()
   }
-  const availableIds = new Set(filteredSensors.value.map((sensor) => sensor.sensorId))
-  selectedRows.value = selectedRows.value.filter((row) => availableIds.has(row.sensorId))
 })
 
 watch(activeMainTab, async (tab) => {
@@ -1414,12 +1496,6 @@ onBeforeUnmount(() => {
 
 .toolbar-search {
   flex: 1 1 260px;
-}
-
-.toolbar-actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
 }
 
 .content-tabs {
