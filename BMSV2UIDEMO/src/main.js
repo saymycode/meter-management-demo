@@ -7,6 +7,7 @@ import 'vuetify/styles'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
+import '@mdi/font/css/materialdesignicons.css'
 
 const iconAliases = {
   close: 'close',
@@ -46,8 +47,19 @@ const iconAliases = {
 }
 
 const materialSymbols = {
-  component: (props) =>
-    h(
+  component: (props) => {
+    if (typeof props.icon === 'string') {
+      if (props.icon.startsWith('mdi:')) {
+        const iconName = props.icon.substring(4)
+        return h('i', { class: ['mdi', `mdi-${iconName}`], 'aria-hidden': 'true' })
+      }
+
+      if (props.icon.startsWith('mdi-')) {
+        return h('i', { class: ['mdi', props.icon], 'aria-hidden': 'true' })
+      }
+    }
+
+    return h(
       'span',
       {
         class: 'material-symbols-outlined',
@@ -55,7 +67,8 @@ const materialSymbols = {
         'aria-hidden': 'true',
       },
       props.icon,
-    ),
+    )
+  },
 }
 
 const vuetify = createVuetify({
