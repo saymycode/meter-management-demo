@@ -360,20 +360,21 @@
                 density="comfortable"
                 hover
               >
-                <template #item.priority="{ item }">
-                  <v-chip :color="priorityColor(item.priority)" size="small" variant="tonal">
-                    {{ item.priority }}
-                  </v-chip>
+                <template #item.payload="{ item }">
+                  <code class="payload-chip">{{ item.payload }}</code>
+                </template>
+                <template #item.response="{ item }">
+                  <span class="response-text">{{ item.response }}</span>
                 </template>
                 <template #item.status="{ item }">
                   <v-chip :color="workOrderStatusColor(item.status)" size="small" variant="tonal">
                     {{ item.status }}
                   </v-chip>
                 </template>
-                <template #item.schedule="{ item }">
+                <template #item.dispatchedAt="{ item }">
                   <div class="cell-secondary">
-                    <span>{{ item.schedule }}</span>
-                    <small>{{ item.relative }}</small>
+                    <span>{{ item.dispatchedLabel }}</span>
+                    <small>{{ item.statusDetail }}</small>
                   </div>
                 </template>
                 <template #item.actions="{ item }">
@@ -430,6 +431,21 @@
           v-model="selectedWorkOrderType"
           :items="workOrderTypes"
           label="İş emri tipi"
+          variant="outlined"
+          density="comfortable"
+          class="mb-3"
+        />
+        <v-select
+          v-model="selectedWorkOrderChannel"
+          :items="workOrderChannels"
+          label="İletişim kanalı"
+          variant="outlined"
+          density="comfortable"
+          class="mb-3"
+        />
+        <v-text-field
+          v-model="workOrderPayload.payload"
+          label="Gönderilecek payload"
           variant="outlined"
           density="comfortable"
           class="mb-3"
@@ -542,14 +558,19 @@
             <div v-if="detailSensor.workOrders.length" class="detail-stack">
               <div v-for="order in detailSensor.workOrders" :key="order.id" class="detail-alert">
                 <div class="detail-alert-header">
-                  <v-chip :color="priorityColor(order.priority)" size="small" variant="tonal">
-                    {{ order.priority }}
+                  <v-chip :color="workOrderStatusColor(order.status)" size="small" variant="tonal">
+                    {{ order.status }}
                   </v-chip>
-                  <span class="detail-alert-time">{{ order.relative }}</span>
+                  <span class="detail-alert-time">{{ order.dispatchedRelative }}</span>
                 </div>
                 <h3>{{ order.title }}</h3>
                 <p>{{ order.note }}</p>
-                <small>{{ order.schedule }}</small>
+                <div class="detail-order-meta">
+                  <div><strong>İletişim:</strong> {{ order.channel }}</div>
+                  <div><strong>Payload:</strong> {{ order.payload }}</div>
+                  <div><strong>Yanıt:</strong> {{ order.response }}</div>
+                </div>
+                <small>{{ order.statusDetail }}</small>
               </div>
             </div>
             <div v-else class="no-data">Bu sayaca ait planlı iş emri yok.</div>
@@ -586,7 +607,7 @@ import { formatAbsolute, formatClock, formatRelativeAgo, hoursBetween, toDate } 
 const organization = organizationProfile
 const now = ref(new Date(referenceNow))
 
-const activeMainTab = ref('alerts')
+const activeMainTab = ref('meters')
 const detailPanel = ref(false)
 const detailSensor = ref(null)
 const detailTab = ref('overview')
@@ -605,9 +626,11 @@ const selectedRows = ref([])
 const viewMode = ref('table')
 
 const workOrderPanel = ref(false)
-const workOrderTypes = ['Sayaç Okuma', 'Vanayı Kapat', 'Debi Ayarla']
+const workOrderTypes = ['Tüketim geçmişi getir', 'Vanayı Aç', 'Vanayı Kapat']
+const workOrderChannels = ['LoRa', 'GPRS']
 const selectedWorkOrderType = ref(workOrderTypes[0])
-const workOrderPayload = ref({ description: '' })
+const selectedWorkOrderChannel = ref(workOrderChannels[0])
+const workOrderPayload = ref({ payload: '00AA11BB', description: '' })
 const workOrderNotification = ref({ visible: false, message: '' })
 
 const rawSensors = ref(meterSnapshots.filter((meter) => meter.type === 'water'))
@@ -645,11 +668,12 @@ const alertHeaders = [
 
 const workOrderHeaders = [
   { title: 'Sayaç', key: 'sensorId', sortable: true },
-  { title: 'İşlem', key: 'title', sortable: false },
-  { title: 'Tip', key: 'type', sortable: false },
-  { title: 'Öncelik', key: 'priority', sortable: true },
+  { title: 'İletişim', key: 'channel', sortable: true },
+  { title: 'Komut', key: 'title', sortable: false },
+  { title: 'Payload', key: 'payload', sortable: false },
   { title: 'Durum', key: 'status', sortable: true },
-  { title: 'Plan', key: 'schedule', sortable: true },
+  { title: 'Yanıt', key: 'response', sortable: false },
+  { title: 'Gönderim', key: 'dispatchedAt', sortable: true },
   { title: '', key: 'actions', sortable: false, width: 80 },
 ]
 
@@ -670,19 +694,18 @@ const severityColor = (severity) => {
   return 'blue-darken-2'
 }
 
-const priorityColor = (priority) => {
-  if (priority === 'Kritik') return 'red-darken-2'
-  if (priority === 'Yüksek') return 'amber-darken-2'
-  if (priority === 'Orta') return 'primary'
-  return 'blue-darken-2'
-}
-
 const workOrderStatusColor = (status) => {
   if (status === 'Tamamlandı') return 'success'
-  if (status === 'Planlandı') return 'primary'
-  if (status === 'Saha Ekibinde') return 'amber-darken-2'
+  if (status === 'Gönderildi') return 'primary'
+  if (status === 'Bekliyor') return 'amber-darken-2'
   return 'grey-darken-1'
 }
+
+const statusRank = { Bekliyor: 0, Gönderildi: 1, Tamamlandı: 2 }
+
+const minutesAgo = (minutes) => new Date(now.value.getTime() - minutes * 60 * 1000)
+
+const formatDispatchLabel = (date) => `${formatClock(date)} • ${formatRelativeAgo(date, now.value)}`
 
 const classifyStatus = (lastCommunication) => {
   const hours = hoursBetween(lastCommunication, now.value)
@@ -748,29 +771,63 @@ const buildAlertsForSensor = (sensor) => {
 }
 
 const buildWorkOrdersForSensor = (sensor) => {
-  const workOrders = []
-  if (sensor.status !== 'Aktif') {
-    workOrders.push({
-      id: `${sensor.sensorId}-inspection`,
-      title: 'Yerinde inceleme',
-      type: 'Bakım',
-      priority: sensor.status === 'Pasif' ? 'Kritik' : 'Yüksek',
-      status: 'Planlandı',
-      schedule: '24 saat içinde saha ziyareti',
-      relative: 'Beklemede',
-      note: `${sensor.zone} bölgesinde gecikme tespiti`,
-    })
+  const buildOrder = (suffix, config) => {
+    const dispatchedAt = minutesAgo(config.minutesAgo)
+    return {
+      id: `${sensor.sensorId}-${suffix}`,
+      title: config.title,
+      channel: config.channel ?? sensor.commMethod,
+      status: config.status,
+      payload: config.payload,
+      response: config.response ?? (config.status === 'Tamamlandı' ? 'FF99EE88' : 'Yanıt bekleniyor'),
+      note: config.note,
+      statusDetail: config.statusDetail,
+      dispatchedAt,
+      dispatchedLabel: formatDispatchLabel(dispatchedAt),
+      dispatchedRelative: formatRelativeAgo(dispatchedAt, now.value),
+    }
   }
-  workOrders.push({
-    id: `${sensor.sensorId}-flush`,
-    title: 'Hat dengeleme',
-    type: 'Periyodik',
-    priority: 'Orta',
-    status: 'Saha Ekibinde',
-    schedule: '48 saatlik bakım penceresi',
-    relative: 'Saha ekibi yönlendirildi',
-    note: 'DMA dengeleme rutini',
-  })
+
+  const workOrders = []
+
+  workOrders.push(
+    buildOrder('history', {
+      title: 'Tüketim geçmişi getir',
+      status: 'Tamamlandı',
+      payload: '00AA11BB',
+      response: 'FF99EE88',
+      minutesAgo: 90,
+      note: 'Son 7 günlük tüketim raporu indirildi.',
+      statusDetail: 'FF99EE88 yanıtı ile sonuç arşivlendi.',
+    }),
+  )
+
+  if (sensor.status !== 'Aktif') {
+    workOrders.push(
+      buildOrder('shutoff', {
+        title: 'Vanayı kapat',
+        status: 'Gönderildi',
+        payload: '11CC22DD',
+        response: 'Yanıt bekleniyor',
+        minutesAgo: 25,
+        note: 'Kaçak şüphesi nedeniyle vana kapatma komutu gönderildi.',
+        statusDetail: `${sensor.commMethod} kuyruğunda iletim teyidi bekleniyor.`,
+      }),
+    )
+  } else {
+    workOrders.push(
+      buildOrder('valve-check', {
+        title: 'Vanayı aç',
+        status: 'Bekliyor',
+        payload: '22DD33EE',
+        response: '—',
+        minutesAgo: 5,
+        note: 'Gece basınç testi için vana açma planlandı.',
+        statusDetail: 'Planlanan zaman geldiğinde komut otomatik gönderilecek.',
+      }),
+    )
+  }
+
   return workOrders
 }
 
@@ -955,10 +1012,13 @@ const globalWorkOrders = computed(() =>
         ...order,
         sensorId: sensor.sensorId,
         zone: sensor.zone,
-        status: order.status,
       })),
     )
-    .sort((a, b) => (severityRank[a.priority] ?? 9) - (severityRank[b.priority] ?? 9)),
+    .sort((a, b) => {
+      const statusDiff = (statusRank[a.status] ?? 9) - (statusRank[b.status] ?? 9)
+      if (statusDiff !== 0) return statusDiff
+      return b.dispatchedAt.getTime() - a.dispatchedAt.getTime()
+    }),
 )
 
 const resetFilters = () => {
@@ -983,13 +1043,15 @@ const confirmWorkOrder = () => {
   workOrderPanel.value = false
   workOrderNotification.value = {
     visible: true,
-    message: `${selectedRows.value.length} sayaç için ${selectedWorkOrderType.value} kuyruğa alındı`,
+    message: `${selectedRows.value.length} sayaç için ${selectedWorkOrderType.value} (${workOrderPayload.value.payload}) komutu ${selectedWorkOrderChannel.value} üzerinden sıraya alındı`,
   }
   setTimeout(() => {
     workOrderNotification.value.visible = false
   }, 3600)
   selectedRows.value = []
-  workOrderPayload.value.description = ''
+  workOrderPayload.value = { payload: '00AA11BB', description: '' }
+  selectedWorkOrderChannel.value = workOrderChannels[0]
+  selectedWorkOrderType.value = workOrderTypes[0]
 }
 
 const handleRowClick = (_event, { item }) => {
@@ -1477,6 +1539,33 @@ onBeforeUnmount(() => {
 .workorder-table {
   border-radius: 18px;
   overflow: hidden;
+}
+
+.payload-chip {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 13px;
+  background-color: rgba(59, 130, 246, 0.12);
+  color: var(--heading-color);
+  padding: 2px 8px;
+  border-radius: 8px;
+  display: inline-block;
+}
+
+.response-text {
+  font-size: 13px;
+  color: var(--heading-color);
+}
+
+.detail-order-meta {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted-text);
+}
+
+.detail-order-meta strong {
+  color: var(--heading-color);
+  margin-right: 4px;
 }
 
 .map-card {
