@@ -10,241 +10,117 @@ export const organizationProfile = {
 
 export const referenceNow = '2025-01-14T10:30:00+03:00'
 
+const createRandomGenerator = (seed) => {
+  let state = seed % 2147483647
+  if (state <= 0) state += 2147483646
+  return () => {
+    state = (state * 16807) % 2147483647
+    return (state - 1) / 2147483646
+  }
+}
+
+const pad = (value) => String(value).padStart(2, '0')
+
+const toAnkaraTimestamp = (baseTimestamp, minutesOffset) => {
+  const timestamp = baseTimestamp - minutesOffset * 60 * 1000
+  const adjusted = new Date(timestamp + 3 * 60 * 60 * 1000)
+  const year = adjusted.getUTCFullYear()
+  const month = pad(adjusted.getUTCMonth() + 1)
+  const day = pad(adjusted.getUTCDate())
+  const hour = pad(adjusted.getUTCHours())
+  const minute = pad(adjusted.getUTCMinutes())
+  const second = pad(adjusted.getUTCSeconds())
+  return `${year}-${month}-${day}T${hour}:${minute}:${second}+03:00`
+}
+
+const randomBetween = (random, min, max) => random() * (max - min) + min
+
+const buildHistory = (random) =>
+  Array.from({ length: 5 }, () => Number(randomBetween(random, 90, 110).toFixed(1)))
+
+const waterZones = [
+  { zone: 'Çankaya DMA-1', district: 'Çankaya', label: 'Kızılay Mah.', lat: 39.9208, lng: 32.8541 },
+  { zone: 'Çankaya DMA-3', district: 'Çankaya', label: 'Maltepe Mah.', lat: 39.9182, lng: 32.8372 },
+  { zone: 'Yenimahalle Batı', district: 'Yenimahalle', label: 'Demetevler Mah.', lat: 39.9713, lng: 32.7575 },
+  { zone: 'Sincan Sanayi', district: 'Sincan', label: 'Temelli OSB', lat: 39.9099, lng: 32.4898 },
+  { zone: 'Mamak Doğu', district: 'Mamak', label: 'Natoyolu Mah.', lat: 39.9334, lng: 32.9113 },
+  { zone: 'Keçiören Kuzey', district: 'Keçiören', label: 'Esertepe Mah.', lat: 40.0017, lng: 32.8703 },
+  { zone: 'Beypazarı Hat', district: 'Beypazarı', label: 'Bağözü Mah.', lat: 40.1652, lng: 31.9199 },
+  { zone: 'Gölbaşı Güney', district: 'Gölbaşı', label: 'Taşpınar Mah.', lat: 39.7682, lng: 32.8026 },
+  { zone: 'Etimesgut Batı', district: 'Etimesgut', label: 'Elvankent Mah.', lat: 39.9471, lng: 32.6367 },
+  { zone: 'Polatlı Hat', district: 'Polatlı', label: 'Zafer Mah.', lat: 39.584, lng: 32.1413 },
+]
+
+const electricZones = [
+  { zone: 'Etimesgut Enerji', district: 'Etimesgut', label: 'Elvankent Trafo', lat: 39.9471, lng: 32.6367 },
+  { zone: 'Polatlı Şebeke', district: 'Polatlı', label: 'Zafer Trafo', lat: 39.584, lng: 32.1413 },
+  { zone: 'Altındağ Sanayi', district: 'Altındağ', label: 'Siteler Trafo', lat: 39.9541, lng: 32.8748 },
+  { zone: 'Ostim Enerji', district: 'Yenimahalle', label: 'Ostim OSB', lat: 39.974, lng: 32.7685 },
+  { zone: 'Kazan Besleme', district: 'Kahramankazan', label: 'Saray Trafo', lat: 40.1964, lng: 32.6839 },
+  { zone: 'Ayaş İletim', district: 'Ayaş', label: 'Ayaş Merkezi', lat: 40.0165, lng: 32.3372 },
+  { zone: 'Pursaklar Dağıtım', district: 'Pursaklar', label: 'Altınova Trafo', lat: 40.0421, lng: 32.9012 },
+  { zone: 'Elmadağ Besleme', district: 'Elmadağ', label: 'Hasanoğlan Trafo', lat: 39.9204, lng: 33.1152 },
+  { zone: 'Gölbaşı Enerji', district: 'Gölbaşı', label: 'Karataş Trafo', lat: 39.7682, lng: 32.8026 },
+  { zone: 'Şereflikoçhisar Şebeke', district: 'Şereflikoçhisar', label: 'Balışeyh Trafo', lat: 38.9383, lng: 33.5384 },
+]
+
+const createMeterRecords = (type, count, seed, zones) => {
+  const random = createRandomGenerator(seed)
+  const baseTime = Date.parse(referenceNow)
+  const records = []
+
+  for (let index = 0; index < count; index += 1) {
+    const zone = zones[index % zones.length]
+    const commMethod = random() > 0.55 ? 'LoRa' : 'GPRS'
+    const minutesAgo = Math.round(randomBetween(random, 0, 72 * 60))
+    const last24h = Number(randomBetween(random, 90, 110).toFixed(1))
+    const previous24h = Number(randomBetween(random, 90, 110).toFixed(1))
+    const history = buildHistory(random)
+    const batteryPercent = Math.round(randomBetween(random, 55, 100))
+    const signalStrength = Math.round(randomBetween(random, 78, 110))
+    const latOffset = ((index % 5) - 2) * 0.002 + randomBetween(random, -0.0005, 0.0005)
+    const lngOffset = ((index % 7) - 3) * 0.002 + randomBetween(random, -0.0005, 0.0005)
+    const lat = Number((zone.lat + latOffset).toFixed(4))
+    const lng = Number((zone.lng + lngOffset).toFixed(4))
+
+    const idPrefix = type === 'water' ? 'AK311' : 'BYT11'
+    const idBase = type === 'water' ? 10000 : 22000
+    const id = `${idPrefix}-${idBase + index}`
+
+    const record = {
+      id,
+      type,
+      communication: commMethod,
+      location: `${zone.district} • ${zone.label} ${pad((index % 20) + 1)}`,
+      lastCommunication: toAnkaraTimestamp(baseTime, minutesAgo),
+      consumption: {
+        last24h,
+        previous24h,
+        history,
+      },
+      zone: zone.zone,
+      lastReading: type === 'water' ? `${last24h.toFixed(1)} m³` : `${Math.round(last24h)} kWh`,
+      battery: commMethod === 'GPRS' && type === 'electric' ? '—' : `%${batteryPercent}`,
+      signal: commMethod === 'GPRS' ? `RSRP -${signalStrength} dBm` : `-${signalStrength} dBm`,
+      window: 'Dinamik 24s',
+      lat,
+      lng,
+      sparkline: history,
+    }
+
+    if (type === 'water') {
+      record.prepaidCredit = Math.round(randomBetween(random, 3000, 9000))
+    }
+
+    records.push(record)
+  }
+
+  return records
+}
+
 export const meterSnapshots = [
-  {
-    id: 'AK311-10021',
-    type: 'water',
-    communication: 'LoRa',
-    location: 'Çankaya DMA-3 • Maltepe Mah.',
-    lastCommunication: '2025-01-14T09:42:00+03:00',
-    consumption: {
-      last24h: 48.2,
-      previous24h: 44.5,
-      history: [11.4, 9.8, 10.7, 8.9, 7.4],
-    },
-    zone: 'Çankaya DMA-3',
-    lastReading: '48.2 m³',
-    battery: '%86',
-    signal: '-78 dBm',
-    window: 'Dinamik 24s',
-    lat: 39.9106,
-    lng: 32.8537,
-    prepaidCredit: 4820,
-  },
-  {
-    id: 'AK311-10077',
-    type: 'water',
-    communication: 'LoRa',
-    location: 'Yenimahalle • Demetevler',
-    lastCommunication: '2025-01-14T06:20:00+03:00',
-    consumption: {
-      last24h: 38.6,
-      previous24h: 37.9,
-      history: [8.1, 7.4, 6.8, 7.6, 8.7],
-    },
-    zone: 'Yenimahalle Batı',
-    lastReading: '38.6 m³',
-    battery: '%81',
-    signal: '-84 dBm',
-    window: 'Dinamik 24s',
-    lat: 39.9681,
-    lng: 32.7579,
-    prepaidCredit: 3965,
-  },
-  {
-    id: 'AK311-10103',
-    type: 'water',
-    communication: 'GPRS',
-    location: 'Sincan • Temelli OSB',
-    lastCommunication: '2025-01-13T17:55:00+03:00',
-    consumption: {
-      last24h: 24.1,
-      previous24h: 29.3,
-      history: [6.8, 6.1, 5.4, 4.0, 1.8],
-    },
-    zone: 'Sincan Sanayi',
-    lastReading: '24.1 m³',
-    battery: '%74',
-    signal: '-95 dBm',
-    window: 'Dinamik 24s',
-    lat: 39.9099,
-    lng: 32.4898,
-    prepaidCredit: 2850,
-  },
-  {
-    id: 'AK311-10244',
-    type: 'water',
-    communication: 'LoRa',
-    location: 'Mamak • Natoyolu',
-    lastCommunication: '2025-01-12T12:35:00+03:00',
-    consumption: {
-      last24h: 9.7,
-      previous24h: 18.4,
-      history: [3.5, 2.4, 1.8, 1.2, 0.8],
-    },
-    zone: 'Mamak Doğu',
-    lastReading: '9.7 m³',
-    battery: '%52',
-    signal: '-102 dBm',
-    window: 'Dinamik 24s',
-    lat: 39.9334,
-    lng: 32.9113,
-    prepaidCredit: 1785,
-  },
-  {
-    id: 'BYT11-22017',
-    type: 'electric',
-    communication: 'GPRS',
-    location: 'Etimesgut • Elvankent Trafo',
-    lastCommunication: '2025-01-14T08:58:00+03:00',
-    consumption: {
-      last24h: 612.0,
-      previous24h: 588.3,
-      history: [142, 148, 151, 152, 145],
-    },
-    zone: 'Etimesgut Enerji',
-    lastReading: '612 kWh',
-    battery: '—',
-    signal: 'RSRP -96 dBm',
-    window: 'Dinamik 24s',
-    lat: 39.9471,
-    lng: 32.6367,
-  },
-  {
-    id: 'BYT11-22064',
-    type: 'electric',
-    communication: 'GPRS',
-    location: 'Polatlı • Zafer Mah.',
-    lastCommunication: '2025-01-13T21:12:00+03:00',
-    consumption: {
-      last24h: 452.4,
-      previous24h: 463.1,
-      history: [118, 120, 112, 101, 91],
-    },
-    zone: 'Polatlı Şebeke',
-    lastReading: '452 kWh',
-    battery: '—',
-    signal: 'RSRP -102 dBm',
-    window: 'Dinamik 24s',
-    lat: 39.584,
-    lng: 32.1413,
-  },
-  {
-    id: 'BYT11-22102',
-    type: 'electric',
-    communication: 'LoRa',
-    location: 'Altındağ • Siteler',
-    lastCommunication: '2025-01-14T04:44:00+03:00',
-    consumption: {
-      last24h: 734.2,
-      previous24h: 702.5,
-      history: [168, 172, 152, 125, 117],
-    },
-    zone: 'Altındağ Sanayi',
-    lastReading: '734 kWh',
-    battery: '%64',
-    signal: '-88 dBm',
-    window: 'Dinamik 24s',
-    lat: 39.9541,
-    lng: 32.8748,
-  },
-  {
-    id: 'AK311-10312',
-    type: 'water',
-    communication: 'LoRa',
-    location: 'Keçiören • Esertepe',
-    lastCommunication: '2025-01-13T13:18:00+03:00',
-    consumption: {
-      last24h: 18.4,
-      previous24h: 21.0,
-      history: [5.4, 4.1, 3.3, 2.8, 2.1],
-    },
-    zone: 'Keçiören Kuzey',
-    lastReading: '18.4 m³',
-    battery: '%69',
-    signal: '-94 dBm',
-    window: 'Dinamik 24s',
-    lat: 40.0017,
-    lng: 32.8703,
-    prepaidCredit: 2140,
-  },
-  {
-    id: 'AK311-10365',
-    type: 'water',
-    communication: 'GPRS',
-    location: 'Beypazarı • Bağözü',
-    lastCommunication: '2025-01-14T05:05:00+03:00',
-    consumption: {
-      last24h: 33.8,
-      previous24h: 31.4,
-      history: [7.2, 6.5, 6.0, 6.8, 7.3],
-    },
-    zone: 'Beypazarı Hat',
-    lastReading: '33.8 m³',
-    battery: '%77',
-    signal: '-90 dBm',
-    window: 'Dinamik 24s',
-    lat: 40.1652,
-    lng: 31.9199,
-    prepaidCredit: 3250,
-  },
-  {
-    id: 'BYT11-22214',
-    type: 'electric',
-    communication: 'LoRa',
-    location: 'Yenimahalle • Ostim OSB',
-    lastCommunication: '2025-01-14T07:35:00+03:00',
-    consumption: {
-      last24h: 812.6,
-      previous24h: 798.2,
-      history: [198, 184, 162, 140, 128],
-    },
-    zone: 'Ostim Enerji',
-    lastReading: '812 kWh',
-    battery: '%58',
-    signal: '-86 dBm',
-    window: 'Dinamik 24s',
-    lat: 39.974,
-    lng: 32.7685,
-  },
-  {
-    id: 'BYT11-22308',
-    type: 'electric',
-    communication: 'GPRS',
-    location: 'Kahramankazan • Saray',
-    lastCommunication: '2025-01-12T17:02:00+03:00',
-    consumption: {
-      last24h: 112.8,
-      previous24h: 201.4,
-      history: [44, 33, 19, 11, 6],
-    },
-    zone: 'Kazan Besleme',
-    lastReading: '112 kWh',
-    battery: '—',
-    signal: 'RSRP -110 dBm',
-    window: 'Dinamik 24s',
-    lat: 40.1964,
-    lng: 32.6839,
-  },
-  {
-    id: 'AK311-10408',
-    type: 'water',
-    communication: 'LoRa',
-    location: 'Gölbaşı • Taşpınar',
-    lastCommunication: '2025-01-14T02:26:00+03:00',
-    consumption: {
-      last24h: 27.5,
-      previous24h: 25.2,
-      history: [6.2, 5.9, 5.3, 5.0, 5.1],
-    },
-    zone: 'Gölbaşı Güney',
-    lastReading: '27.5 m³',
-    battery: '%83',
-    signal: '-82 dBm',
-    window: 'Dinamik 24s',
-    lat: 39.7682,
-    lng: 32.8026,
-  },
+  ...createMeterRecords('water', 100, 202401, waterZones),
+  ...createMeterRecords('electric', 100, 502021, electricZones),
 ]
 
 export const hourlyActivity = [
