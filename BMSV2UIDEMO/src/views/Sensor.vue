@@ -1157,15 +1157,7 @@ const sensorProfiles = {
   ],
 }
 
-const sensorLayout = [
-  ['soil', 'meteo', 'rain'],
-  ['soil', 'rain'],
-  ['soil', 'meteo'],
-  ['soil', 'rain'],
-  ['soil', 'rain', 'meteo'],
-  ['soil'],
-  ['soil', 'rain'],
-]
+const sensorTypeSequence = ['soil', 'meteo', 'rain', 'soil', 'rain', 'meteo', 'soil', 'rain']
 
 const groupByOptions = [
   { title: 'Bölgeler', value: 'zone' },
@@ -1220,37 +1212,35 @@ const typeChipColor = (typeKey) => sensorTypeCatalog[typeKey]?.chip ?? 'primary'
 const buildSensorInventory = () => {
   const irrigationMeters = meterSnapshots.filter((meter) => meter.type === 'water')
   const pointers = { soil: 0, meteo: 0, rain: 0 }
-  return irrigationMeters.flatMap((meter, meterIndex) => {
-    const layout = sensorLayout[meterIndex % sensorLayout.length]
-    return layout.map((typeKey) => {
-      const profiles = sensorProfiles[typeKey]
-      const profile = profiles[pointers[typeKey] % profiles.length]
-      pointers[typeKey] += 1
-      const lastCommunication = minutesAgo(profile.minutesAgo)
-      return {
-        sensorId: `${meter.id}-${profile.code}`,
-        typeKey,
-        typeLabel: sensorTypeCatalog[typeKey].label,
-        meterId: meter.id,
-        meterZone: meter.zone,
-        meterLocation: meter.location,
-        commMethod: profile.commMethod ?? meter.communication,
-        lastCommunication,
-        lastReadingRaw: profile.value,
-        measurementLabel: profile.measurementLabel ?? sensorTypeCatalog[typeKey].measurementLabel,
-        battery: profile.battery ?? meter.battery ?? '%78',
-        signal: profile.signal ?? meter.signal ?? '-82 dBm',
-        window: profile.sampling ?? '15 dk örnekleme',
-        placement: profile.placement ?? meter.location,
-        measurementDetail: profile.detail ?? null,
-        samplingInterval: profile.sampling ?? '30 dk örnekleme',
-        calibrationNote: profile.calibration ?? 'Kalibrasyon güncel',
-        notes: profile.notes ?? '',
-        sparkline: profile.history ?? [],
-        lat: meter.lat,
-        lng: meter.lng,
-      }
-    })
+  return irrigationMeters.map((meter, meterIndex) => {
+    const typeKey = sensorTypeSequence[meterIndex % sensorTypeSequence.length]
+    const profiles = sensorProfiles[typeKey]
+    const profile = profiles[pointers[typeKey] % profiles.length]
+    pointers[typeKey] += 1
+    const lastCommunication = minutesAgo(profile.minutesAgo)
+    return {
+      sensorId: `${meter.id}-${profile.code}`,
+      typeKey,
+      typeLabel: sensorTypeCatalog[typeKey].label,
+      meterId: meter.id,
+      meterZone: meter.zone,
+      meterLocation: meter.location,
+      commMethod: profile.commMethod ?? meter.communication,
+      lastCommunication,
+      lastReadingRaw: profile.value,
+      measurementLabel: profile.measurementLabel ?? sensorTypeCatalog[typeKey].measurementLabel,
+      battery: profile.battery ?? meter.battery ?? '%78',
+      signal: profile.signal ?? meter.signal ?? '-82 dBm',
+      window: profile.sampling ?? '15 dk örnekleme',
+      placement: profile.placement ?? meter.location,
+      measurementDetail: profile.detail ?? null,
+      samplingInterval: profile.sampling ?? '30 dk örnekleme',
+      calibrationNote: profile.calibration ?? 'Kalibrasyon güncel',
+      notes: profile.notes ?? '',
+      sparkline: profile.history ?? meter.sparkline ?? meter.consumption?.history ?? [],
+      lat: meter.lat,
+      lng: meter.lng,
+    }
   })
 }
 
