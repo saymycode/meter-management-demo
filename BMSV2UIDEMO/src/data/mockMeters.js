@@ -119,8 +119,8 @@ const createMeterRecords = (type, count, seed, zones) => {
 }
 
 export const meterSnapshots = [
-  ...createMeterRecords('water', 100, 202401, waterZones),
-  ...createMeterRecords('electric', 100, 502021, electricZones),
+  ...createMeterRecords('water', 103, 202401, waterZones),
+  ...createMeterRecords('electric', 91, 502021, electricZones),
 ]
 
 export const hourlyActivity = [
