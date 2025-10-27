@@ -5,8 +5,8 @@
         <p class="eyebrow">SCADA izleme kontrolü</p>
         <h1>Canlı saha haritası</h1>
         <p class="description">
-          Şebekedeki tüm su ve elektrik sayaçlarını tek ekranda takip edin. Harita üstünde lokasyonları,
-          sağ panelde ise gelen tüm telemetri paketlerini canlı olarak görürsünüz.
+          Şebekedeki tüm su ve elektrik sayaçlarını tek ekranda takip edin. Harita üstünde
+          lokasyonları, sağ panelde ise gelen tüm telemetri paketlerini canlı olarak görürsünüz.
         </p>
       </div>
       <div class="header-actions">
@@ -109,7 +109,11 @@
             <article
               v-for="event in liveEvents"
               :key="event.id"
-              :class="['event-row', `tone-${event.tone}`, { active: event.meterId === selectedMeterId }]"
+              :class="[
+                'event-row',
+                `tone-${event.tone}`,
+                { active: event.meterId === selectedMeterId },
+              ]"
               @click="telemetryStore.setActiveMeter(event.meterId)"
             >
               <div class="event-time">{{ formatClock(event.timestamp) }}</div>
@@ -153,7 +157,9 @@
           <div>
             <p class="eyebrow">Aktif sayaç</p>
             <h2>{{ selectedMeter.id }}</h2>
-            <span class="detail-location">{{ selectedMeter.zone }} • {{ selectedMeter.location }}</span>
+            <span class="detail-location"
+              >{{ selectedMeter.zone }} • {{ selectedMeter.location }}</span
+            >
           </div>
           <v-chip :color="selectedTone" class="status-chip" variant="flat">
             <v-icon size="16">sensors</v-icon>
@@ -360,6 +366,7 @@ const selectedTone = computed(() => {
   top: 24px;
   left: 24px;
   width: 260px;
+  z-index: 1200;
   backdrop-filter: blur(16px);
   background: rgba(15, 23, 42, 0.55);
   border-radius: 24px;
@@ -492,7 +499,9 @@ const selectedTone = computed(() => {
   border: 1px solid transparent;
   background: var(--surface-elevated);
   cursor: pointer;
-  transition: border-color 0.2s ease, transform 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .event-row h3 {
