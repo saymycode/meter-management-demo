@@ -35,22 +35,18 @@
           <v-expand-transition>
             <div v-show="filtersExpanded" class="filter-body">
               <div class="filter-toolbar">
-                <div class="filter-hint">Artı / eksi kısayollarıyla filtreleri hemen düzenleyin.</div>
-                <div class="grouping-control">
-                  <span class="grouping-label">Gruplama</span>
-                  <v-chip-group v-model="selectedGroupBy" multiple class="grouping-chips">
-                    <v-chip
-                      v-for="option in groupByOptions"
-                      :key="option.value"
-                      :value="option.value"
-                      class="grouping-chip"
-                      color="indigo"
-                      filter
-                      variant="tonal"
+                <div class="filter-toolbar-leading">
+                  <v-icon icon="filter_alt" size="20" class="filter-toolbar-icon" />
+                  <div class="filter-toolbar-text">
+                    <span class="filter-toolbar-title">Filtre rehberi</span>
+                    <span class="filter-toolbar-subtitle"
+                      >Seçtiğiniz kriterler listeleri anında günceller.</span
                     >
-                      {{ option.title }}
-                    </v-chip>
-                  </v-chip-group>
+                  </div>
+                </div>
+                <div class="filter-toolbar-hint">
+                  <v-icon icon="bolt" size="16" class="filter-toolbar-hint-icon" />
+                  <span>Artı / eksi kısayollarıyla filtreleri hemen düzenleyin.</span>
                 </div>
               </div>
               <div class="filter-groups">
@@ -403,6 +399,31 @@
                 <v-chip class="meta-chip" color="red-darken-2" variant="tonal"
                   >Pasif: {{ filteredStats.inactive }}</v-chip
                 >
+              </div>
+
+              <div class="grouping-toolbar">
+                <div class="grouping-toolbar-heading">
+                  <v-icon icon="view_week" size="18" class="grouping-toolbar-icon" />
+                  <div class="grouping-toolbar-text">
+                    <span class="grouping-toolbar-title">Gruplama</span>
+                    <span class="grouping-toolbar-subtitle"
+                      >Tabloyu ilgili başlıklara göre düzenleyin.</span
+                    >
+                  </div>
+                </div>
+                <v-chip-group v-model="selectedGroupBy" multiple class="grouping-chip-group">
+                  <v-chip
+                    v-for="option in groupByOptions"
+                    :key="option.value"
+                    :value="option.value"
+                    class="grouping-chip"
+                    color="indigo"
+                    filter
+                    variant="tonal"
+                  >
+                    {{ option.title }}
+                  </v-chip>
+                </v-chip-group>
               </div>
 
               <div v-if="viewMode === 'table'" class="grid-wrapper">
@@ -1557,30 +1578,108 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
+  gap: 18px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(59, 130, 246, 0.12), rgba(129, 140, 248, 0.08));
+  border: 1px solid rgba(59, 130, 246, 0.12);
 }
 
-.filter-hint {
+.filter-toolbar-leading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.filter-toolbar-icon {
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(59, 130, 246, 0.16);
+  color: rgba(37, 99, 235, 0.96);
+}
+
+.filter-toolbar-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-toolbar-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--heading-color);
+  text-transform: uppercase;
+}
+
+.filter-toolbar-subtitle {
+  font-size: 13px;
+  color: var(--muted-text);
+}
+
+.filter-toolbar-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.16);
+  color: rgba(12, 74, 110, 0.92);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.filter-toolbar-hint-icon {
+  color: currentColor;
+}
+
+.grouping-toolbar {
+  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 18px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-soft);
+}
+
+.grouping-toolbar-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.grouping-toolbar-icon {
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(99, 102, 241, 0.16);
+  color: rgba(67, 56, 202, 0.9);
+}
+
+.grouping-toolbar-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.grouping-toolbar-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--heading-color);
+  text-transform: uppercase;
+}
+
+.grouping-toolbar-subtitle {
   font-size: 12px;
   color: var(--muted-text);
 }
 
-.grouping-control {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.grouping-label {
-  font-size: 13px;
-  color: var(--muted-text);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.grouping-chips {
+.grouping-chip-group {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -1600,13 +1699,19 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
 }
 
 .filter-title {
   font-size: 13px;
   text-transform: uppercase;
-  color: var(--muted-text);
-  letter-spacing: 0.3px;
+  color: var(--heading-color);
+  letter-spacing: 0.4px;
+  font-weight: 700;
 }
 
 .filter-pill-grid {
