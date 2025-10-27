@@ -1,14 +1,24 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import { useTheme } from 'vuetify'
 import Sidebar from './components/layout/Sidebar.vue'
 import TopBar from './components/layout/TopBar.vue'
+import { useTelemetryStore } from './store/telemetry'
 
 const theme = useTheme()
 const isDark = computed(() => theme.global.current.value.dark)
 const route = useRoute()
 const pageClass = computed(() => (route.name ? `page-${route.name}` : ''))
+const telemetryStore = useTelemetryStore()
+
+onMounted(() => {
+  telemetryStore.startSimulation()
+})
+
+onBeforeUnmount(() => {
+  telemetryStore.stopSimulation()
+})
 </script>
 
 <template>

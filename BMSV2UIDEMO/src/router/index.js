@@ -5,6 +5,7 @@ import Water from '../views/Water.vue'
 import Sensor from '../views/Sensor.vue'
 import Settings from '../views/Settings.vue'
 import Reports from '../views/Reports.vue'
+import Scada from '../views/Scada.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -16,6 +17,7 @@ const router = createRouter({
     { path: '/sensor', name: 'sensor', component: Sensor },
     { path: '/settings', name: 'settings', component: Settings },
     { path: '/reports', name: 'reports', component: Reports },
+    { path: '/scada', name: 'scada', component: Scada },
   ],
 })
 
