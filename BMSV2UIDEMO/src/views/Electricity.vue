@@ -4,218 +4,294 @@
     <v-row class="meter-content" no-gutters>
       <v-col cols="12">
         <v-card class="filter-card" elevation="0">
-          <div class="filter-header">
-            <div class="filter-header-left">
+          <div
+            class="filter-card-header"
+            :class="{ 'filter-card-header--open': filtersExpanded }"
+            @click="filtersExpanded = !filtersExpanded"
+          >
+            <div class="filter-card-heading">
               <h2>Filtreler</h2>
-              <v-btn-toggle
-                v-model="filterMode"
-                class="filter-mode-toggle"
+              <div class="filter-summary" :class="{ 'filter-summary--active': hasActiveFilters }">
+                <v-icon icon="tune" size="18" class="filter-summary-icon" />
+                <span>{{ filterSummary }}</span>
+              </div>
+            </div>
+            <div class="filter-card-controls">
+              <v-btn
+                class="filter-reset-btn"
                 density="comfortable"
-                variant="outlined"
-                mandatory
+                variant="text"
+                :disabled="!hasActiveFilters"
+                @click.stop="resetFilters"
               >
-                <v-btn value="include" prepend-icon="add">+ Filtre</v-btn>
-                <v-btn value="exclude" prepend-icon="remove">- Filtre</v-btn>
-              </v-btn-toggle>
-            </div>
-            <v-btn density="comfortable" variant="text" @click="resetFilters">Temizle</v-btn>
-          </div>
-          <div class="filter-subheader">
-            <div class="filter-hint">Çiplere tıklayın: + filtre dahil eder, − filtre hariç tutar.</div>
-            <div class="grouping-control">
-              <span class="grouping-label">Gruplama</span>
-              <v-chip-group v-model="selectedGroupBy" multiple class="grouping-chips">
-                <v-chip
-                  v-for="option in groupByOptions"
-                  :key="option.value"
-                  :value="option.value"
-                  class="filter-chip"
-                  color="indigo"
-                  filter
-                  variant="tonal"
-                >
-                  {{ option.title }}
-                </v-chip>
-              </v-chip-group>
-            </div>
-          </div>
-          <div class="filter-groups">
-            <div class="filter-group">
-              <span class="filter-title">Durum</span>
-              <div class="filter-chip-grid">
-                <v-chip
-                  v-for="status in statusOptions"
-                  :key="status"
-                  class="filter-chip"
-                  :class="statusChips.stateClass(status)"
-                  :color="statusChips.color('primary', status)"
-                  :variant="statusChips.variant(status)"
-                  @click="statusChips.cycle(status)"
-                  :title="statusChips.title(status)"
-                >
-                  <v-icon
-                    v-if="statusChips.isInclude(status)"
-                    icon="check"
-                    size="16"
-                    class="filter-chip-icon"
-                  />
-                  <v-icon
-                    v-else-if="statusChips.isExclude(status)"
-                    icon="remove"
-                    size="16"
-                    class="filter-chip-icon"
-                  />
-                  {{ status }}
-                </v-chip>
-              </div>
-            </div>
-            <div class="filter-group">
-              <span class="filter-title">Veri tazeliği</span>
-              <div class="filter-chip-grid">
-                <v-chip
-                  v-for="option in freshnessOptions"
-                  :key="option"
-                  class="filter-chip"
-                  :class="freshnessChips.stateClass(option)"
-                  :color="freshnessChips.color('teal', option)"
-                  :variant="freshnessChips.variant(option)"
-                  @click="freshnessChips.cycle(option)"
-                  :title="freshnessChips.title(option)"
-                >
-                  <v-icon
-                    v-if="freshnessChips.isInclude(option)"
-                    icon="check"
-                    size="16"
-                    class="filter-chip-icon"
-                  />
-                  <v-icon
-                    v-else-if="freshnessChips.isExclude(option)"
-                    icon="remove"
-                    size="16"
-                    class="filter-chip-icon"
-                  />
-                  {{ option }}
-                </v-chip>
-              </div>
-            </div>
-            <div class="filter-group">
-              <span class="filter-title">İletişim</span>
-              <div class="filter-chip-grid">
-                <v-chip
-                  v-for="comm in communicationOptions"
-                  :key="comm"
-                  class="filter-chip"
-                  :class="communicationChips.stateClass(comm)"
-                  :color="communicationChips.color('blue', comm)"
-                  :variant="communicationChips.variant(comm)"
-                  @click="communicationChips.cycle(comm)"
-                  :title="communicationChips.title(comm)"
-                >
-                  <v-icon
-                    v-if="communicationChips.isInclude(comm)"
-                    icon="check"
-                    size="16"
-                    class="filter-chip-icon"
-                  />
-                  <v-icon
-                    v-else-if="communicationChips.isExclude(comm)"
-                    icon="remove"
-                    size="16"
-                    class="filter-chip-icon"
-                  />
-                  {{ comm }}
-                </v-chip>
-              </div>
-            </div>
-            <div class="filter-group">
-              <span class="filter-title">Son veri aralığı</span>
-              <v-text-field
-                v-model="lastSeenStart"
-                class="filter-date-field"
-                type="date"
-                density="compact"
-                hide-details
-                label="Başlangıç"
-                variant="outlined"
-                clearable
-              />
-              <v-text-field
-                v-model="lastSeenEnd"
-                class="filter-date-field"
-                type="date"
-                density="compact"
-                hide-details
-                label="Bitiş"
-                variant="outlined"
-                clearable
+                Temizle
+              </v-btn>
+              <v-icon
+                class="filter-toggle-icon"
+                :icon="filtersExpanded ? 'expand_less' : 'expand_more'"
               />
             </div>
-            <div class="filter-group">
-              <span class="filter-title">Seri numarası</span>
-              <v-text-field
-                v-model="serialFilter"
-                class="filter-text-field"
-                density="compact"
-                hide-details
-                label="Seri no ara"
-                variant="outlined"
-                clearable
-                placeholder="Örn. BYT11-22017"
-              />
-              <div class="filter-range-row">
-                <v-text-field
-                  v-model="serialRangeStart"
-                  class="filter-range-field"
-                  density="compact"
-                  hide-details
-                  label="Başlangıç"
-                  variant="outlined"
-                  clearable
-                  placeholder="Seri başlangıcı"
-                />
-                <v-text-field
-                  v-model="serialRangeEnd"
-                  class="filter-range-field"
-                  density="compact"
-                  hide-details
-                  label="Bitiş"
-                  variant="outlined"
-                  clearable
-                  placeholder="Seri bitişi"
-                />
-              </div>
-              <div class="filter-subtext">Harften sonra gelen rakamlara göre sıralar.</div>
-            </div>
-            <div class="filter-group">
-              <span class="filter-title">Bölgeler</span>
-              <div class="filter-chip-grid">
-                <v-chip
-                  v-for="zone in zoneOptions"
-                  :key="zone"
-                  class="filter-chip"
-                  :class="zoneChips.stateClass(zone)"
-                  :color="zoneChips.color('purple', zone)"
-                  :variant="zoneChips.variant(zone)"
-                  @click="zoneChips.cycle(zone)"
-                  :title="zoneChips.title(zone)"
-                >
-                  <v-icon
-                    v-if="zoneChips.isInclude(zone)"
-                    icon="check"
-                    size="16"
-                    class="filter-chip-icon"
-                  />
-                  <v-icon
-                    v-else-if="zoneChips.isExclude(zone)"
-                    icon="remove"
-                    size="16"
-                    class="filter-chip-icon"
-                  />
-                  {{ zone }}
-                </v-chip>
-              </div>
-            </div>
           </div>
+          <v-expand-transition>
+            <div v-show="filtersExpanded" class="filter-body">
+              <div class="filter-toolbar">
+                <div class="filter-hint">Artı / eksi kısayollarıyla filtreleri hemen düzenleyin.</div>
+                <div class="grouping-control">
+                  <span class="grouping-label">Gruplama</span>
+                  <v-chip-group v-model="selectedGroupBy" multiple class="grouping-chips">
+                    <v-chip
+                      v-for="option in groupByOptions"
+                      :key="option.value"
+                      :value="option.value"
+                      class="grouping-chip"
+                      color="indigo"
+                      filter
+                      variant="tonal"
+                    >
+                      {{ option.title }}
+                    </v-chip>
+                  </v-chip-group>
+                </div>
+              </div>
+              <div class="filter-groups">
+                <div class="filter-group">
+                  <span class="filter-title">Durum</span>
+                  <div class="filter-pill-grid">
+                    <div
+                      v-for="status in statusOptions"
+                      :key="status"
+                      class="filter-pill"
+                      :class="statusChips.stateClass(status)"
+                    >
+                      <button
+                        type="button"
+                        class="filter-pill__action filter-pill__action--include"
+                        :class="{ 'filter-pill__action--active': statusChips.isInclude(status) }"
+                        :aria-pressed="statusChips.isInclude(status)"
+                        :aria-label="statusChips.includeTitle(status)"
+                        :title="statusChips.includeTitle(status)"
+                        @click="statusChips.toggleInclude(status)"
+                      >
+                        +
+                      </button>
+                      <button
+                        type="button"
+                        class="filter-pill__label"
+                        :aria-pressed="statusChips.isInclude(status)"
+                        :aria-label="statusChips.includeTitle(status)"
+                        :title="statusChips.includeTitle(status)"
+                        @click="statusChips.toggleInclude(status)"
+                      >
+                        {{ status }}
+                      </button>
+                      <button
+                        type="button"
+                        class="filter-pill__action filter-pill__action--exclude"
+                        :class="{ 'filter-pill__action--active': statusChips.isExclude(status) }"
+                        :aria-pressed="statusChips.isExclude(status)"
+                        :aria-label="statusChips.excludeTitle(status)"
+                        :title="statusChips.excludeTitle(status)"
+                        @click="statusChips.toggleExclude(status)"
+                      >
+                        −
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div class="filter-group">
+                  <span class="filter-title">Veri tazeliği</span>
+                  <div class="filter-pill-grid">
+                    <div
+                      v-for="option in freshnessOptions"
+                      :key="option"
+                      class="filter-pill"
+                      :class="freshnessChips.stateClass(option)"
+                    >
+                      <button
+                        type="button"
+                        class="filter-pill__action filter-pill__action--include"
+                        :class="{ 'filter-pill__action--active': freshnessChips.isInclude(option) }"
+                        :aria-pressed="freshnessChips.isInclude(option)"
+                        :aria-label="freshnessChips.includeTitle(option)"
+                        :title="freshnessChips.includeTitle(option)"
+                        @click="freshnessChips.toggleInclude(option)"
+                      >
+                        +
+                      </button>
+                      <button
+                        type="button"
+                        class="filter-pill__label"
+                        :aria-pressed="freshnessChips.isInclude(option)"
+                        :aria-label="freshnessChips.includeTitle(option)"
+                        :title="freshnessChips.includeTitle(option)"
+                        @click="freshnessChips.toggleInclude(option)"
+                      >
+                        {{ option }}
+                      </button>
+                      <button
+                        type="button"
+                        class="filter-pill__action filter-pill__action--exclude"
+                        :class="{ 'filter-pill__action--active': freshnessChips.isExclude(option) }"
+                        :aria-pressed="freshnessChips.isExclude(option)"
+                        :aria-label="freshnessChips.excludeTitle(option)"
+                        :title="freshnessChips.excludeTitle(option)"
+                        @click="freshnessChips.toggleExclude(option)"
+                      >
+                        −
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div class="filter-group">
+                  <span class="filter-title">İletişim</span>
+                  <div class="filter-pill-grid">
+                    <div
+                      v-for="comm in communicationOptions"
+                      :key="comm"
+                      class="filter-pill"
+                      :class="communicationChips.stateClass(comm)"
+                    >
+                      <button
+                        type="button"
+                        class="filter-pill__action filter-pill__action--include"
+                        :class="{ 'filter-pill__action--active': communicationChips.isInclude(comm) }"
+                        :aria-pressed="communicationChips.isInclude(comm)"
+                        :aria-label="communicationChips.includeTitle(comm)"
+                        :title="communicationChips.includeTitle(comm)"
+                        @click="communicationChips.toggleInclude(comm)"
+                      >
+                        +
+                      </button>
+                      <button
+                        type="button"
+                        class="filter-pill__label"
+                        :aria-pressed="communicationChips.isInclude(comm)"
+                        :aria-label="communicationChips.includeTitle(comm)"
+                        :title="communicationChips.includeTitle(comm)"
+                        @click="communicationChips.toggleInclude(comm)"
+                      >
+                        {{ comm }}
+                      </button>
+                      <button
+                        type="button"
+                        class="filter-pill__action filter-pill__action--exclude"
+                        :class="{ 'filter-pill__action--active': communicationChips.isExclude(comm) }"
+                        :aria-pressed="communicationChips.isExclude(comm)"
+                        :aria-label="communicationChips.excludeTitle(comm)"
+                        :title="communicationChips.excludeTitle(comm)"
+                        @click="communicationChips.toggleExclude(comm)"
+                      >
+                        −
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div class="filter-group">
+                  <span class="filter-title">Son veri aralığı</span>
+                  <v-text-field
+                    v-model="lastSeenStart"
+                    class="filter-date-field"
+                    type="date"
+                    density="compact"
+                    hide-details
+                    label="Başlangıç"
+                    variant="outlined"
+                    clearable
+                  />
+                  <v-text-field
+                    v-model="lastSeenEnd"
+                    class="filter-date-field"
+                    type="date"
+                    density="compact"
+                    hide-details
+                    label="Bitiş"
+                    variant="outlined"
+                    clearable
+                  />
+                </div>
+                <div class="filter-group">
+                  <span class="filter-title">Seri numarası</span>
+                  <v-text-field
+                    v-model="serialFilter"
+                    class="filter-text-field"
+                    density="compact"
+                    hide-details
+                    label="Seri no ara"
+                    variant="outlined"
+                    clearable
+                    placeholder="Örn. BYT11-22017"
+                  />
+                  <div class="filter-range-row">
+                    <v-text-field
+                      v-model="serialRangeStart"
+                      class="filter-range-field"
+                      density="compact"
+                      hide-details
+                      label="Başlangıç"
+                      variant="outlined"
+                      clearable
+                      placeholder="Seri başlangıcı"
+                    />
+                    <v-text-field
+                      v-model="serialRangeEnd"
+                      class="filter-range-field"
+                      density="compact"
+                      hide-details
+                      label="Bitiş"
+                      variant="outlined"
+                      clearable
+                      placeholder="Seri bitişi"
+                    />
+                  </div>
+                  <div class="filter-subtext">Harften sonra gelen rakamlara göre sıralar.</div>
+                </div>
+                <div class="filter-group">
+                  <span class="filter-title">Bölgeler</span>
+                  <div class="filter-pill-grid">
+                    <div
+                      v-for="zone in zoneOptions"
+                      :key="zone"
+                      class="filter-pill"
+                      :class="zoneChips.stateClass(zone)"
+                    >
+                      <button
+                        type="button"
+                        class="filter-pill__action filter-pill__action--include"
+                        :class="{ 'filter-pill__action--active': zoneChips.isInclude(zone) }"
+                        :aria-pressed="zoneChips.isInclude(zone)"
+                        :aria-label="zoneChips.includeTitle(zone)"
+                        :title="zoneChips.includeTitle(zone)"
+                        @click="zoneChips.toggleInclude(zone)"
+                      >
+                        +
+                      </button>
+                      <button
+                        type="button"
+                        class="filter-pill__label"
+                        :aria-pressed="zoneChips.isInclude(zone)"
+                        :aria-label="zoneChips.includeTitle(zone)"
+                        :title="zoneChips.includeTitle(zone)"
+                        @click="zoneChips.toggleInclude(zone)"
+                      >
+                        {{ zone }}
+                      </button>
+                      <button
+                        type="button"
+                        class="filter-pill__action filter-pill__action--exclude"
+                        :class="{ 'filter-pill__action--active': zoneChips.isExclude(zone) }"
+                        :aria-pressed="zoneChips.isExclude(zone)"
+                        :aria-label="zoneChips.excludeTitle(zone)"
+                        :title="zoneChips.excludeTitle(zone)"
+                        @click="zoneChips.toggleExclude(zone)"
+                      >
+                        −
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </v-expand-transition>
         </v-card>
 
         <!-- <v-card class="plan-card" elevation="0">
@@ -771,7 +847,6 @@ const statusOptions = ['Aktif', 'Beklemede', 'Pasif']
 const freshnessOptions = ['< 24 saat', '24-48 saat', '48+ saat']
 const communicationOptions = ['LoRa', 'GPRS']
 
-const filterMode = ref(TRI_STATE.INCLUDE)
 const statusFilters = ref({})
 const freshnessFilters = ref({})
 const communicationFilters = ref({})
@@ -783,10 +858,12 @@ const serialFilter = ref('')
 const serialRangeStart = ref('')
 const serialRangeEnd = ref('')
 
-const statusChips = createTriStateChipHelpers(statusFilters, filterMode)
-const freshnessChips = createTriStateChipHelpers(freshnessFilters, filterMode)
-const communicationChips = createTriStateChipHelpers(communicationFilters, filterMode)
-const zoneChips = createTriStateChipHelpers(zoneFilters, filterMode)
+const filtersExpanded = ref(false)
+
+const statusChips = createTriStateChipHelpers(statusFilters)
+const freshnessChips = createTriStateChipHelpers(freshnessFilters)
+const communicationChips = createTriStateChipHelpers(communicationFilters)
+const zoneChips = createTriStateChipHelpers(zoneFilters)
 const searchTerm = ref('')
 const searchTokens = computed(() => parseSearchTokens(searchTerm.value))
 const lastSeenStartDate = computed(() => parseDateInput(lastSeenStart.value))
@@ -802,6 +879,42 @@ const serialRangeNormalized = computed(() => {
   }
   return { start, end }
 })
+
+const triStateRefs = [statusFilters, freshnessFilters, communicationFilters, zoneFilters]
+
+const filterSummaryMeta = computed(() => {
+  const includeCount = triStateRefs.reduce(
+    (total, filter) =>
+      total +
+      Object.values(filter.value || {}).filter((state) => state === TRI_STATE.INCLUDE).length,
+    0,
+  )
+
+  const excludeCount = triStateRefs.reduce(
+    (total, filter) =>
+      total +
+      Object.values(filter.value || {}).filter((state) => state === TRI_STATE.EXCLUDE).length,
+    0,
+  )
+
+  const parts = []
+  if (includeCount) parts.push(`${includeCount} adet + filtre`)
+  if (excludeCount) parts.push(`${excludeCount} adet - filtre`)
+  if (lastSeenStart.value || lastSeenEnd.value) parts.push('Tarih aralığı')
+  if (serialFilter.value) parts.push('Seri arama')
+  if (serialRangeNormalized.value.start || serialRangeNormalized.value.end) {
+    parts.push('Seri aralığı')
+  }
+
+  return { includeCount, excludeCount, parts }
+})
+
+const filterSummary = computed(() => {
+  const { parts } = filterSummaryMeta.value
+  return parts.length ? parts.join(' • ') : 'Filtre uygulanmadı'
+})
+
+const hasActiveFilters = computed(() => filterSummaryMeta.value.parts.length > 0)
 const selectedRows = ref([])
 const viewMode = ref('table')
 
@@ -1136,7 +1249,6 @@ const globalWorkOrders = computed(() =>
 )
 
 const resetFilters = () => {
-  filterMode.value = TRI_STATE.INCLUDE
   statusFilters.value = {}
   freshnessFilters.value = {}
   communicationFilters.value = {}
@@ -1339,7 +1451,18 @@ onBeforeUnmount(() => {
   row-gap: 28px !important;
 }
 
-.filter-card,
+
+.filter-card {
+  border-radius: 24px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+  transition:
+    background var(--transition-speed) ease,
+    border-color var(--transition-speed) ease;
+}
+
 .plan-card {
   padding: 24px;
   border-radius: 24px;
@@ -1351,51 +1474,95 @@ onBeforeUnmount(() => {
     border-color var(--transition-speed) ease;
 }
 
-.filter-header {
+.filter-card-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
-  margin-bottom: 12px;
+  padding: 20px 24px;
+  cursor: pointer;
+  transition: background var(--transition-speed) ease;
 }
 
-.filter-header h2,
+.filter-card-header:hover {
+  background: var(--surface-subtle);
+}
+
+.filter-card-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-card-heading h2,
 .plan-header h2 {
   margin: 0;
   font-size: 18px;
   color: var(--heading-color);
 }
 
-.filter-header-left {
-  display: flex;
-  flex-wrap: wrap;
+.filter-summary {
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted-text);
+  letter-spacing: 0.2px;
 }
 
-.filter-mode-toggle {
-  border-radius: 999px;
-  padding: 2px;
-  border: 1px solid var(--border-soft);
-  background: var(--surface-elevated);
+.filter-summary-icon {
+  color: currentColor;
 }
 
-.filter-mode-toggle :deep(.v-btn) {
+.filter-summary--active {
+  color: var(--heading-color);
+  font-weight: 600;
+}
+
+.filter-card-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-reset-btn {
   text-transform: none;
-  border-radius: 999px !important;
+  font-weight: 600;
+  letter-spacing: 0.2px;
 }
 
-.filter-mode-toggle :deep(.v-btn--active) {
-  box-shadow: none;
+.filter-reset-btn:deep(.v-btn__content) {
+  text-transform: none;
+  font-weight: 600;
 }
 
-.filter-subheader {
+.filter-toggle-icon {
+  color: var(--muted-text);
+  transition: color var(--transition-speed) ease, transform var(--transition-speed) ease;
+}
+
+.filter-card-header:hover .filter-toggle-icon {
+  color: var(--heading-color);
+}
+
+.filter-body {
+  padding: 0 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.filter-toolbar {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  margin-bottom: 12px;
+}
+
+.filter-hint {
+  font-size: 12px;
+  color: var(--muted-text);
 }
 
 .grouping-control {
@@ -1419,37 +1586,127 @@ onBeforeUnmount(() => {
   gap: 8px;
 }
 
-.grouping-chips :deep(.v-chip) {
-  margin: 0;
+.grouping-chip {
+  margin: 0 !important;
 }
 
 .filter-groups {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px 24px;
-}
-
-.filter-groups .filter-group {
-  border-bottom: none;
-  padding: 0;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px 24px;
 }
 
 .filter-group {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border-soft);
+  gap: 12px;
 }
 
-.filter-group:last-of-type {
-  border-bottom: none;
-}
-
-.filter-hint {
-  margin: 0;
-  font-size: 12px;
+.filter-title {
+  font-size: 13px;
+  text-transform: uppercase;
   color: var(--muted-text);
+  letter-spacing: 0.3px;
+}
+
+.filter-pill-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-elevated);
+  transition:
+    border-color var(--transition-speed) ease,
+    box-shadow var(--transition-speed) ease,
+    background var(--transition-speed) ease,
+    transform 140ms ease;
+}
+
+.filter-pill:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-strong);
+}
+
+.filter-pill--include {
+  border-color: rgba(34, 197, 94, 0.6);
+  background: rgba(34, 197, 94, 0.15);
+  box-shadow: 0 8px 20px rgba(34, 197, 94, 0.18);
+}
+
+.filter-pill--exclude {
+  border-color: rgba(244, 63, 94, 0.6);
+  background: rgba(244, 63, 94, 0.15);
+  box-shadow: 0 8px 20px rgba(244, 63, 94, 0.16);
+}
+
+.filter-pill__action {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--muted-text);
+  font-size: 18px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.filter-pill__action:hover {
+  background: var(--surface-subtle);
+  color: var(--heading-color);
+}
+
+.filter-pill__action--active {
+  color: #0ea5e9;
+  background: rgba(14, 165, 233, 0.16);
+}
+
+.filter-pill--include .filter-pill__action--include,
+.filter-pill--include .filter-pill__action--active {
+  color: #16a34a;
+  background: rgba(34, 197, 94, 0.18);
+}
+
+.filter-pill--exclude .filter-pill__action--exclude,
+.filter-pill--exclude .filter-pill__action--active {
+  color: #e11d48;
+  background: rgba(244, 63, 94, 0.2);
+}
+
+.filter-pill__label {
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--heading-color);
+  padding: 0 10px;
+  cursor: pointer;
+  letter-spacing: 0.2px;
+  transition: color var(--transition-speed) ease;
+}
+
+.filter-pill__label:hover {
+  color: var(--primary-color, #2563eb);
+}
+
+.filter-pill--include .filter-pill__label {
+  color: #15803d;
+}
+
+.filter-pill--exclude .filter-pill__label {
+  color: #be123c;
 }
 
 .filter-text-field {
@@ -1469,40 +1726,6 @@ onBeforeUnmount(() => {
   font-size: 12px;
   color: var(--muted-text);
   margin-top: -2px;
-}
-
-.filter-chip-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.filter-title {
-  font-size: 13px;
-  text-transform: uppercase;
-  color: var(--muted-text);
-  letter-spacing: 0.3px;
-}
-
-.filter-chip {
-  margin-bottom: 6px;
-  transition: transform 140ms ease;
-}
-
-.filter-chip:hover {
-  transform: translateY(-1px);
-}
-
-.filter-chip-icon {
-  margin-right: 6px;
-}
-
-.filter-chip--include {
-  box-shadow: 0 2px 6px rgba(34, 197, 94, 0.18);
-}
-
-.filter-chip--exclude {
-  box-shadow: 0 2px 6px rgba(248, 113, 113, 0.22);
 }
 
 .plan-header span {
