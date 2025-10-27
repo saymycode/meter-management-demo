@@ -22,61 +22,100 @@ const emit = defineEmits(['select-meter'])
 
 const mapRoot = ref(null)
 let mapInstance
-let layer
-const markers = new Map()
-const markerFlashState = new Map()
+let markerLayer
+const markerRegistry = new Map()
+let initializedBounds = false
 
-const focusOnMeter = (meter, { minZoom = 13, duration = 1.2 } = {}) => {
-  if (!mapInstance) return
+const statusColors = {
+  normal: '#38bdf8',
+  info: '#38bdf8',
+  warning: '#f97316',
+  alarm: '#ef4444',
+}
+
+const typeColors = {
+  water: '#38bdf8',
+  electric: '#facc15',
+}
+
+const buildTooltip = (meter) =>
+  `\
+  <div class="tooltip-card">\
+    <strong>${meter.id}</strong>\
+    <span>${meter.zone}</span>\
+    <span>${meter.communication}</span>\
+  </div>\
+`
+
+const focusOnMeter = (meter, { minZoom = 14, duration = 1.1 } = {}) => {
+  if (!mapInstance || !meter) return
   const targetLatLng = L.latLng(meter.lat, meter.lng)
   const nextZoom = Math.max(mapInstance.getZoom(), minZoom)
   mapInstance.flyTo(targetLatLng, nextZoom, {
     duration,
-    easeLinearity: 0.3,
+    easeLinearity: 0.25,
     noMoveStart: true,
   })
 }
 
-const baseIcon = (meter, isSelected) =>
-  L.divIcon({
-    className: `scada-marker ${meter.type} ${meter.status} ${meter.flash ? 'is-flashing' : ''} ${
-      isSelected ? 'is-selected' : ''
-    }`,
-    html: '<span></span>',
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
+const createMarker = (meter) => {
+  const statusColor = statusColors[meter.status] ?? '#38bdf8'
+  const typeColor = typeColors[meter.type] ?? '#38bdf8'
+  const baseColor = meter.status === 'warning' || meter.status === 'alarm' ? statusColor : typeColor
+
+  const circle = L.circleMarker([meter.lat, meter.lng], {
+    radius: 10,
+    color: baseColor,
+    weight: 2,
+    fillColor: baseColor,
+    fillOpacity: 0.85,
+    className: `scada-circle ${meter.type} ${meter.status}`,
   })
 
+  circle.on('click', () => emit('select-meter', meter.id))
+  circle.bindTooltip(buildTooltip(meter), {
+    direction: 'top',
+    offset: [0, -12],
+    permanent: false,
+    opacity: 0.95,
+    className: 'scada-tooltip',
+  })
+
+  return circle
+}
+
 const ensureMarker = (meter) => {
-  if (!layer) return
-  let marker = markers.get(meter.id)
-  const icon = baseIcon(meter, meter.id === props.selectedMeterId)
+  if (!markerLayer) return
+  let marker = markerRegistry.get(meter.id)
   if (!marker) {
-    marker = L.marker([meter.lat, meter.lng], { icon })
-    marker.on('click', () => emit('select-meter', meter.id))
-    marker.addTo(layer)
-    markers.set(meter.id, marker)
+    marker = createMarker(meter)
+    marker.addTo(markerLayer)
+    markerRegistry.set(meter.id, marker)
   } else {
     marker.setLatLng([meter.lat, meter.lng])
-    marker.setIcon(icon)
+    const statusColor = statusColors[meter.status] ?? '#38bdf8'
+    const typeColor = typeColors[meter.type] ?? '#38bdf8'
+    const baseColor = meter.status === 'warning' || meter.status === 'alarm' ? statusColor : typeColor
+    marker.setStyle({
+      color: baseColor,
+      fillColor: baseColor,
+    })
+    marker.setTooltipContent(buildTooltip(meter))
   }
 
-  const previousFlash = markerFlashState.get(meter.id) ?? false
-  const isFlashing = Boolean(meter.flash)
-  markerFlashState.set(meter.id, isFlashing)
-
-  if (isFlashing && !previousFlash) {
-    focusOnMeter(meter, { minZoom: 14, duration: 1.4 })
+  if (meter.id === props.selectedMeterId) {
+    marker.setStyle({ weight: 3, radius: 12 })
+  } else {
+    marker.setStyle({ weight: 2, radius: 10 })
   }
 }
 
 const removeUnusedMarkers = (nextMeters) => {
   const validIds = new Set(nextMeters.map((meter) => meter.id))
-  markers.forEach((marker, id) => {
+  markerRegistry.forEach((marker, id) => {
     if (!validIds.has(id)) {
       marker.remove()
-      markers.delete(id)
-      markerFlashState.delete(id)
+      markerRegistry.delete(id)
     }
   })
 }
@@ -85,23 +124,35 @@ const redrawMarkers = () => {
   if (!mapInstance) return
   props.meters.forEach(ensureMarker)
   removeUnusedMarkers(props.meters)
+
+  if (!initializedBounds && props.meters.length) {
+    const bounds = L.latLngBounds(props.meters.map((meter) => [meter.lat, meter.lng]))
+    mapInstance.fitBounds(bounds.pad(0.2))
+    initializedBounds = true
+  }
 }
 
 onMounted(() => {
   if (!mapRoot.value) return
+
   mapInstance = L.map(mapRoot.value, {
     zoomControl: false,
     attributionControl: false,
     scrollWheelZoom: true,
-  }).setView([39.9334, 32.8597], 10)
+    dragging: true,
+  }).setView([39.9334, 32.8597], 6)
 
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     subdomains: 'abcd',
     maxZoom: 19,
   }).addTo(mapInstance)
 
-  layer = L.layerGroup().addTo(mapInstance)
+  markerLayer = L.layerGroup().addTo(mapInstance)
   redrawMarkers()
+
+  setTimeout(() => {
+    mapInstance?.invalidateSize()
+  }, 200)
 })
 
 watch(
@@ -116,24 +167,18 @@ watch(
   () => props.selectedMeterId,
   (next) => {
     if (!next) return
-    const marker = markers.get(next)
-    if (marker && mapInstance) {
-      const meter = props.meters.find((candidate) => candidate.id === next)
-      if (meter) {
-        focusOnMeter(meter)
-      } else {
-        mapInstance.panTo(marker.getLatLng())
-      }
+    const meter = props.meters.find((candidate) => candidate.id === next)
+    if (meter) {
+      focusOnMeter(meter)
     }
     redrawMarkers()
   },
 )
 
 onBeforeUnmount(() => {
-  markers.forEach((marker) => marker.remove())
-  markers.clear()
-  markerFlashState.clear()
-  layer?.remove()
+  markerRegistry.forEach((marker) => marker.remove())
+  markerRegistry.clear()
+  markerLayer?.remove()
   mapInstance?.remove()
 })
 </script>
@@ -142,115 +187,54 @@ onBeforeUnmount(() => {
 .scada-map {
   width: 100%;
   height: 100%;
-  border-radius: 24px;
+  border-radius: 28px;
   overflow: hidden;
-  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.32);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+:deep(.leaflet-container) {
+  background: #0f172a;
 }
 
 :deep(.leaflet-control-container) {
   display: none;
 }
 
-:deep(.scada-marker) {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: rgba(59, 130, 246, 0.75);
-  border: 2px solid rgba(255, 255, 255, 0.8);
-  box-shadow: 0 0 18px rgba(59, 130, 246, 0.6);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  animation: pulse 6s ease-in-out infinite;
-  position: relative;
+:deep(.scada-circle) {
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.6);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-:deep(.scada-marker span) {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: currentColor;
-  box-shadow: 0 0 18px currentColor;
+:deep(.scada-circle.alarm) {
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.7);
 }
 
-:deep(.scada-marker.water) {
-  color: #38bdf8;
+:deep(.scada-circle.warning) {
+  box-shadow: 0 0 18px rgba(249, 115, 22, 0.7);
 }
 
-:deep(.scada-marker.electric) {
-  color: #facc15;
+:deep(.scada-circle:hover) {
+  transform: scale(1.15);
 }
 
-:deep(.scada-marker.warning) {
-  color: #f97316;
+:deep(.scada-tooltip) {
+  background: rgba(15, 23, 42, 0.85);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 12px;
+  padding: 8px 10px;
+  box-shadow: 0 12px 32px rgba(8, 15, 31, 0.45);
 }
 
-:deep(.scada-marker.alarm) {
-  color: #f87171;
+:deep(.scada-tooltip .tooltip-card) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
 }
 
-:deep(.scada-marker.info),
-:deep(.scada-marker.normal) {
-  color: #34d399;
-}
-
-:deep(.scada-marker.is-selected) {
-  transform: scale(1.4);
-  box-shadow: 0 0 24px rgba(147, 197, 253, 0.9);
-}
-
-:deep(.scada-marker.is-flashing span) {
-  animation: blink 1s ease-in-out infinite;
-}
-
-:deep(.scada-marker.is-flashing::after) {
-  content: '';
-  position: absolute;
-  inset: -12px;
-  border-radius: 50%;
-  border: 2px solid rgba(74, 222, 128, 0.6);
-  background: rgba(34, 197, 94, 0.15);
-  animation: flare 1.6s ease-out infinite;
-  pointer-events: none;
-}
-
-@keyframes blink {
-  0%,
-  100% {
-    opacity: 0.3;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-@keyframes pulse {
-  0% {
-    transform: scale(0.9);
-    opacity: 0.7;
-  }
-  50% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(0.9);
-    opacity: 0.7;
-  }
-}
-
-@keyframes flare {
-  0% {
-    opacity: 0.7;
-    transform: scale(0.5);
-  }
-  60% {
-    opacity: 0.2;
-    transform: scale(1.1);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.4);
-  }
+:deep(.scada-tooltip strong) {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f8fafc;
 }
 </style>

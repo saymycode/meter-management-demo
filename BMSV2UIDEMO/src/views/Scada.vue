@@ -1,15 +1,22 @@
 <template>
-  <v-container fluid class="scada-wrapper" tag="section">
-    <header class="scada-header">
-      <div>
-        <p class="header-eyebrow">Gerçek zamanlı izleme merkezi</p>
-        <h1>SCADA gözetim ekranı</h1>
-        <p class="header-subtitle">
-          Tüm su ve elektrik sayaçları tek panelde. Canlı paketler, coğrafi harita ve olay akışı anlık güncellenir.
+  <v-container fluid class="scada-page" tag="section">
+    <header class="page-header">
+      <div class="heading-block">
+        <p class="eyebrow">SCADA izleme kontrolü</p>
+        <h1>Canlı saha haritası</h1>
+        <p class="description">
+          Şebekedeki tüm su ve elektrik sayaçlarını tek ekranda takip edin. Harita üstünde lokasyonları,
+          sağ panelde ise gelen tüm telemetri paketlerini canlı olarak görürsünüz.
         </p>
       </div>
       <div class="header-actions">
-        <v-btn-toggle v-model="resourceFilter" mandatory rounded="pill" class="resource-toggle" color="primary">
+        <v-btn-toggle
+          v-model="resourceFilter"
+          mandatory
+          rounded="pill"
+          class="resource-toggle"
+          color="primary"
+        >
           <v-btn value="all" variant="text">
             <v-icon size="18">public</v-icon>
             <span>Tümü</span>
@@ -23,93 +30,116 @@
             <span>Elektrik</span>
           </v-btn>
         </v-btn-toggle>
-        <v-chip prepend-icon="schedule" class="pulse-chip" variant="flat">
+        <v-chip prepend-icon="update" class="last-update" variant="flat">
           Son paket: {{ lastEventRelative }}
         </v-chip>
       </div>
     </header>
 
-    <section class="scada-grid">
-      <div class="map-column">
-        <div class="map-card">
+    <section class="content-grid">
+      <v-card class="map-panel" elevation="0">
+        <div class="map-shell">
           <ScadaMap
+            v-if="displayedMeters.length"
             :meters="displayedMeters"
             :selected-meter-id="selectedMeterId"
             @select-meter="telemetryStore.setActiveMeter"
           />
-          <div class="map-overlay">
-            <div class="overlay-card">
-              <div class="overlay-title">Sayaç özetleri</div>
-              <div class="overlay-metrics">
-                <div class="overlay-metric">
-                  <span class="metric-label">Aktif sayaç</span>
-                  <span class="metric-value">{{ meterCounts.all }}</span>
-                </div>
-                <div class="overlay-metric">
-                  <span class="metric-label">Su</span>
-                  <span class="metric-value">{{ meterCounts.water }}</span>
-                </div>
-                <div class="overlay-metric">
-                  <span class="metric-label">Elektrik</span>
-                  <span class="metric-value">{{ meterCounts.electric }}</span>
-                </div>
-              </div>
-              <div class="overlay-foot">
-              <v-icon size="18">sensors</v-icon>
-              <span>Harita katmanı paket geldikçe yeşil ışıkla yanar.</span>
-            </div>
+          <div v-else class="map-empty">
+            <v-icon size="64">satellite_alt</v-icon>
+            <p>Kayıtlı sayaç bulunamadı. Telemetri kaynağını kontrol edin.</p>
           </div>
-          </div>
-        </div>
-      </div>
 
-      <div class="event-column">
-        <v-card class="event-feed" elevation="0">
-          <div class="event-header">
+          <aside class="map-infobar">
+            <div class="infobar-header">
+              <h2>Aktif sayaçlar</h2>
+              <v-chip color="success" size="small" variant="flat">
+                {{ displayedMeters.length }} aktif
+              </v-chip>
+            </div>
+            <div class="infobar-metrics">
+              <div class="metric-box">
+                <span class="metric-label">Toplam</span>
+                <strong class="metric-value">{{ meterCounts.all }}</strong>
+              </div>
+              <div class="metric-box">
+                <span class="metric-label">Su</span>
+                <strong class="metric-value">{{ meterCounts.water }}</strong>
+              </div>
+              <div class="metric-box">
+                <span class="metric-label">Elektrik</span>
+                <strong class="metric-value">{{ meterCounts.electric }}</strong>
+              </div>
+            </div>
+            <div class="legend">
+              <p>Durum göstergesi</p>
+              <ul>
+                <li>
+                  <span class="legend-dot legend-ok"></span>
+                  <span>Stabil</span>
+                </li>
+                <li>
+                  <span class="legend-dot legend-warning"></span>
+                  <span>Uyarı</span>
+                </li>
+                <li>
+                  <span class="legend-dot legend-alarm"></span>
+                  <span>Kritik alarm</span>
+                </li>
+              </ul>
+            </div>
+          </aside>
+        </div>
+      </v-card>
+
+      <div class="side-panels">
+        <v-card class="events-panel" elevation="0">
+          <header class="panel-header">
             <div>
               <h2>Canlı olay akışı</h2>
-              <span class="event-subtitle">Son 30 paket içindeki kritik durumlar</span>
+              <p class="panel-subtitle">Son 30 telemetri paketindeki değişiklikler</p>
             </div>
-            <v-chip :color="trendColor" variant="flat" size="small" class="trend-chip">
+            <v-chip :color="trendColor" size="small" variant="flat" class="trend-chip">
               <v-icon size="16">monitor_heart</v-icon>
               <span>{{ activeLoadLabel }}</span>
             </v-chip>
-          </div>
-          <v-divider class="my-3" />
+          </header>
+          <v-divider class="my-4" />
           <div class="event-list">
-            <div
+            <article
               v-for="event in liveEvents"
               :key="event.id"
-              class="event-item"
-              :class="[`tone-${event.tone}`, { 'is-active': event.meterId === selectedMeterId }]"
+              :class="['event-row', `tone-${event.tone}`, { active: event.meterId === selectedMeterId }]"
               @click="telemetryStore.setActiveMeter(event.meterId)"
             >
-              <div class="event-timestamp">{{ formatClock(event.timestamp) }}</div>
-              <div class="event-body">
-                <div class="event-title">{{ event.message }}</div>
-                <div class="event-meta">
-                  <span>{{ event.meterLabel }} • {{ event.zone }}</span>
-                  <span>{{ event.communication }}</span>
-                  <span>RSSI {{ event.signal }}</span>
-                </div>
+              <div class="event-time">{{ formatClock(event.timestamp) }}</div>
+              <div class="event-message">
+                <h3>{{ event.message }}</h3>
+                <p>{{ event.meterLabel }} • {{ event.zone }} • {{ event.communication }}</p>
               </div>
-              <div class="event-health">
-                <v-icon size="16">monitor_heart</v-icon>
-                <span>{{ event.healthScore }}%</span>
+              <div class="event-meta">
+                <span>RSSI {{ event.signal }}</span>
+                <strong>{{ event.healthScore }}%</strong>
               </div>
-            </div>
+            </article>
             <div v-if="!liveEvents.length" class="event-empty">
-              <v-icon size="48">satellite_alt</v-icon>
-              <p>Henüz veri yok. Telemetri simülasyonu bağlantı kurulunca otomatik başlayacak.</p>
+              <v-icon size="48">motion_photos_pause</v-icon>
+              <p>Henüz veri yok. Simülasyon başladığında olaylar burada görünecek.</p>
             </div>
           </div>
         </v-card>
 
-        <v-card class="requirements-card" elevation="0">
-          <h2>SCADA gereklilikleri</h2>
-          <ul>
+        <v-card class="requirements-panel" elevation="0">
+          <header class="panel-header">
+            <div>
+              <h2>SCADA gereksinimleri</h2>
+              <p class="panel-subtitle">Alarm ve saha operasyonlarına temel kurallar</p>
+            </div>
+          </header>
+          <v-divider class="my-4" />
+          <ul class="requirements-list">
             <li v-for="req in scadaRequirements" :key="req.title">
-              <div class="req-title">{{ req.title }}</div>
+              <span class="req-title">{{ req.title }}</span>
               <p>{{ req.description }}</p>
             </li>
           </ul>
@@ -117,55 +147,50 @@
       </div>
     </section>
 
-    <section class="detail-grid" v-if="selectedMeter">
+    <section v-if="selectedMeter" class="detail-section">
       <v-card class="detail-card" elevation="0">
         <header class="detail-header">
           <div>
-            <p class="detail-eyebrow">Aktif sayaç</p>
+            <p class="eyebrow">Aktif sayaç</p>
             <h2>{{ selectedMeter.id }}</h2>
-            <span>{{ selectedMeter.zone }} • {{ selectedMeter.location }}</span>
+            <span class="detail-location">{{ selectedMeter.zone }} • {{ selectedMeter.location }}</span>
           </div>
-          <v-chip :color="selectedTone" variant="flat" class="status-chip">
+          <v-chip :color="selectedTone" class="status-chip" variant="flat">
             <v-icon size="16">sensors</v-icon>
             <span>{{ selectedStatusLabel }}</span>
           </v-chip>
         </header>
-
-        <div class="detail-body">
-          <div class="detail-column">
-            <div class="detail-field">
-              <span>Son iletişim</span>
-              <strong>{{ formatClock(selectedMeter.lastCommunication) }}</strong>
-            </div>
-            <div class="detail-field">
-              <span>İletişim tipi</span>
-              <strong>{{ selectedMeter.communication }}</strong>
-            </div>
-            <div class="detail-field">
-              <span>Batarya</span>
-              <strong>{{ selectedMeter.battery }}</strong>
-            </div>
-          </div>
-          <div class="detail-column">
-            <div class="detail-field">
-              <span>Güncel tüketim</span>
-              <strong>{{ selectedMeter.lastReading }}</strong>
-            </div>
-            <div class="detail-field">
-              <span>Son 24 saat</span>
-              <strong>
-                {{ selectedMeter.consumption.last24h }}
-                {{ selectedMeter.type === 'water' ? 'm³' : 'kWh' }}
-              </strong>
-            </div>
-            <div class="detail-field">
-              <span>Önceki 24 saat</span>
-              <strong>
-                {{ selectedMeter.consumption.previous24h }}
-                {{ selectedMeter.type === 'water' ? 'm³' : 'kWh' }}
-              </strong>
-            </div>
-          </div>
+        <div class="detail-grid">
+          <dl>
+            <dt>Son iletişim</dt>
+            <dd>{{ formatClock(selectedMeter.lastCommunication) }}</dd>
+          </dl>
+          <dl>
+            <dt>İletişim tipi</dt>
+            <dd>{{ selectedMeter.communication }}</dd>
+          </dl>
+          <dl>
+            <dt>Batarya</dt>
+            <dd>{{ selectedMeter.battery }}</dd>
+          </dl>
+          <dl>
+            <dt>Güncel tüketim</dt>
+            <dd>{{ selectedMeter.lastReading }}</dd>
+          </dl>
+          <dl>
+            <dt>Son 24 saat</dt>
+            <dd>
+              {{ selectedMeter.consumption.last24h }}
+              {{ selectedMeter.type === 'water' ? 'm³' : 'kWh' }}
+            </dd>
+          </dl>
+          <dl>
+            <dt>Önceki 24 saat</dt>
+            <dd>
+              {{ selectedMeter.consumption.previous24h }}
+              {{ selectedMeter.type === 'water' ? 'm³' : 'kWh' }}
+            </dd>
+          </dl>
         </div>
       </v-card>
     </section>
@@ -179,8 +204,9 @@ import { scadaRequirements, useTelemetryStore } from '../store/telemetry'
 
 const telemetryStore = useTelemetryStore()
 const resourceFilter = ref('all')
-const meterCounts = computed(() => telemetryStore.meterCounts)
+
 const liveEvents = computed(() => telemetryStore.liveEvents)
+const meterCounts = computed(() => telemetryStore.meterCounts)
 const displayedMeters = computed(() => telemetryStore.getMetersByType(resourceFilter.value))
 const selectedMeterId = computed(() => telemetryStore.activeMeterId)
 const selectedMeter = computed(() => telemetryStore.activeMeter)
@@ -241,24 +267,27 @@ const selectedTone = computed(() => {
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
-
-.scada-wrapper {
+.scada-page {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding-top: 12px;
-  padding-bottom: 32px;
+  gap: 32px;
+  padding-bottom: 40px;
 }
 
-.scada-header {
+.page-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  gap: 24px;
+  gap: 32px;
 }
 
-.header-eyebrow {
+.heading-block h1 {
+  margin: 0;
+  font-size: 32px;
+  color: var(--heading-color);
+}
+
+.eyebrow {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.6px;
@@ -266,22 +295,16 @@ const selectedTone = computed(() => {
   margin-bottom: 6px;
 }
 
-.scada-header h1 {
-  margin: 0;
-  font-size: 28px;
-  color: var(--heading-color);
-}
-
-.header-subtitle {
+.description {
   margin: 8px 0 0;
   color: var(--muted-text);
-  max-width: 620px;
+  max-width: 640px;
 }
 
 .header-actions {
   display: flex;
-  align-items: center;
   gap: 16px;
+  align-items: center;
 }
 
 .resource-toggle {
@@ -296,90 +319,136 @@ const selectedTone = computed(() => {
   letter-spacing: 0.2px;
 }
 
-.pulse-chip {
+.last-update {
   background: var(--accent-surface);
   color: var(--accent-color);
   font-weight: 600;
-  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.22);
 }
 
-.scada-grid {
+.content-grid {
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 24px;
 }
 
-.map-card {
-  position: relative;
-  height: 520px;
+.map-panel {
+  padding: 0;
+  border-radius: 28px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--card-shadow);
 }
 
-.map-overlay {
+.map-shell {
+  position: relative;
+  height: 540px;
+}
+
+.map-empty {
+  height: 100%;
+  border-radius: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: var(--muted-text);
+}
+
+.map-infobar {
   position: absolute;
   top: 24px;
   left: 24px;
-  display: flex;
-  gap: 16px;
-  z-index: 5;
+  width: 260px;
+  backdrop-filter: blur(16px);
+  background: rgba(15, 23, 42, 0.55);
+  border-radius: 24px;
+  padding: 20px;
+  color: #e2e8f0;
+  box-shadow: 0 22px 45px rgba(8, 15, 31, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.25);
   pointer-events: none;
 }
 
-.overlay-card {
-  backdrop-filter: blur(18px);
-  background: rgba(15, 23, 42, 0.4);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 20px;
-  padding: 18px 20px;
-  min-width: 220px;
-  color: #e2e8f0;
-  box-shadow: 0 18px 36px rgba(8, 15, 31, 0.55);
-  pointer-events: auto;
-}
-
-.overlay-title {
-  font-size: 14px;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  opacity: 0.8;
-}
-
-.overlay-metrics {
+.infobar-header {
   display: flex;
-  gap: 18px;
-  margin: 16px 0;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.overlay-metric {
+.infobar-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.metric-box {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.overlay-metric .metric-label {
+.metric-label {
   font-size: 12px;
-  opacity: 0.7;
+  opacity: 0.75;
 }
 
-.overlay-metric .metric-value {
-  font-size: 24px;
+.metric-value {
+  font-size: 22px;
   font-weight: 700;
 }
 
-.overlay-foot {
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.legend ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.legend li {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
-  opacity: 0.85;
 }
 
-.event-column {
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 12px currentColor;
+}
+
+.legend-ok {
+  color: #34d399;
+}
+
+.legend-warning {
+  color: #f97316;
+}
+
+.legend-alarm {
+  color: #f87171;
+}
+
+.side-panels {
   display: flex;
   flex-direction: column;
   gap: 24px;
 }
 
-.event-feed {
+.events-panel,
+.requirements-panel {
   padding: 24px;
   border-radius: 24px;
   background: var(--surface-card);
@@ -387,140 +456,107 @@ const selectedTone = computed(() => {
   box-shadow: var(--card-shadow);
 }
 
-.event-header {
+.panel-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
 }
 
-.event-header h2 {
+.panel-header h2 {
   margin: 0;
   font-size: 20px;
   color: var(--heading-color);
 }
 
-.event-subtitle {
+.panel-subtitle {
+  margin: 6px 0 0;
   color: var(--muted-text);
-}
-
-.trend-chip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-  color: inherit;
 }
 
 .event-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   max-height: 420px;
   overflow-y: auto;
   padding-right: 8px;
 }
 
-.event-item {
-  border-radius: 18px;
-  padding: 14px 16px;
+.event-row {
   display: grid;
-  grid-template-columns: 80px 1fr auto;
+  grid-template-columns: auto 1fr auto;
   gap: 18px;
-  align-items: center;
-  background: var(--surface-elevated);
+  padding: 12px 14px;
+  border-radius: 16px;
   border: 1px solid transparent;
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  background: var(--surface-elevated);
   cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
-.event-item:hover {
-  transform: translateY(-2px);
-  border-color: var(--border-soft);
-  box-shadow: 0 18px 26px rgba(15, 23, 42, 0.18);
+.event-row h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: var(--heading-color);
 }
 
-.event-item.is-active {
-  border-color: var(--accent-color);
-  box-shadow: 0 22px 36px rgba(59, 130, 246, 0.25);
+.event-row p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted-text);
 }
 
-.event-timestamp {
+.event-row .event-time {
   font-family: 'Share Tech Mono', monospace;
   font-size: 14px;
   color: var(--muted-text);
 }
 
-.event-title {
-  font-weight: 600;
-  color: var(--heading-color);
-}
-
-.event-meta {
-  margin-top: 6px;
+.event-row .event-meta {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  font-size: 12px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  font-size: 13px;
   color: var(--muted-text);
 }
 
-.event-health {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
+.event-row strong {
+  font-size: 16px;
   color: var(--heading-color);
+}
+
+.event-row.active {
+  border-color: rgba(59, 130, 246, 0.4);
+  transform: translateY(-2px);
+}
+
+.event-row.tone-warning {
+  border-left: 3px solid #f97316;
+}
+
+.event-row.tone-alarm {
+  border-left: 3px solid #ef4444;
 }
 
 .event-empty {
-  padding: 40px 16px;
-  text-align: center;
-  color: var(--muted-text);
-  display: grid;
-  gap: 12px;
-  place-items: center;
-}
-
-.tone-info {
-  border-left: 4px solid rgba(56, 189, 248, 0.6);
-}
-
-.tone-warning {
-  border-left: 4px solid rgba(251, 146, 60, 0.6);
-}
-
-.tone-alarm {
-  border-left: 4px solid rgba(248, 113, 113, 0.7);
-}
-
-.requirements-card {
-  padding: 24px;
-  border-radius: 24px;
-  background: var(--surface-card);
-  border: 1px solid var(--border-soft);
-  box-shadow: var(--card-shadow);
-}
-
-.requirements-card h2 {
-  margin: 0 0 16px;
-  color: var(--heading-color);
-}
-
-.requirements-card ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px 12px;
+  color: var(--muted-text);
 }
 
-.requirements-card li {
-  background: var(--surface-elevated);
-  border-radius: 16px;
-  padding: 14px 16px;
-  border: 1px solid var(--border-soft);
-  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.12);
+.requirements-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
 .req-title {
@@ -528,14 +564,14 @@ const selectedTone = computed(() => {
   color: var(--heading-color);
 }
 
-.detail-grid {
-  display: grid;
-  grid-template-columns: 1fr;
+.detail-section {
+  display: flex;
 }
 
 .detail-card {
-  padding: 24px;
-  border-radius: 24px;
+  width: 100%;
+  padding: 28px;
+  border-radius: 28px;
   background: var(--surface-card);
   border: 1px solid var(--border-soft);
   box-shadow: var(--card-shadow);
@@ -543,78 +579,65 @@ const selectedTone = computed(() => {
 
 .detail-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  margin-bottom: 24px;
 }
 
 .detail-header h2 {
-  margin: 4px 0;
-  font-size: 24px;
+  margin: 0;
+  font-size: 26px;
   color: var(--heading-color);
 }
 
-.detail-eyebrow {
-  margin: 0;
-  font-size: 12px;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
+.detail-location {
   color: var(--muted-text);
 }
 
 .status-chip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   font-weight: 600;
-  color: inherit;
 }
 
-.detail-body {
-  margin-top: 24px;
+.detail-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 18px;
 }
 
-.detail-column {
+.detail-grid dl {
+  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 4px;
 }
 
-.detail-field span {
-  display: block;
-  font-size: 12px;
+dt {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
   color: var(--muted-text);
 }
 
-.detail-field strong {
+dd {
+  margin: 0;
   font-size: 18px;
+  font-weight: 600;
   color: var(--heading-color);
 }
 
 @media (max-width: 1280px) {
-  .scada-grid {
+  .content-grid {
     grid-template-columns: 1fr;
   }
 
-  .map-card {
+  .map-shell {
     height: 420px;
-  }
-
-  .event-column {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-
-  .event-feed,
-  .requirements-card {
-    flex: 1 1 100%;
   }
 }
 
 @media (max-width: 960px) {
-  .scada-header {
+  .page-header {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -622,16 +645,18 @@ const selectedTone = computed(() => {
   .header-actions {
     width: 100%;
     justify-content: space-between;
-    flex-wrap: wrap;
   }
 
-  .map-overlay {
+  .map-infobar {
     position: static;
+    width: 100%;
     margin-top: 16px;
   }
 
-  .overlay-card {
-    width: 100%;
+  .map-shell {
+    display: flex;
+    flex-direction: column;
+    height: auto;
   }
 }
 </style>
