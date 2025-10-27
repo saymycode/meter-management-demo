@@ -22,6 +22,81 @@
     /> -->
 
     <div class="topbar-actions">
+      <v-menu transition="fade-transition" location="bottom end" offset="12">
+        <template #activator="{ props }">
+          <div class="notification-activator">
+            <v-badge
+              v-if="unreadCount > 0"
+              :content="unreadCount"
+              color="error"
+              floating
+              offset-x="4"
+              offset-y="4"
+            >
+              <v-btn v-bind="props" class="icon-btn notification-btn" variant="text">
+                <v-icon size="22">notifications</v-icon>
+              </v-btn>
+            </v-badge>
+            <v-btn
+              v-else
+              v-bind="props"
+              class="icon-btn notification-btn"
+              variant="text"
+            >
+              <v-icon size="22">notifications</v-icon>
+            </v-btn>
+          </div>
+        </template>
+
+        <v-card class="notification-menu" elevation="12">
+          <div class="notification-header">
+            <div>
+              <p class="notification-eyebrow">Canlı bildirim akışı</p>
+              <h3>Telemetri merkezi</h3>
+            </div>
+            <v-btn
+              size="small"
+              variant="tonal"
+              :disabled="notifications.length === 0"
+              @click="markAllRead"
+            >
+              Hepsini okundu işaretle
+            </v-btn>
+          </div>
+          <v-divider class="my-3" />
+          <v-list class="notification-list" lines="two" density="comfortable">
+            <template v-if="notifications.length">
+              <v-list-item
+                v-for="notification in notifications"
+                :key="notification.id"
+                class="notification-item"
+                @click="openNotification(notification)"
+              >
+                <template #prepend>
+                  <div class="notification-icon" :class="severityClass(notification.tone)">
+                    <v-icon size="20">{{ severityIcon(notification.tone) }}</v-icon>
+                  </div>
+                </template>
+                <v-list-item-title>
+                  <span class="notification-title">{{ notification.message }}</span>
+                </v-list-item-title>
+                <v-list-item-subtitle>
+                  <span>{{ notification.meterLabel }} • {{ notification.zone }}</span>
+                  <span class="notification-time">{{ formatRelative(notification.timestamp) }}</span>
+                </v-list-item-subtitle>
+                <template #append>
+                  <div v-if="!notification.read" class="notification-unread" />
+                </template>
+              </v-list-item>
+            </template>
+            <div v-else class="notification-empty">
+              <v-icon size="32">satellite_alt</v-icon>
+              <p>Tüm sayaçlar sakin. Yeni paket gelince burada göreceksiniz.</p>
+            </div>
+          </v-list>
+        </v-card>
+      </v-menu>
+
       <v-btn
         class="icon-btn theme-toggle"
         variant="text"
@@ -69,9 +144,43 @@
 <script setup>
 import { computed } from 'vue'
 import { useTheme } from 'vuetify'
+import { useTelemetryStore } from '../../store/telemetry'
+
 const theme = useTheme()
 const isDark = computed(() => theme.global.current.value.dark)
 const themeIcon = computed(() => (isDark.value ? 'sunny' : 'dark_mode'))
+const telemetryStore = useTelemetryStore()
+const notifications = computed(() => telemetryStore.notifications)
+const unreadCount = computed(() => telemetryStore.unreadCount)
+
+const relativeTimeFormatter = new Intl.RelativeTimeFormat('tr', { numeric: 'auto' })
+
+const formatRelative = (timestamp) => {
+  const now = Date.now()
+  const target = new Date(timestamp).getTime()
+  const diff = target - now
+  const minutes = Math.round(diff / 60000)
+  if (Math.abs(minutes) < 60) {
+    return relativeTimeFormatter.format(minutes, 'minute')
+  }
+  const hours = Math.round(diff / 3600000)
+  if (Math.abs(hours) < 24) {
+    return relativeTimeFormatter.format(hours, 'hour')
+  }
+  const days = Math.round(diff / 86400000)
+  return relativeTimeFormatter.format(days, 'day')
+}
+
+const severityIcon = (tone) =>
+  (
+    {
+      info: 'sensors',
+      warning: 'warning',
+      alarm: 'priority_high',
+    }[tone] || 'sensors'
+  )
+
+const severityClass = (tone) => `tone-${tone}`
 
 function logout() {
   alert('Çıkış yapıldı (mock).')
@@ -79,6 +188,15 @@ function logout() {
 
 function toggleTheme() {
   theme.global.name.value = isDark.value ? 'light' : 'dark'
+}
+
+const markAllRead = () => {
+  telemetryStore.markAllNotificationsRead()
+}
+
+const openNotification = (notification) => {
+  telemetryStore.markNotificationRead(notification.id)
+  telemetryStore.setActiveMeter(notification.meterId)
 }
 </script>
 
@@ -175,6 +293,116 @@ function toggleTheme() {
     background var(--transition-speed) ease,
     color var(--transition-speed) ease,
     box-shadow var(--transition-speed) ease;
+}
+
+.notification-activator {
+  display: flex;
+}
+
+.notification-btn {
+  position: relative;
+}
+
+.notification-menu {
+  width: min(420px, 80vw);
+  padding: 20px 18px;
+  background: var(--surface-elevated);
+  color: var(--text-color);
+  border-radius: 18px;
+  box-shadow: var(--accent-shadow);
+  border: 1px solid var(--border-soft);
+}
+
+.notification-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.notification-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-size: 12px;
+  color: var(--muted-text);
+  margin: 0 0 4px;
+}
+
+.notification-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--heading-color);
+}
+
+.notification-list {
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.notification-item {
+  border-radius: 14px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.notification-item:hover {
+  background: var(--accent-surface);
+}
+
+.notification-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--accent-surface);
+}
+
+.notification-title {
+  font-weight: 600;
+  color: var(--heading-color);
+}
+
+.notification-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  color: var(--muted-text);
+}
+
+.notification-unread {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+}
+
+.notification-empty {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 40px 16px;
+  color: var(--muted-text);
+  gap: 12px;
+}
+
+.tone-info {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(37, 99, 235, 0.26));
+  color: #2563eb;
+}
+
+.tone-warning {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.28), rgba(245, 158, 11, 0.35));
+  color: #b45309;
+}
+
+.tone-alarm {
+  background: linear-gradient(135deg, rgba(248, 113, 113, 0.28), rgba(251, 146, 60, 0.35));
+  color: #b91c1c;
 }
 
 .cta-btn {
