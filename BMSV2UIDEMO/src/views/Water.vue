@@ -1,66 +1,48 @@
 <!-- eslint-disable vue/valid-v-slot -->
 <template>
   <v-container fluid class="meter-dashboard" tag="section">
-    <section class="meter-header">
-      <div class="header-left">
-        <div class="header-chip">{{ organization.scope }} • Su sayaçları</div>
-        <h1>Su şebekesi izleme merkezi</h1>
-        <p>
-          ASKİ'ye bağlı su sayaçları gün içinde rastgele saatlerde veri gönderir. Bu panel kurumunuza
-          ait LoRa ve GPRS su sayaçlarını aynı sensör ekranındaki gibi tek çatı altında toplar; farklı
-          organizasyonların verileri burada görünmez.
-        </p>
-        <div class="header-meta">
-          <DataFreshnessIndicator
-            :last-update="lastPacket"
-            :now="now"
-            :pending-threshold-hours="24"
-            :inactive-threshold-hours="48"
-            title="Son su verisi"
-            window-hint="Sayaçlar 24 saatlik pencere içerisinde rastgele paket gönderir."
-          />
-          <div class="meta-grid">
-            <div class="meta-item" v-for="metric in headerMetrics" :key="metric.label">
-              <span class="meta-label">{{ metric.label }}</span>
-              <span class="meta-value">{{ metric.value }}</span>
-              <span class="meta-hint">{{ metric.hint }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="header-right">
-        <div class="summary-item">
-          <span class="summary-label">Toplam sayaç</span>
-          <span class="summary-value">{{ totalSensors.toLocaleString('tr-TR') }}</span>
-        </div>
-        <div class="summary-split">
-          <div>
-            <span class="summary-label">LoRa</span>
-            <span class="summary-value">{{ communicationBreakdown.LoRa.toLocaleString('tr-TR') }}</span>
-          </div>
-          <div>
-            <span class="summary-label">GPRS</span>
-            <span class="summary-value">{{ communicationBreakdown.GPRS.toLocaleString('tr-TR') }}</span>
-          </div>
-        </div>
-        <div class="summary-note">
-          <span class="summary-bullet">•</span>
-          <span>Su sayaçları 24 saatlik pencerede eşitlenir; anlık veri beklenmez.</span>
-        </div>
-      </div>
-    </section>
-
     <v-row class="meter-content" no-gutters>
-      <v-col cols="12" md="3" class="filter-column">
+      <v-col cols="12">
         <v-card class="filter-card" elevation="0">
           <div class="filter-header">
-            <h2>Filtreler</h2>
+            <div class="filter-header-left">
+              <h2>Filtreler</h2>
+              <v-btn-toggle
+                v-model="filterMode"
+                class="filter-mode-toggle"
+                density="comfortable"
+                variant="outlined"
+                mandatory
+              >
+                <v-btn value="include" prepend-icon="add">+ Filtre</v-btn>
+                <v-btn value="exclude" prepend-icon="remove">- Filtre</v-btn>
+              </v-btn-toggle>
+            </div>
             <v-btn density="comfortable" variant="text" @click="resetFilters">Temizle</v-btn>
           </div>
-          <div class="filter-hint">Çiplere tıklayın: dahil et → hariç tut → temizle.</div>
-          <div class="filter-group">
-            <span class="filter-title">Durum</span>
-            <div class="filter-chip-grid">
+          <div class="filter-subheader">
+            <div class="filter-hint">Çiplere tıklayın: + filtre dahil eder, − filtre hariç tutar.</div>
+            <div class="grouping-control">
+              <span class="grouping-label">Gruplama</span>
+              <v-chip-group v-model="selectedGroupBy" multiple class="grouping-chips">
+                <v-chip
+                  v-for="option in groupByOptions"
+                  :key="option.value"
+                  :value="option.value"
+                  class="filter-chip"
+                  color="indigo"
+                  filter
+                  variant="tonal"
+                >
+                  {{ option.title }}
+                </v-chip>
+              </v-chip-group>
+            </div>
+          </div>
+          <div class="filter-groups">
+            <div class="filter-group">
+              <span class="filter-title">Durum</span>
+              <div class="filter-chip-grid">
               <v-chip
                 v-for="status in statusOptions"
                 :key="status"
@@ -233,47 +215,11 @@
               </v-chip>
             </div>
           </div>
-          <div class="filter-group">
-            <span class="filter-title">Gruplama</span>
-            <v-chip-group v-model="selectedGroupBy" column multiple>
-              <v-chip
-                v-for="option in groupByOptions"
-                :key="option.value"
-                :value="option.value"
-                class="filter-chip"
-                color="indigo"
-                filter
-                variant="tonal"
-              >
-                {{ option.title }}
-              </v-chip>
-            </v-chip-group>
           </div>
         </v-card>
-
-        <!-- <v-card class="plan-card" elevation="0">
-          <div class="plan-header">
-            <h2>Su şebekesi prensipleri</h2>
-            <span>Sensör görünümü ile aynı görsel dili koru.</span>
-          </div>
-          <v-list density="compact" class="plan-list">
-            <v-list-item>
-              <v-list-item-title>• Koyu paneller ve neon vurgu renkleri sensör sayfasıyla aynıdır.</v-list-item-title>
-            </v-list-item>
-            <v-list-item>
-              <v-list-item-title>• Çip renkleri (yeşil/sarı/kırmızı) tablo ve kartta tekrar eder.</v-list-item-title>
-            </v-list-item>
-            <v-list-item>
-              <v-list-item-title>• Başlık ve etiket tipografisi sensör ekranıyla birebir eşleşir.</v-list-item-title>
-            </v-list-item>
-            <v-list-item>
-              <v-list-item-title>• Hover gölgeleri ve 160ms animasyon eğrileri korunur.</v-list-item-title>
-            </v-list-item>
-          </v-list>
-        </v-card> -->
       </v-col>
 
-      <v-col cols="12" md="9" class="list-column">
+      <v-col cols="12" class="list-column">
         <v-card class="list-card" elevation="0">
           <div class="list-toolbar">
             <v-text-field
@@ -711,13 +657,10 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import DataFreshnessIndicator from '@/components/common/DataFreshnessIndicator.vue'
-import { meterSnapshots, organizationProfile, referenceNow } from '@/data/mockMeters'
+import { meterSnapshots, referenceNow } from '@/data/mockMeters'
 import { createTriStateChipHelpers } from '@/utils/triStateChipHelpers'
-import { matchesTriState } from '@/utils/triStateFilter'
+import { TRI_STATE, matchesTriState } from '@/utils/triStateFilter'
 import { formatAbsolute, formatClock, formatRelativeAgo, hoursBetween, toDate } from '@/utils/time'
-
-const organization = organizationProfile
 const now = ref(new Date(referenceNow))
 
 const normalizeSearchHaystack = (value) => value?.toString().toLowerCase() ?? ''
@@ -816,6 +759,7 @@ const statusOptions = ['Aktif', 'Beklemede', 'Pasif']
 const freshnessOptions = ['< 24 saat', '24-48 saat', '48+ saat']
 const communicationOptions = ['LoRa', 'GPRS']
 
+const filterMode = ref(TRI_STATE.INCLUDE)
 const statusFilters = ref({})
 const freshnessFilters = ref({})
 const communicationFilters = ref({})
@@ -827,10 +771,10 @@ const serialFilter = ref('')
 const serialRangeStart = ref('')
 const serialRangeEnd = ref('')
 
-const statusChips = createTriStateChipHelpers(statusFilters)
-const freshnessChips = createTriStateChipHelpers(freshnessFilters)
-const communicationChips = createTriStateChipHelpers(communicationFilters)
-const zoneChips = createTriStateChipHelpers(zoneFilters)
+const statusChips = createTriStateChipHelpers(statusFilters, filterMode)
+const freshnessChips = createTriStateChipHelpers(freshnessFilters, filterMode)
+const communicationChips = createTriStateChipHelpers(communicationFilters, filterMode)
+const zoneChips = createTriStateChipHelpers(zoneFilters, filterMode)
 const searchTerm = ref('')
 const searchTokens = computed(() => parseSearchTokens(searchTerm.value))
 const lastSeenStartDate = computed(() => parseDateInput(lastSeenStart.value))
@@ -1122,53 +1066,6 @@ const sensorRecords = computed(() =>
   }),
 )
 
-const totalSensors = computed(() => sensorRecords.value.length)
-
-const communicationBreakdown = computed(() =>
-  sensorRecords.value.reduce(
-    (acc, sensor) => {
-      acc[sensor.commMethod] = (acc[sensor.commMethod] ?? 0) + 1
-      return acc
-    },
-    { LoRa: 0, GPRS: 0 },
-  ),
-)
-
-const headerMetrics = computed(() => {
-  const total = sensorRecords.value.length || 1
-  const active = sensorRecords.value.filter((sensor) => sensor.status === 'Aktif').length
-  const pending = sensorRecords.value.filter((sensor) => sensor.status === 'Beklemede').length
-  const averageConsumption =
-    sensorRecords.value.reduce((sum, sensor) => sum + (sensor.consumptionValue ?? 0), 0) / total
-  const lowBattery = sensorRecords.value.filter((sensor) => {
-    const value = parsePercent(sensor.battery)
-    return value != null && value < 60
-  }).length
-
-  return [
-    {
-      label: 'Aktif sayaç',
-      value: active.toLocaleString('tr-TR'),
-      hint: `${Math.round((active / total) * 100)}% çevrimiçi`,
-    },
-    {
-      label: 'Bekleyen sayaç',
-      value: pending.toLocaleString('tr-TR'),
-      hint: '48 saati aşmayan gecikmeler',
-    },
-    {
-      label: 'Ortalama tüketim',
-      value: `${averageConsumption.toFixed(1)} m³`,
-      hint: 'Son 24 saat',
-    },
-    {
-      label: 'Düşük batarya',
-      value: lowBattery.toLocaleString('tr-TR'),
-      hint: 'Bakım planlaması önerilir',
-    },
-  ]
-})
-
 const lastPacket = computed(() =>
   sensorRecords.value.reduce(
     (latest, sensor) => (latest && latest > sensor.lastPacketAt ? latest : sensor.lastPacketAt),
@@ -1248,6 +1145,7 @@ const globalWorkOrders = computed(() =>
 )
 
 const resetFilters = () => {
+  filterMode.value = TRI_STATE.INCLUDE
   statusFilters.value = {}
   freshnessFilters.value = {}
   communicationFilters.value = {}
@@ -1446,108 +1344,8 @@ onBeforeUnmount(() => {
   max-width: 640px;
 }
 
-.header-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.meta-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.meta-item {
-  min-width: 150px;
-  padding: 14px 16px;
-  border-radius: 18px;
-  background: var(--surface-card);
-  border: 1px solid var(--border-soft);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.meta-label {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: var(--muted-text);
-}
-
-.meta-value {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--heading-color);
-}
-
-.meta-hint {
-  font-size: 13px;
-  color: var(--muted-text);
-}
-
-.header-right {
-  position: relative;
-  z-index: 1;
-  flex: 1 1 220px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 18px;
-  border-radius: 22px;
-  background: var(--surface-card);
-  border: 1px solid var(--border-soft);
-  box-shadow: var(--card-shadow);
-}
-
-.summary-item,
-.summary-split > div {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.summary-label {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: var(--muted-text);
-}
-
-.summary-value {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--heading-color);
-}
-
-.summary-split {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.summary-note {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--muted-text);
-}
-
-.summary-bullet {
-  font-size: 20px;
-  line-height: 1;
-}
-
 .meter-content {
   row-gap: 28px !important;
-}
-
-.filter-column {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
 }
 
 .filter-card,
@@ -1564,8 +1362,9 @@ onBeforeUnmount(() => {
 
 .filter-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
   margin-bottom: 12px;
 }
 
@@ -1574,6 +1373,74 @@ onBeforeUnmount(() => {
   margin: 0;
   font-size: 18px;
   color: var(--heading-color);
+}
+
+.filter-header-left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.filter-mode-toggle {
+  border-radius: 999px;
+  padding: 2px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-elevated);
+}
+
+.filter-mode-toggle :deep(.v-btn) {
+  text-transform: none;
+  border-radius: 999px !important;
+}
+
+.filter-mode-toggle :deep(.v-btn--active) {
+  box-shadow: none;
+}
+
+.filter-subheader {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.grouping-control {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.grouping-label {
+  font-size: 13px;
+  color: var(--muted-text);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.grouping-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.grouping-chips :deep(.v-chip) {
+  margin: 0;
+}
+
+.filter-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px 24px;
+}
+
+.filter-groups .filter-group {
+  border-bottom: none;
+  padding: 0;
 }
 
 .filter-group {
@@ -1589,7 +1456,7 @@ onBeforeUnmount(() => {
 }
 
 .filter-hint {
-  margin-bottom: 4px;
+  margin: 0;
   font-size: 12px;
   color: var(--muted-text);
 }

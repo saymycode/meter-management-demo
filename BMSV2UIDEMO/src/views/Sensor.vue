@@ -1,279 +1,249 @@
 <!-- eslint-disable vue/valid-v-slot -->
 <template>
   <v-container fluid class="sensor-dashboard" tag="section">
-    <section class="sensor-header">
-      <div class="header-left">
-        <div class="header-chip">{{ organization.scope }} • Sulama sensörleri</div>
-        <h1>Sahadaki sensör ağı</h1>
-        <p>
-          ASKİ sulama sahalarına kurulan su sayaçlarıyla ilişkili toprak nemi, meteoroloji ve yağmur
-          sensörleri bu panelde birlikte izlenir. Sensör tanımları fiziksel bağlantıdan bağımsız olarak
-          sayaçlar üzerinden yönetildiği için her kayıt ilgili sayaç ve parsel bilgisiyle gelir.
-        </p>
-        <div class="header-meta">
-          <DataFreshnessIndicator
-            :last-update="lastPacket"
-            :now="now"
-            :pending-threshold-hours="24"
-            :inactive-threshold-hours="48"
-            title="Son veri"
-          />
-          <div class="meta-grid">
-            <div class="meta-item" v-for="meta in headerMetrics" :key="meta.label">
-              <span class="meta-label">{{ meta.label }}</span>
-              <span class="meta-value">{{ meta.value }}</span>
-              <span class="meta-hint">{{ meta.hint }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="header-right">
-        <div class="summary-item">
-          <span class="summary-label">Toplam sensör</span>
-          <span class="summary-value">{{ totalSensors.toLocaleString('tr-TR') }}</span>
-        </div>
-        <div class="summary-split">
-          <div v-for="typeSummary in typeSummaryList" :key="typeSummary.label">
-            <span class="summary-label">{{ typeSummary.label }}</span>
-            <span class="summary-value">{{ typeSummary.value }}</span>
-          </div>
-        </div>
-        <div class="summary-note">
-          <v-icon icon="bolt" size="18" />
-          <span>
-            Veriler sayaçlardan beslenen sensör tanımlarından gelir ve 24 saatlik pencereyle güncellenir.
-          </span>
-        </div>
-      </div>
-    </section>
-
     <v-row class="sensor-content" no-gutters>
-      <v-col cols="12" md="3" class="filter-column">
+      <v-col cols="12">
         <v-card class="filter-card" elevation="0">
           <div class="filter-header">
-            <h2>Filtreler</h2>
+            <div class="filter-header-left">
+              <h2>Filtreler</h2>
+              <v-btn-toggle
+                v-model="filterMode"
+                class="filter-mode-toggle"
+                density="comfortable"
+                variant="outlined"
+                mandatory
+              >
+                <v-btn value="include" prepend-icon="add">+ Filtre</v-btn>
+                <v-btn value="exclude" prepend-icon="remove">- Filtre</v-btn>
+              </v-btn-toggle>
+            </div>
             <v-btn density="comfortable" variant="text" @click="resetFilters">Temizle</v-btn>
           </div>
-          <div class="filter-hint">Çiplere tıklayın: dahil et → hariç tut → temizle.</div>
-          <div class="filter-group">
-            <span class="filter-title">Durum</span>
-            <div class="filter-chip-grid">
-              <v-chip
-                v-for="status in statusOptions"
-                :key="status"
-                class="filter-chip"
-                :class="statusChips.stateClass(status)"
-                :color="statusChips.color('primary', status)"
-                :variant="statusChips.variant(status)"
-                @click="statusChips.cycle(status)"
-                :title="statusChips.title(status)"
-              >
-                <v-icon
-                  v-if="statusChips.isInclude(status)"
-                  icon="check"
-                  size="16"
-                  class="filter-chip-icon"
-                />
-                <v-icon
-                  v-else-if="statusChips.isExclude(status)"
-                  icon="remove"
-                  size="16"
-                  class="filter-chip-icon"
-                />
-                {{ status }}
-              </v-chip>
+          <div class="filter-subheader">
+            <div class="filter-hint">Çiplere tıklayın: + filtre dahil eder, − filtre hariç tutar.</div>
+            <div class="grouping-control">
+              <span class="grouping-label">Gruplama</span>
+              <v-chip-group v-model="selectedGroupBy" multiple class="grouping-chips">
+                <v-chip
+                  v-for="option in groupByOptions"
+                  :key="option.value"
+                  :value="option.value"
+                  class="filter-chip"
+                  color="indigo"
+                  filter
+                  variant="tonal"
+                >
+                  {{ option.title }}
+                </v-chip>
+              </v-chip-group>
             </div>
           </div>
-          <div class="filter-group">
-            <span class="filter-title">Veri tazeliği</span>
-            <div class="filter-chip-grid">
-              <v-chip
-                v-for="option in freshnessOptions"
-                :key="option"
-                class="filter-chip"
-                :class="freshnessChips.stateClass(option)"
-                :color="freshnessChips.color('teal', option)"
-                :variant="freshnessChips.variant(option)"
-                @click="freshnessChips.cycle(option)"
-                :title="freshnessChips.title(option)"
-              >
-                <v-icon
-                  v-if="freshnessChips.isInclude(option)"
-                  icon="check"
-                  size="16"
-                  class="filter-chip-icon"
-                />
-                <v-icon
-                  v-else-if="freshnessChips.isExclude(option)"
-                  icon="remove"
-                  size="16"
-                  class="filter-chip-icon"
-                />
-                {{ option }}
-              </v-chip>
+          <div class="filter-groups">
+            <div class="filter-group">
+              <span class="filter-title">Durum</span>
+              <div class="filter-chip-grid">
+                <v-chip
+                  v-for="status in statusOptions"
+                  :key="status"
+                  class="filter-chip"
+                  :class="statusChips.stateClass(status)"
+                  :color="statusChips.color('primary', status)"
+                  :variant="statusChips.variant(status)"
+                  @click="statusChips.cycle(status)"
+                  :title="statusChips.title(status)"
+                >
+                  <v-icon
+                    v-if="statusChips.isInclude(status)"
+                    icon="check"
+                    size="16"
+                    class="filter-chip-icon"
+                  />
+                  <v-icon
+                    v-else-if="statusChips.isExclude(status)"
+                    icon="remove"
+                    size="16"
+                    class="filter-chip-icon"
+                  />
+                  {{ status }}
+                </v-chip>
+              </div>
             </div>
-          </div>
-          <div class="filter-group">
-            <span class="filter-title">İletişim</span>
-            <div class="filter-chip-grid">
-              <v-chip
-                v-for="comm in communicationOptions"
-                :key="comm"
-                class="filter-chip"
-                :class="communicationChips.stateClass(comm)"
-                :color="communicationChips.color('blue', comm)"
-                :variant="communicationChips.variant(comm)"
-                @click="communicationChips.cycle(comm)"
-                :title="communicationChips.title(comm)"
-              >
-                <v-icon
-                  v-if="communicationChips.isInclude(comm)"
-                  icon="check"
-                  size="16"
-                  class="filter-chip-icon"
-                />
-                <v-icon
-                  v-else-if="communicationChips.isExclude(comm)"
-                  icon="remove"
-                  size="16"
-                  class="filter-chip-icon"
-                />
-                {{ comm }}
-              </v-chip>
+            <div class="filter-group">
+              <span class="filter-title">Veri tazeliği</span>
+              <div class="filter-chip-grid">
+                <v-chip
+                  v-for="option in freshnessOptions"
+                  :key="option"
+                  class="filter-chip"
+                  :class="freshnessChips.stateClass(option)"
+                  :color="freshnessChips.color('teal', option)"
+                  :variant="freshnessChips.variant(option)"
+                  @click="freshnessChips.cycle(option)"
+                  :title="freshnessChips.title(option)"
+                >
+                  <v-icon
+                    v-if="freshnessChips.isInclude(option)"
+                    icon="check"
+                    size="16"
+                    class="filter-chip-icon"
+                  />
+                  <v-icon
+                    v-else-if="freshnessChips.isExclude(option)"
+                    icon="remove"
+                    size="16"
+                    class="filter-chip-icon"
+                  />
+                  {{ option }}
+                </v-chip>
+              </div>
             </div>
-          </div>
-          <div class="filter-group">
-            <span class="filter-title">Sensör tipi</span>
-            <div class="filter-chip-grid">
-              <v-chip
-                v-for="type in typeOptions"
-                :key="type"
-                class="filter-chip"
-                :class="typeChips.stateClass(type)"
-                :color="typeChips.color('purple', type)"
-                :variant="typeChips.variant(type)"
-                @click="typeChips.cycle(type)"
-                :title="typeChips.title(type)"
-              >
-                <v-icon
-                  v-if="typeChips.isInclude(type)"
-                  icon="check"
-                  size="16"
-                  class="filter-chip-icon"
-                />
-                <v-icon
-                  v-else-if="typeChips.isExclude(type)"
-                  icon="remove"
-                  size="16"
-                  class="filter-chip-icon"
-                />
-                {{ type }}
-              </v-chip>
+            <div class="filter-group">
+              <span class="filter-title">İletişim</span>
+              <div class="filter-chip-grid">
+                <v-chip
+                  v-for="comm in communicationOptions"
+                  :key="comm"
+                  class="filter-chip"
+                  :class="communicationChips.stateClass(comm)"
+                  :color="communicationChips.color('blue', comm)"
+                  :variant="communicationChips.variant(comm)"
+                  @click="communicationChips.cycle(comm)"
+                  :title="communicationChips.title(comm)"
+                >
+                  <v-icon
+                    v-if="communicationChips.isInclude(comm)"
+                    icon="check"
+                    size="16"
+                    class="filter-chip-icon"
+                  />
+                  <v-icon
+                    v-else-if="communicationChips.isExclude(comm)"
+                    icon="remove"
+                    size="16"
+                    class="filter-chip-icon"
+                  />
+                  {{ comm }}
+                </v-chip>
+              </div>
             </div>
-          </div>
-          <div class="filter-group">
-            <span class="filter-title">Son veri aralığı</span>
-            <v-text-field
-              v-model="lastSeenStart"
-              class="filter-date-field"
-              type="date"
-              density="compact"
-              hide-details
-              label="Başlangıç"
-              variant="outlined"
-              clearable
-            />
-            <v-text-field
-              v-model="lastSeenEnd"
-              class="filter-date-field"
-              type="date"
-              density="compact"
-              hide-details
-              label="Bitiş"
-              variant="outlined"
-              clearable
-            />
-          </div>
-          <div class="filter-group">
-            <span class="filter-title">Seri numarası</span>
-            <v-text-field
-              v-model="serialFilter"
-              class="filter-text-field"
-              density="compact"
-              hide-details
-              label="Seri no ara"
-              variant="outlined"
-              clearable
-              placeholder="Örn. AK311-10021"
-            />
-            <div class="filter-range-row">
+            <div class="filter-group">
+              <span class="filter-title">Sensör tipi</span>
+              <div class="filter-chip-grid">
+                <v-chip
+                  v-for="type in typeOptions"
+                  :key="type"
+                  class="filter-chip"
+                  :class="typeChips.stateClass(type)"
+                  :color="typeChips.color('purple', type)"
+                  :variant="typeChips.variant(type)"
+                  @click="typeChips.cycle(type)"
+                  :title="typeChips.title(type)"
+                >
+                  <v-icon
+                    v-if="typeChips.isInclude(type)"
+                    icon="check"
+                    size="16"
+                    class="filter-chip-icon"
+                  />
+                  <v-icon
+                    v-else-if="typeChips.isExclude(type)"
+                    icon="remove"
+                    size="16"
+                    class="filter-chip-icon"
+                  />
+                  {{ type }}
+                </v-chip>
+              </div>
+            </div>
+            <div class="filter-group">
+              <span class="filter-title">Son veri aralığı</span>
               <v-text-field
-                v-model="serialRangeStart"
-                class="filter-range-field"
+                v-model="lastSeenStart"
+                class="filter-date-field"
+                type="date"
                 density="compact"
                 hide-details
                 label="Başlangıç"
                 variant="outlined"
                 clearable
-                placeholder="Seri başlangıcı"
               />
               <v-text-field
-                v-model="serialRangeEnd"
-                class="filter-range-field"
+                v-model="lastSeenEnd"
+                class="filter-date-field"
+                type="date"
                 density="compact"
                 hide-details
                 label="Bitiş"
                 variant="outlined"
                 clearable
-                placeholder="Seri bitişi"
               />
             </div>
-            <div class="filter-subtext">Aralık dolunca otomatik sıralanır.</div>
-          </div>
-          <div class="filter-group">
-            <span class="filter-title">Bölgeler</span>
-            <div class="filter-chip-grid">
-              <v-chip
-                v-for="zone in zoneOptions"
-                :key="zone"
-                class="filter-chip"
-                :class="zoneChips.stateClass(zone)"
-                :color="zoneChips.color('amber', zone)"
-                :variant="zoneChips.variant(zone)"
-                @click="zoneChips.cycle(zone)"
-                :title="zoneChips.title(zone)"
-              >
-                <v-icon
-                  v-if="zoneChips.isInclude(zone)"
-                  icon="check"
-                  size="16"
-                  class="filter-chip-icon"
+            <div class="filter-group">
+              <span class="filter-title">Seri numarası</span>
+              <v-text-field
+                v-model="serialFilter"
+                class="filter-text-field"
+                density="compact"
+                hide-details
+                label="Seri no ara"
+                variant="outlined"
+                clearable
+                placeholder="Örn. AK311-10021"
+              />
+              <div class="filter-range-row">
+                <v-text-field
+                  v-model="serialRangeStart"
+                  class="filter-range-field"
+                  density="compact"
+                  hide-details
+                  label="Başlangıç"
+                  variant="outlined"
+                  clearable
+                  placeholder="Seri başlangıcı"
                 />
-                <v-icon
-                  v-else-if="zoneChips.isExclude(zone)"
-                  icon="remove"
-                  size="16"
-                  class="filter-chip-icon"
+                <v-text-field
+                  v-model="serialRangeEnd"
+                  class="filter-range-field"
+                  density="compact"
+                  hide-details
+                  label="Bitiş"
+                  variant="outlined"
+                  clearable
+                  placeholder="Seri bitişi"
                 />
-                {{ zone }}
-              </v-chip>
+              </div>
+              <div class="filter-subtext">Aralık dolunca otomatik sıralanır.</div>
             </div>
-          </div>
-          <div class="filter-group">
-            <span class="filter-title">Gruplama</span>
-            <v-chip-group v-model="selectedGroupBy" column multiple>
-              <v-chip
-                v-for="option in groupByOptions"
-                :key="option.value"
-                :value="option.value"
-                class="filter-chip"
-                color="indigo"
-                filter
-                variant="tonal"
-              >
-                {{ option.title }}
-              </v-chip>
-            </v-chip-group>
+            <div class="filter-group">
+              <span class="filter-title">Bölgeler</span>
+              <div class="filter-chip-grid">
+                <v-chip
+                  v-for="zone in zoneOptions"
+                  :key="zone"
+                  class="filter-chip"
+                  :class="zoneChips.stateClass(zone)"
+                  :color="zoneChips.color('amber', zone)"
+                  :variant="zoneChips.variant(zone)"
+                  @click="zoneChips.cycle(zone)"
+                  :title="zoneChips.title(zone)"
+                >
+                  <v-icon
+                    v-if="zoneChips.isInclude(zone)"
+                    icon="check"
+                    size="16"
+                    class="filter-chip-icon"
+                  />
+                  <v-icon
+                    v-else-if="zoneChips.isExclude(zone)"
+                    icon="remove"
+                    size="16"
+                    class="filter-chip-icon"
+                  />
+                  {{ zone }}
+                </v-chip>
+              </div>
+            </div>
           </div>
         </v-card>
 
@@ -299,7 +269,7 @@
         </v-card> -->
       </v-col>
 
-      <v-col cols="12" md="9" class="list-column">
+      <v-col cols="12" class="list-column">
         <v-card class="list-card" elevation="0">
           <div class="list-toolbar">
             <v-text-field
@@ -677,13 +647,10 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import DataFreshnessIndicator from '@/components/common/DataFreshnessIndicator.vue'
-import { meterSnapshots, organizationProfile, referenceNow } from '@/data/mockMeters'
+import { meterSnapshots, referenceNow } from '@/data/mockMeters'
 import { createTriStateChipHelpers } from '@/utils/triStateChipHelpers'
 import { TRI_STATE, matchesTriState, setTriStateValue } from '@/utils/triStateFilter'
 import { formatAbsolute, formatClock, formatRelativeAgo, hoursBetween } from '@/utils/time'
-
-const organization = organizationProfile
 const now = ref(new Date(referenceNow))
 const route = useRoute()
 
@@ -815,6 +782,7 @@ const sensorTypeCatalog = {
 
 const typeOptions = Object.values(sensorTypeCatalog).map((item) => item.label)
 
+const filterMode = ref(TRI_STATE.INCLUDE)
 const statusFilters = ref({})
 const freshnessFilters = ref({})
 const communicationFilters = ref({})
@@ -827,11 +795,11 @@ const serialFilter = ref('')
 const serialRangeStart = ref('')
 const serialRangeEnd = ref('')
 
-const statusChips = createTriStateChipHelpers(statusFilters)
-const freshnessChips = createTriStateChipHelpers(freshnessFilters)
-const communicationChips = createTriStateChipHelpers(communicationFilters)
-const typeChips = createTriStateChipHelpers(typeFilters)
-const zoneChips = createTriStateChipHelpers(zoneFilters)
+const statusChips = createTriStateChipHelpers(statusFilters, filterMode)
+const freshnessChips = createTriStateChipHelpers(freshnessFilters, filterMode)
+const communicationChips = createTriStateChipHelpers(communicationFilters, filterMode)
+const typeChips = createTriStateChipHelpers(typeFilters, filterMode)
+const zoneChips = createTriStateChipHelpers(zoneFilters, filterMode)
 const searchTerm = ref('')
 const viewMode = ref('table')
 const searchTokens = computed(() => parseSearchTokens(searchTerm.value))
@@ -1244,63 +1212,6 @@ const sensorRecords = computed(() =>
   }),
 )
 
-const totalSensors = computed(() => sensorRecords.value.length)
-
-const typeBreakdown = computed(() =>
-  sensorRecords.value.reduce((acc, sensor) => {
-    acc[sensor.typeLabel] = (acc[sensor.typeLabel] ?? 0) + 1
-    return acc
-  }, {}),
-)
-
-const typeSummaryList = computed(() =>
-  Object.values(sensorTypeCatalog).map((meta) => ({
-    label: meta.summaryLabel,
-    value: (typeBreakdown.value[meta.label] ?? 0).toLocaleString('tr-TR'),
-  })),
-)
-
-const communicationBreakdown = computed(() =>
-  sensorRecords.value.reduce(
-    (acc, sensor) => {
-      acc[sensor.commMethod] = (acc[sensor.commMethod] ?? 0) + 1
-      return acc
-    },
-    { LoRa: 0, GPRS: 0 },
-  ),
-)
-
-const headerMetrics = computed(() => {
-  const total = totalSensors.value || 1
-  const active = sensorRecords.value.filter((sensor) => sensor.status === 'Aktif').length
-  const pending = sensorRecords.value.filter((sensor) => sensor.status === 'Beklemede').length
-  const inactive = sensorRecords.value.filter((sensor) => sensor.status === 'Pasif').length
-  const uniqueMeters = new Set(sensorRecords.value.map((sensor) => sensor.meterId)).size
-
-  return [
-    {
-      label: 'Aktif sensör',
-      value: active.toLocaleString('tr-TR'),
-      hint: `${Math.round((active / total) * 100)}% çevrimiçi`,
-    },
-    {
-      label: 'Beklemede',
-      value: pending.toLocaleString('tr-TR'),
-      hint: '24-48 saat arası gecikme',
-    },
-    {
-      label: 'Pasif sensör',
-      value: inactive.toLocaleString('tr-TR'),
-      hint: '48+ saat veri yok',
-    },
-    {
-      label: 'Bağlı sayaç',
-      value: uniqueMeters.toLocaleString('tr-TR'),
-      hint: 'Sulama hattı kapsamı',
-    },
-  ]
-})
-
 const lastPacket = computed(() =>
   sensorRecords.value.reduce(
     (latest, sensor) => (latest && latest > sensor.lastPacketAt ? latest : sensor.lastPacketAt),
@@ -1356,6 +1267,16 @@ const filteredStats = computed(() => ({
   inactive: filteredSensors.value.filter((sensor) => sensor.status === 'Pasif').length,
 }))
 
+const communicationBreakdown = computed(() =>
+  filteredSensors.value.reduce(
+    (acc, sensor) => {
+      acc[sensor.commMethod] = (acc[sensor.commMethod] ?? 0) + 1
+      return acc
+    },
+    { LoRa: 0, GPRS: 0 },
+  ),
+)
+
 const severityRank = { Kritik: 0, Yüksek: 1, Orta: 2, Bilgi: 3 }
 
 const globalAlerts = computed(() =>
@@ -1379,6 +1300,7 @@ const globalAlerts = computed(() =>
 )
 
 const resetFilters = () => {
+  filterMode.value = TRI_STATE.INCLUDE
   statusFilters.value = {}
   freshnessFilters.value = {}
   communicationFilters.value = {}
@@ -1516,159 +1438,8 @@ onBeforeUnmount(() => {
   transition: background var(--transition-speed) ease;
 }
 
-.sensor-header {
-  position: relative;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 32px;
-  padding: 28px 32px;
-  border-radius: 26px;
-  background: var(--surface-elevated);
-  border: 1px solid var(--border-soft);
-  box-shadow: var(--card-shadow);
-  overflow: hidden;
-}
-
-.sensor-header::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at top right, var(--accent-glow) 0%, transparent 55%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.header-left {
-  position: relative;
-  z-index: 1;
-  flex: 1 1 420px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.header-chip {
-  align-self: flex-start;
-  padding: 6px 14px;
-  border-radius: 999px;
-  background: var(--accent-surface);
-  color: var(--accent-highlight);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.header-left h1 {
-  margin: 0;
-  font-size: clamp(26px, 4vw, 34px);
-  color: var(--heading-color);
-}
-
-.header-left p {
-  margin: 0;
-  font-size: 15px;
-  color: var(--muted-text);
-  line-height: 1.6;
-  max-width: 640px;
-}
-
-.header-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.meta-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.meta-item {
-  min-width: 150px;
-  padding: 14px 16px;
-  border-radius: 18px;
-  background: var(--surface-card);
-  border: 1px solid var(--border-soft);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.meta-label {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: var(--muted-text);
-}
-
-.meta-value {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--heading-color);
-}
-
-.meta-hint {
-  font-size: 13px;
-  color: var(--muted-text);
-}
-
-.header-right {
-  position: relative;
-  z-index: 1;
-  flex: 1 1 220px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 18px;
-  border-radius: 22px;
-  background: var(--surface-card);
-  border: 1px solid var(--border-soft);
-  box-shadow: var(--card-shadow);
-}
-
-.summary-item,
-.summary-split > div {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.summary-label {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: var(--muted-text);
-}
-
-.summary-value {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--heading-color);
-}
-
-.summary-split {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.summary-note {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--muted-text);
-}
-
 .sensor-content {
   row-gap: 28px !important;
-}
-
-.filter-column {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
 }
 
 .filter-card,
@@ -1685,8 +1456,9 @@ onBeforeUnmount(() => {
 
 .filter-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
   margin-bottom: 12px;
 }
 
@@ -1695,6 +1467,74 @@ onBeforeUnmount(() => {
   margin: 0;
   font-size: 18px;
   color: var(--heading-color);
+}
+
+.filter-header-left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.filter-mode-toggle {
+  border-radius: 999px;
+  padding: 2px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-elevated);
+}
+
+.filter-mode-toggle :deep(.v-btn) {
+  text-transform: none;
+  border-radius: 999px !important;
+}
+
+.filter-mode-toggle :deep(.v-btn--active) {
+  box-shadow: none;
+}
+
+.filter-subheader {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.grouping-control {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.grouping-label {
+  font-size: 13px;
+  color: var(--muted-text);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.grouping-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.grouping-chips :deep(.v-chip) {
+  margin: 0;
+}
+
+.filter-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px 24px;
+}
+
+.filter-groups .filter-group {
+  border-bottom: none;
+  padding: 0;
 }
 
 .filter-group {
@@ -1710,7 +1550,7 @@ onBeforeUnmount(() => {
 }
 
 .filter-hint {
-  margin-bottom: 4px;
+  margin: 0;
   font-size: 12px;
   color: var(--muted-text);
 }
