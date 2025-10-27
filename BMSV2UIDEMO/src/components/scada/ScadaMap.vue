@@ -152,7 +152,7 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-.scada-marker {
+:deep(.scada-marker) {
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -164,7 +164,7 @@ onBeforeUnmount(() => {
   position: relative;
 }
 
-.scada-marker span {
+:deep(.scada-marker span) {
   display: block;
   width: 100%;
   height: 100%;
@@ -173,37 +173,37 @@ onBeforeUnmount(() => {
   box-shadow: 0 0 18px currentColor;
 }
 
-.scada-marker.water {
+:deep(.scada-marker.water) {
   color: #38bdf8;
 }
 
-.scada-marker.electric {
+:deep(.scada-marker.electric) {
   color: #facc15;
 }
 
-.scada-marker.warning {
+:deep(.scada-marker.warning) {
   color: #f97316;
 }
 
-.scada-marker.alarm {
+:deep(.scada-marker.alarm) {
   color: #f87171;
 }
 
-.scada-marker.info,
-.scada-marker.normal {
+:deep(.scada-marker.info),
+:deep(.scada-marker.normal) {
   color: #34d399;
 }
 
-.scada-marker.is-selected {
+:deep(.scada-marker.is-selected) {
   transform: scale(1.4);
   box-shadow: 0 0 24px rgba(147, 197, 253, 0.9);
 }
 
-.scada-marker.is-flashing span {
+:deep(.scada-marker.is-flashing span) {
   animation: blink 1s ease-in-out infinite;
 }
 
-.scada-marker.is-flashing::after {
+:deep(.scada-marker.is-flashing::after) {
   content: '';
   position: absolute;
   inset: -12px;

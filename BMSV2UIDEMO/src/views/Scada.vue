@@ -320,6 +320,8 @@ const selectedTone = computed(() => {
   left: 24px;
   display: flex;
   gap: 16px;
+  z-index: 5;
+  pointer-events: none;
 }
 
 .overlay-card {
@@ -331,6 +333,7 @@ const selectedTone = computed(() => {
   min-width: 220px;
   color: #e2e8f0;
   box-shadow: 0 18px 36px rgba(8, 15, 31, 0.55);
+  pointer-events: auto;
 }
 
 .overlay-title {
