@@ -1211,8 +1211,10 @@ const typeChipColor = (typeKey) => sensorTypeCatalog[typeKey]?.chip ?? 'primary'
 
 const buildSensorInventory = () => {
   const irrigationMeters = meterSnapshots.filter((meter) => meter.type === 'water')
+  // Sensör sayısı talebi gereği su sayaçlarının bir kısmı saha sensörü bağlı olmayacak şekilde sınırlandı.
+  const sensorSources = irrigationMeters.slice(0, 97)
   const pointers = { soil: 0, meteo: 0, rain: 0 }
-  return irrigationMeters.map((meter, meterIndex) => {
+  return sensorSources.map((meter, meterIndex) => {
     const typeKey = sensorTypeSequence[meterIndex % sensorTypeSequence.length]
     const profiles = sensorProfiles[typeKey]
     const profile = profiles[pointers[typeKey] % profiles.length]
