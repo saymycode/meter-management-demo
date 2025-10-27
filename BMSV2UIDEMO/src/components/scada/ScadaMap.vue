@@ -24,6 +24,18 @@ const mapRoot = ref(null)
 let mapInstance
 let layer
 const markers = new Map()
+const markerFlashState = new Map()
+
+const focusOnMeter = (meter, { minZoom = 13, duration = 1.2 } = {}) => {
+  if (!mapInstance) return
+  const targetLatLng = L.latLng(meter.lat, meter.lng)
+  const nextZoom = Math.max(mapInstance.getZoom(), minZoom)
+  mapInstance.flyTo(targetLatLng, nextZoom, {
+    duration,
+    easeLinearity: 0.3,
+    noMoveStart: true,
+  })
+}
 
 const baseIcon = (meter, isSelected) =>
   L.divIcon({
@@ -48,6 +60,14 @@ const ensureMarker = (meter) => {
     marker.setLatLng([meter.lat, meter.lng])
     marker.setIcon(icon)
   }
+
+  const previousFlash = markerFlashState.get(meter.id) ?? false
+  const isFlashing = Boolean(meter.flash)
+  markerFlashState.set(meter.id, isFlashing)
+
+  if (isFlashing && !previousFlash) {
+    focusOnMeter(meter, { minZoom: 14, duration: 1.4 })
+  }
 }
 
 const removeUnusedMarkers = (nextMeters) => {
@@ -56,6 +76,7 @@ const removeUnusedMarkers = (nextMeters) => {
     if (!validIds.has(id)) {
       marker.remove()
       markers.delete(id)
+      markerFlashState.delete(id)
     }
   })
 }
@@ -97,7 +118,12 @@ watch(
     if (!next) return
     const marker = markers.get(next)
     if (marker && mapInstance) {
-      mapInstance.panTo(marker.getLatLng())
+      const meter = props.meters.find((candidate) => candidate.id === next)
+      if (meter) {
+        focusOnMeter(meter)
+      } else {
+        mapInstance.panTo(marker.getLatLng())
+      }
     }
     redrawMarkers()
   },
@@ -106,6 +132,7 @@ watch(
 onBeforeUnmount(() => {
   markers.forEach((marker) => marker.remove())
   markers.clear()
+  markerFlashState.clear()
   layer?.remove()
   mapInstance?.remove()
 })
@@ -134,6 +161,7 @@ onBeforeUnmount(() => {
   box-shadow: 0 0 18px rgba(59, 130, 246, 0.6);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   animation: pulse 6s ease-in-out infinite;
+  position: relative;
 }
 
 .scada-marker span {
@@ -175,6 +203,17 @@ onBeforeUnmount(() => {
   animation: blink 1s ease-in-out infinite;
 }
 
+.scada-marker.is-flashing::after {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  border: 2px solid rgba(74, 222, 128, 0.6);
+  background: rgba(34, 197, 94, 0.15);
+  animation: flare 1.6s ease-out infinite;
+  pointer-events: none;
+}
+
 @keyframes blink {
   0%,
   100% {
@@ -197,6 +236,21 @@ onBeforeUnmount(() => {
   100% {
     transform: scale(0.9);
     opacity: 0.7;
+  }
+}
+
+@keyframes flare {
+  0% {
+    opacity: 0.7;
+    transform: scale(0.5);
+  }
+  60% {
+    opacity: 0.2;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.4);
   }
 }
 </style>
